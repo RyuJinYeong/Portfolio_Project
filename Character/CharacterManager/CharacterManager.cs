@@ -15,12 +15,17 @@ public class CharacterManager : MonoBehaviour
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
     private bool isPlayerTurn; // 플레이어 턴 여부 확인
 
+    private List<SkillBase> skillQueue = new List<SkillBase>();  // 시전할 스킬 큐
+    private Coroutine turnTimerCoroutine;
+
     public CharacterManager(CharacterData characterData)
     {
         character = characterData;
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
     }
+
+    #region 캐릭터 데이터 초기화, 스폰관련 로직 - 세부 기능 구현 필요
 
     // 캐릭터 프리로드 및 초상화 촬영
     public void LoadCharacters(List<CharacterData> characters)
@@ -74,6 +79,8 @@ public class CharacterManager : MonoBehaviour
         UpdateCharacterUI();
     }
 
+    #endregion
+
     public void UpdateCharacterUI()
     {
         // UI 업데이트 로직을 여기에 추가 - 세부 구현 필요 or UIManager와 기능 통합 필요
@@ -84,6 +91,9 @@ public class CharacterManager : MonoBehaviour
     // 턴 시작 메서드
     public void StartTurn(System.Action onTurnEnd)
     {
+        // 턴이 시작되면 선택된 캐릭터의 외곽선을 활성화하여 강조 표시
+        character.gameObject.GetComponent<OutlineEffect>().EnableOutline();
+
         if (IsPlayerControlled())
         {
             isPlayerTurn = true;
@@ -100,8 +110,10 @@ public class CharacterManager : MonoBehaviour
     private void ShowPlayerControlUI(System.Action onTurnEnd)
     {
         // UI를 활성화하고 플레이어가 스킬을 선택하거나 행동할 수 있도록 처리
-        // 예시: UIManager.Instance.ShowSkillSelection(this, onTurnEnd);
-        UIManager.Instance.DisplayCharacterInfo(this); // 예시용 구문 onTurnEnd 관련 처리 필요
+        UIManager.Instance.DisplayCharacterInfo(this); // UI 정보 표시
+
+        // 플레이어가 스킬 선택 등을 마친 후 onTurnEnd 호출하여 턴 종료를 알림
+        onTurnEnd();
     }
 
     // AI 턴을 처리하는 코루틴
@@ -123,7 +135,7 @@ public class CharacterManager : MonoBehaviour
     // AI가 공격할 대상을 선택하는 메서드
     private CharacterManager FindTargetForAI()
     {
-        // 간단한 로직으로 AI가 공격할 대상 선택
+        // 로직으로 AI가 공격할 대상 선택
         return this; //GameManager.Instance.GetOpponent(this);
     }
 
@@ -206,8 +218,7 @@ public class CharacterManager : MonoBehaviour
     // 플레이어가 조작할 수 있는지 여부를 판단하는 메서드
     private bool IsPlayerControlled()
     {
-        // 예시: PlayerManager에서 플레이어가 조작하는 캐릭터인지 확인
-        return this.character.IsMine; //PlayerManager.Instance.IsPlayerCharacter(this);
+        return this.character.IsMine; 
     }
 
     #endregion

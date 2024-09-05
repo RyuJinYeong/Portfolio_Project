@@ -40,7 +40,7 @@ public class TurnManager : MonoBehaviour
         }
 
         currentCharacter = turnQueue.Dequeue();
-        gameManager.SetCurrentCharacter(currentCharacter);
+        //gameManager.SetCurrentCharacter(currentCharacter);
 
         RecoverResources(currentCharacter);
         ApplyStatusEffects(currentCharacter);
@@ -74,6 +74,7 @@ public class TurnManager : MonoBehaviour
 
     private void ApplyStatusEffects(CharacterManager characterManager)
     {
+        /*
         foreach (var statusEffect in characterManager.character.StatusEffects.ToList())
         {
             statusEffect.ApplyEffect(characterManager.character);
@@ -82,7 +83,7 @@ public class TurnManager : MonoBehaviour
             {
                 characterManager.character.StatusEffects.Remove(statusEffect);
             }
-        }
+        }*/
 
         characterManager.UpdateCharacterUI();
     }
