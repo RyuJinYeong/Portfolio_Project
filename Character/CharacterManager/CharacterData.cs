@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine.TextCore.Text;
+using InfinityPBR;
 
 public class CharacterStats // 기본 캐릭터 스탯
 {
@@ -19,11 +20,11 @@ public class CharacterStats // 기본 캐릭터 스탯
     public int Detection { get; set; } // 눈썰미
     public int Insight { get; set; } // 통찰력
 
-    public double AttackSpeed { get; set; } // 공격속도
-    public double CastSpeed { get; set; } // 시전속도
+    public float AttackSpeed { get; set; } // 공격속도
+    public float CastSpeed { get; set; } // 시전속도
 
-    public double WeaponAttackSpeedMultiplier { get; set; } // 장착중인 무기의 공격속도
-    public double WeaponCastSpeedMultiplier { get; set; } // 장착중인 무기의 시전속도
+    public float WeaponAttackSpeedMultiplier { get; set; } // 장착중인 무기의 공격속도
+    public float WeaponCastSpeedMultiplier { get; set; } // 장착중인 무기의 시전속도
 
     public int MaxHp { get; set; } // 최대 HP
     public int CurrentHp { get; set; } // 현재 HP
@@ -194,11 +195,12 @@ public class CharacterData
     public int PhysicalArmor { get; set; } // 물리 방어도
     public int MagicalArmor { get; set; } // 마법 방어도
 
-    public CharacterManager Manager { get; set; } // 캐릭터 매니저 참조 추가
-
     // 캐릭터가 보유하고 있는 스킬과 특성 리스트
     public List<TraitBase> Traits { get; set; }// 캐릭터의 특성 목록
     public List<SkillBase> Skills { get; set; }// 습득한 스킬 목록
+
+    // 캐릭터에 적용되어있는 상태이상
+    public List<StatusEffect> StatusEffects { get; set; } // 적용중인 상태이상 목록
 
     public List<SkillAttribute> AvailableAttributes { get; private set; } = new List<SkillAttribute>(); // 캐릭터가 장착한 무기의 세부 속성 리스트
 
@@ -394,16 +396,16 @@ public class CharacterData
         int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));
         int baseInsight =  stats.Insight + (int)(stats.Wisdom * ((double)(stats.Wisdom / 10.0)) + stats.Intelligence * ((double)(stats.Intelligence / 10.0)));
         int baseMaxHp = 15 + stats.Lv * 5 + stats.Health * 3 + stats.MaxHp;
-        double baseAtkSpd = (1.0 + Mathf.Log(2, stats.Speed)) * this.Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 무기 배율
-        double baseCastSpd;
+        float baseAtkSpd = (1.0f + Mathf.Log(2, stats.Speed)) * this.Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 무기 배율
+        float baseCastSpd;
 
         if (stats.WeaponCastSpeedMultiplier == 0) // 장착중인 무기가 시전속도 능력치가 없을 경우
         {
-            baseCastSpd = (1.0 + Mathf.Log(2, stats.Wisdom)) * 0.8; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 0.8 ( 시전속도 20% 감소 )
+            baseCastSpd = (1.0f + Mathf.Log(2, stats.Wisdom)) * 0.8f; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 0.8 ( 시전속도 20% 감소 )
         }
         else
         {            
-            baseCastSpd = (1.0 + Mathf.Log(2, stats.Wisdom)) * stats.WeaponCastSpeedMultiplier; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 무기 배율, 시전속도는 보조무기의 영향도 받게 구성
+            baseCastSpd = (1.0f + Mathf.Log(2, stats.Wisdom)) * stats.WeaponCastSpeedMultiplier; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 무기 배율, 시전속도는 보조무기의 영향도 받게 구성
         }
 
         // 장착중인 무기 카테고리 구분 후 해당 스탯 적용

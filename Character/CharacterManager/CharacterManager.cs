@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net;
 using Unity.VisualScripting;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
-using UnityEngine.TextCore.Text;
+using static UnityEngine.GraphicsBuffer;
 
 public class CharacterManager : MonoBehaviour
 {
@@ -15,7 +17,7 @@ public class CharacterManager : MonoBehaviour
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
     private bool isPlayerTurn; // 플레이어 턴 여부 확인
 
-    private List<SkillBase> skillQueue = new List<SkillBase>();  // 시전할 스킬 큐
+    private List<(SkillBase skill, CharacterManager target)> skillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 스킬 큐
     private Coroutine turnTimerCoroutine;
 
     public CharacterManager(CharacterData characterData)
@@ -91,8 +93,8 @@ public class CharacterManager : MonoBehaviour
     // 턴 시작 메서드
     public void StartTurn(System.Action onTurnEnd)
     {
-        // 턴이 시작되면 선택된 캐릭터의 외곽선을 활성화하여 강조 표시
-        character.gameObject.GetComponent<OutlineEffect>().EnableOutline();
+        // 턴이 시작되면 선택된 캐릭터의 외곽선을 활성화하여 강조 표시 - 구현 필요
+        //this.gameObject.GetComponent<OutlineEffect>().EnableOutline();
 
         if (IsPlayerControlled())
         {
@@ -112,35 +114,98 @@ public class CharacterManager : MonoBehaviour
         // UI를 활성화하고 플레이어가 스킬을 선택하거나 행동할 수 있도록 처리
         UIManager.Instance.DisplayCharacterInfo(this); // UI 정보 표시
 
-        // 플레이어가 스킬 선택 등을 마친 후 onTurnEnd 호출하여 턴 종료를 알림
+        // 여기서 턴 종료 버튼 클릭 시 큐에 쌓인 스킬 발동
+        //UIManager.Instance.SetEndTurnCallback(() => ExecuteSkillQueue(onTurnEnd)); // UIManager에서 턴 종료 버튼 콜백 메서드 구현 필요
+    }
+
+    // 스킬 선택 및 큐에 추가
+    public void SelectSkill(SkillBase skill, CharacterManager target)
+    {
+        // 스킬을 리스트에 추가
+        skillQueue.Add((skill, target));
+        Debug.Log($"Skill {skill.SkillName} added to queue for {character.Name}");
+    }
+
+    // 스킬 큐 실행
+    private void ExecuteSkillQueue(System.Action onTurnEnd)
+    {
+        if (skillQueue.Count > 0)
+        {
+            StartCoroutine(ExecuteSkills(onTurnEnd));
+        }
+        else
+        {
+            Debug.Log("No skills selected. Ending turn.");
+            onTurnEnd();
+        }
+    }
+
+    private IEnumerator ExecuteSkills(System.Action onTurnEnd)
+    {
+        foreach (var item in skillQueue)
+        {
+            SkillBase skill = item.skill;
+            CharacterManager target = item.target;
+
+            // 스킬 사용
+            UseSkill(skill, target);
+            yield return new WaitForSeconds(1.0f); // 스킬 간 대기 시간
+        }
+
+        // 스킬 큐 비우기 및 턴 종료
+        skillQueue.Clear();
         onTurnEnd();
     }
 
     // AI 턴을 처리하는 코루틴
     private IEnumerator HandleAITurn(System.Action onTurnEnd)
     {
-        // AI 로직 구현 (간단한 예시)
-        yield return new WaitForSeconds(1.0f); // AI가 생각하는 시간을 기다림
+        // AI 로직 구현 
+        yield return new WaitForSeconds(1.0f); // 턴 대기시간 생성 - 
         UseSkill(AIChooseSkill(), FindTargetForAI());
         onTurnEnd();  // 턴 종료 콜백 호출
     }
 
-    // AI가 사용할 스킬을 선택하는 메서드
+    // AI 사용스킬 지정 메서드
     private SkillBase AIChooseSkill()
     {
+        switch (character.personality) // AI 행동양식 제어
+        {
+            case Personality.Simple:
+                break;
+            case Personality.Aggressive:
+                break;
+            case Personality.Cunning:
+                break;
+            case Personality.Cautious:
+                break;
+        }
+
         // 간단한 로직으로 AI가 사용할 스킬 선택
         return character.Skills[0];
     }
 
-    // AI가 공격할 대상을 선택하는 메서드
+    // AI 공격대상 지정
     private CharacterManager FindTargetForAI()
     {
         // 로직으로 AI가 공격할 대상 선택
+        switch (character.personality) // 성향 별 AI 행동양식 제어
+        {
+            case Personality.Simple:
+                break;
+            case Personality.Aggressive:
+                break;
+            case Personality.Cunning:
+                break;
+            case Personality.Cautious:
+                break;
+        }
+
         return this; //GameManager.Instance.GetOpponent(this);
     }
 
     // 리소스 회복 메서드 (지구력, 정신력 등)
-    private void RecoverResources()
+    public void RecoverResources()
     {
         character.FinalStats.CurrentStamina = Mathf.Min(character.FinalStats.MaxStamina,
             character.FinalStats.CurrentStamina + character.FinalStats.StaminaRecovery);
@@ -149,24 +214,6 @@ public class CharacterManager : MonoBehaviour
             character.FinalStats.CurrentMentality + character.FinalStats.MentalityRecovery);
 
         UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
-    }
-
-    // 상태이상 적용 메서드
-    private void ApplyStatusEffects()
-    {
-        /*
-        foreach (var statusEffect in character.StatusEffects.ToList())
-        {
-            statusEffect.ApplyEffect(character);
-
-            if (statusEffect.IsExpired())
-            {
-                character.StatusEffects.Remove(statusEffect);
-            }
-        }
-        */
-
-        UpdateCharacterUI();  // 상태이상 적용 후 UI 업데이트
     }
 
     // 스킬 사용 메서드
