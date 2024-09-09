@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -87,5 +88,25 @@ public class UIManager : MonoBehaviour
                 }
             }
         }
+    }
+
+    public void ShowQueuedSkills(CharacterManager currentCharacter)
+    {
+        // 기존 UI를 업데이트하고, 큐에 있는 스킬 목록을 시각적으로 표시
+        DisplayQueuedSkills(currentCharacter.skillQueue);
+
+        // 상대방에게도 큐에 쌓인 스킬 목록을 보여줌
+        NotifyOpponentOfQueuedSkills(currentCharacter.skillQueue);
+    }
+
+    private void DisplayQueuedSkills(List<(SkillBase skill, CharacterManager target)> skillQueue)
+    {
+        // 큐에 있는 스킬들을 화면에 표시
+        // 적절한 UI 요소를 사용해 표시하면 됨
+    }
+
+    private void NotifyOpponentOfQueuedSkills(List<(SkillBase skill, CharacterManager target)> skillQueue)
+    {
+        // 상대방에게 스킬 목록을 전달하는 로직 (멀티플레이어 게임일 경우 네트워크 메시지 전송 등)
     }
 }

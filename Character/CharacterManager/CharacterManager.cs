@@ -15,7 +15,7 @@ public class CharacterManager : MonoBehaviour
     public Transform characterPool;
 
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
-    private bool isPlayerTurn; // 플레이어 턴 여부 확인
+    public bool isPlayerTurn; // 플레이어 턴 여부 확인
 
     private List<(SkillBase skill, CharacterManager target)> skillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 스킬 큐
     private Coroutine turnTimerCoroutine;
@@ -95,23 +95,29 @@ public class CharacterManager : MonoBehaviour
     {
         // 턴이 시작되면 선택된 캐릭터의 외곽선을 활성화하여 강조 표시 - 구현 필요
         //this.gameObject.GetComponent<OutlineEffect>().EnableOutline();
+        isPlayerTurn = true;
 
-        if (IsPlayerControlled())
+        // 제한 시간 내에 턴을 종료하지 않으면 자동 종료
+        turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd));
+
+        ShowPlayerControlUI(onTurnEnd);
+    }
+
+    // 턴타이머
+    private IEnumerator TurnTimer(System.Action onTurnEnd)
+    {
+        yield return new WaitForSeconds(60.0f); // 60초 제한 시간
+
+        if (isPlayerTurn)
         {
-            isPlayerTurn = true;
-            ShowPlayerControlUI(onTurnEnd);
-        }
-        else
-        {
-            isPlayerTurn = false;
-            StartCoroutine(HandleAITurn(onTurnEnd));
+            ExecuteSkillQueue(onTurnEnd); // 턴 종료 전 스킬 큐 실행            
+            onTurnEnd();
         }
     }
 
     // 플레이어가 조작할 수 있는 UI 활성화 메서드
     private void ShowPlayerControlUI(System.Action onTurnEnd)
     {
-        // UI를 활성화하고 플레이어가 스킬을 선택하거나 행동할 수 있도록 처리
         UIManager.Instance.DisplayCharacterInfo(this); // UI 정보 표시
 
         // 여기서 턴 종료 버튼 클릭 시 큐에 쌓인 스킬 발동
@@ -123,23 +129,25 @@ public class CharacterManager : MonoBehaviour
     {
         // 스킬을 리스트에 추가
         skillQueue.Add((skill, target));
-        Debug.Log($"Skill {skill.SkillName} added to queue for {character.Name}");
+        Debug.Log($"Skill {skill.SkillName} 큐에 추가");
     }
 
     // 스킬 큐 실행
     private void ExecuteSkillQueue(System.Action onTurnEnd)
     {
+        StopCoroutine(turnTimerCoroutine);
         if (skillQueue.Count > 0)
         {
             StartCoroutine(ExecuteSkills(onTurnEnd));
         }
         else
         {
-            Debug.Log("No skills selected. Ending turn.");
+            Debug.Log("선택된 스킬이 없습니다. 턴 종료");
             onTurnEnd();
         }
     }
 
+    // 스킬 실행 코루틴
     private IEnumerator ExecuteSkills(System.Action onTurnEnd)
     {
         foreach (var item in skillQueue)
@@ -157,11 +165,12 @@ public class CharacterManager : MonoBehaviour
         onTurnEnd();
     }
 
-    // AI 턴을 처리하는 코루틴
+
+    // AI 턴 처리
     private IEnumerator HandleAITurn(System.Action onTurnEnd)
     {
-        // AI 로직 구현 
-        yield return new WaitForSeconds(1.0f); // 턴 대기시간 생성 - 
+        // AI 로직 구현 필요
+        yield return new WaitForSeconds(1.0f); // AI 대기 시간
         UseSkill(AIChooseSkill(), FindTargetForAI());
         onTurnEnd();  // 턴 종료 콜백 호출
     }
@@ -246,26 +255,21 @@ public class CharacterManager : MonoBehaviour
         }
     }
 
+
+    #endregion
+
+    #region Character Management
+
     // 데미지를 받는 메서드
     public int TakeDamage(int damage, SkillType damageType, SkillAttribute damageAttribute)
     {
         return damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
     }
 
-    #endregion
-
-    #region Character Management
-
     // 스탯 포인트를 투자하는 메서드
     public void InvestStatPoint(string statName, int points)
     {
         statHandler.InvestStatPoint(character, statName, points);
-    }
-
-    // 플레이어가 조작할 수 있는지 여부를 판단하는 메서드
-    private bool IsPlayerControlled()
-    {
-        return this.character.IsMine; 
     }
 
     #endregion
