@@ -102,11 +102,33 @@ public class UIManager : MonoBehaviour
     private void DisplayQueuedSkills(List<(SkillBase skill, CharacterManager target)> skillQueue)
     {
         // 큐에 있는 스킬들을 화면에 표시
-        // 적절한 UI 요소를 사용해 표시하면 됨
+        foreach (var skill in skillQueue)
+        {
+            // UI에 스킬 아이콘, 이름, 타겟 정보를 표시하는 로직 추가
+            // 예: skillBar에 스킬 아이콘 추가
+        }
     }
 
     private void NotifyOpponentOfQueuedSkills(List<(SkillBase skill, CharacterManager target)> skillQueue)
     {
         // 상대방에게 스킬 목록을 전달하는 로직 (멀티플레이어 게임일 경우 네트워크 메시지 전송 등)
     }
+    public void ShowCounterSkillUI(CharacterManager currentCharacter)
+    {
+        skillBar.SetActive(true);  // 대응 스킬 UI 활성화
+
+        foreach (SkillBase skill in currentCharacter.character.Skills)
+        {
+            if (skill.IsCounterSkill)  // 대응 가능한 스킬만 보여줌
+            {
+                GameObject skillButton = Instantiate(skillButtonPrefab, skillButtonParent);
+                skillButton.GetComponentInChildren<Image>().sprite = skill.skillIcon;
+                skillButton.GetComponent<Button>().onClick.AddListener(() =>
+                {
+                    currentCharacter.SelectSkill(skill, currentCharacter);  // 대응 스킬 선택
+                });
+            }
+        }
+    }
+
 }

@@ -17,7 +17,8 @@ public class CharacterManager : MonoBehaviour
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
     public bool isPlayerTurn; // 플레이어 턴 여부 확인
 
-    private List<(SkillBase skill, CharacterManager target)> skillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 스킬 큐
+    public List<(SkillBase skill, CharacterManager target)> skillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 스킬 큐
+    public List<(SkillBase skill, CharacterManager target)> counterSkillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 카운터 스킬 큐
     private Coroutine turnTimerCoroutine;
 
     public CharacterManager(CharacterData characterData)
@@ -150,20 +151,30 @@ public class CharacterManager : MonoBehaviour
     // 스킬 실행 코루틴
     private IEnumerator ExecuteSkills(System.Action onTurnEnd)
     {
+        // 본래 스킬 실행
         foreach (var item in skillQueue)
         {
             SkillBase skill = item.skill;
             CharacterManager target = item.target;
-
-            // 스킬 사용
             UseSkill(skill, target);
             yield return new WaitForSeconds(1.0f); // 스킬 간 대기 시간
         }
 
-        // 스킬 큐 비우기 및 턴 종료
-        skillQueue.Clear();
+        // 대응 스킬 실행
+        foreach (var item in counterSkillQueue)  // 대응 스킬 큐 추가
+        {
+            SkillBase counterSkill = item.skill;
+            CharacterManager counterTarget = item.target;
+            UseSkill(counterSkill, counterTarget);
+            yield return new WaitForSeconds(1.0f); // 스킬 간 대기 시간
+        }
+
+        skillQueue.Clear();  // 스킬 큐 비우기
+        counterSkillQueue.Clear();  // 대응 스킬 큐 비우기
         onTurnEnd();
     }
+
+
 
 
     // AI 턴 처리
