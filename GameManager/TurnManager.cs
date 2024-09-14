@@ -66,12 +66,6 @@ public class TurnManager : MonoBehaviour
         }
     }
 
-    public void UseSkill(SkillBase skill, CharacterManager target)
-    {
-        currentCharacter.UseSkill(skill, target);
-        EndTurn();
-    }
-
     private void ApplyStatusEffectsToAll() // 모든 캐릭터에게 상태이상 일괄적용
     {
         foreach (var characterManager in allCharacters)

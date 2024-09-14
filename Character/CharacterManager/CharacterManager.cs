@@ -89,7 +89,7 @@ public class CharacterManager : MonoBehaviour
         // UI 업데이트 로직을 여기에 추가 - 세부 구현 필요 or UIManager와 기능 통합 필요
     }
 
-    #region Turn and Battle Management
+    #region 턴 관리 및 스킬 선택
 
     // 턴 시작 메서드
     public void StartTurn(System.Action onTurnEnd)
@@ -133,6 +133,13 @@ public class CharacterManager : MonoBehaviour
         Debug.Log($"Skill {skill.SkillName} 큐에 추가");
     }
 
+    // 플레이어가 대응 스킬 선택 후 큐에 추가
+    public void SelectCounterSkill(SkillBase skill, CharacterManager target)
+    {
+        counterSkillQueue.Add((skill, target));
+        Debug.Log($"Counter Skill {skill.SkillName} added to queue.");
+    }
+
     // 스킬 큐 실행
     private void ExecuteSkillQueue(System.Action onTurnEnd)
     {
@@ -148,10 +155,9 @@ public class CharacterManager : MonoBehaviour
         }
     }
 
-    // 스킬 실행 코루틴
+    // 스킬 및 대응 스킬 실행
     private IEnumerator ExecuteSkills(System.Action onTurnEnd)
     {
-        // 본래 스킬 실행
         foreach (var item in skillQueue)
         {
             SkillBase skill = item.skill;
@@ -161,16 +167,17 @@ public class CharacterManager : MonoBehaviour
         }
 
         // 대응 스킬 실행
-        foreach (var item in counterSkillQueue)  // 대응 스킬 큐 추가
+        foreach (var item in counterSkillQueue)
         {
             SkillBase counterSkill = item.skill;
             CharacterManager counterTarget = item.target;
             UseSkill(counterSkill, counterTarget);
-            yield return new WaitForSeconds(1.0f); // 스킬 간 대기 시간
+            yield return new WaitForSeconds(1.0f); // 대응 스킬 간 대기 시간
         }
 
-        skillQueue.Clear();  // 스킬 큐 비우기
-        counterSkillQueue.Clear();  // 대응 스킬 큐 비우기
+        // 스킬 큐 및 대응 스킬 큐 비우기
+        skillQueue.Clear();
+        counterSkillQueue.Clear();
         onTurnEnd();
     }
 
