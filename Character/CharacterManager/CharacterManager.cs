@@ -1,10 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Net;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
 public class CharacterManager : MonoBehaviour
 {
@@ -16,6 +12,9 @@ public class CharacterManager : MonoBehaviour
 
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
     public bool isPlayerTurn; // 플레이어 턴 여부 확인
+
+    public bool isInMeleeCombat = false;  // 경합 상태 여부
+    public CharacterManager meleeTarget = null;  // 경합 중 타겟
 
     public List<(SkillBase skill, CharacterManager target)> skillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 스킬 큐
     public List<(SkillBase skill, CharacterManager target)> counterSkillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 카운터 스킬 큐
@@ -42,7 +41,7 @@ public class CharacterManager : MonoBehaviour
         }
     }
 
-    private GameObject InstantiateCharacter(CharacterData characterData) // - 세부 기능 구현 필요
+    private GameObject InstantiateCharacter(CharacterData characterData)
     {
         // 캐릭터를 풀에서 가져오거나 새로 생성
         GameObject characterInstance = Instantiate(GameManager.Instance.characterPrefab, characterPool);
@@ -52,7 +51,7 @@ public class CharacterManager : MonoBehaviour
 
     public void ApplyCustomization(GameObject characterInstance, CharacterData characterData)
     {
-        if(characterData.customizationData.IsMale)
+        if (characterData.customizationData.IsMale)
             characterInstance.GetComponent<CharacterCustomization>().SetBodyType("Male");
         else
             characterInstance.GetComponent<CharacterCustomization>().SetBodyType("Female");
@@ -61,8 +60,6 @@ public class CharacterManager : MonoBehaviour
         characterInstance.GetComponent<CharacterCustomization>().SetHairStyle(characterData.customizationData.HairStyle);
         characterInstance.GetComponent<CharacterCustomization>().SetSkinTone(characterData.customizationData.SkinTone);
         characterInstance.GetComponent<CharacterCustomization>().SetBodyType(characterData.customizationData.BodyType);
-
-        // 캐릭터 오브젝트의 Skinned Mesh Renderer의 속성값도 지정해줘야함.
 
         characterData.Portrait = characterInstance.GetComponent<CharacterCustomization>().CapturePortrait(); // 초상화 촬영
     }
@@ -78,7 +75,6 @@ public class CharacterManager : MonoBehaviour
         EquipmentManager.UpdateAvailableAttributes(characterData); // 캐릭터 장비 세부속성 초기화
         EquipmentManager.UpdateSkillAvailability(characterData); // 장비 세부 속성에 따른 사용 가능 스킬 초기화
 
-        // 추가적인 초기화 작업 (UI 업데이트, 스탯 적용 등)
         UpdateCharacterUI();
     }
 
@@ -86,7 +82,7 @@ public class CharacterManager : MonoBehaviour
 
     public void UpdateCharacterUI()
     {
-        // UI 업데이트 로직을 여기에 추가 - 세부 구현 필요 or UIManager와 기능 통합 필요
+        // UI 업데이트 로직 (필요 시 추가)
     }
 
     #region 턴 관리 및 스킬 선택
@@ -94,17 +90,12 @@ public class CharacterManager : MonoBehaviour
     // 턴 시작 메서드
     public void StartTurn(System.Action onTurnEnd)
     {
-        // 턴이 시작되면 선택된 캐릭터의 외곽선을 활성화하여 강조 표시 - 구현 필요
-        //this.gameObject.GetComponent<OutlineEffect>().EnableOutline();
         isPlayerTurn = true;
-
-        // 제한 시간 내에 턴을 종료하지 않으면 자동 종료
         turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd));
-
         ShowPlayerControlUI(onTurnEnd);
     }
 
-    // 턴타이머
+    // 턴 타이머
     private IEnumerator TurnTimer(System.Action onTurnEnd)
     {
         yield return new WaitForSeconds(60.0f); // 60초 제한 시간
@@ -120,17 +111,37 @@ public class CharacterManager : MonoBehaviour
     private void ShowPlayerControlUI(System.Action onTurnEnd)
     {
         UIManager.Instance.DisplayCharacterInfo(this); // UI 정보 표시
-
-        // 여기서 턴 종료 버튼 클릭 시 큐에 쌓인 스킬 발동
-        //UIManager.Instance.SetEndTurnCallback(() => ExecuteSkillQueue(onTurnEnd)); // UIManager에서 턴 종료 버튼 콜백 메서드 구현 필요
     }
 
-    // 스킬 선택 및 큐에 추가
+    // 스킬 선택 및 큐에 추가 (리소스 소모 적용 및 경합 상태 처리)
     public void SelectSkill(SkillBase skill, CharacterManager target)
     {
-        // 스킬을 리스트에 추가
+        if (isInMeleeCombat && skill.IsRangedSkill)
+        {
+            Debug.Log("경합 상태에서는 원거리 스킬을 사용할 수 없습니다.");
+            return;
+        }
+
+        // 스킬 사용 시 리소스 체크 및 차감
+        if (character.FinalStats.CurrentStamina < skill.StaminaCost || character.FinalStats.CurrentMentality < skill.MentalCost)
+        {
+            Debug.Log("리소스가 부족하여 스킬을 사용할 수 없습니다.");
+            return;
+        }
+
+        // 리소스 차감
+        character.FinalStats.CurrentStamina -= skill.StaminaCost;
+        character.FinalStats.CurrentMentality -= skill.MentalCost;
+
+        // 근거리 스킬 사용 시 경합 상태로 전환
+        if (!skill.IsRangedSkill)
+        {
+            isInMeleeCombat = true;
+            meleeTarget = target;
+        }
+
         skillQueue.Add((skill, target));
-        Debug.Log($"Skill {skill.SkillName} 큐에 추가");
+        Debug.Log($"Skill {skill.SkillName} added to queue. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
     }
 
     // 플레이어가 대응 스킬 선택 후 큐에 추가
@@ -140,7 +151,7 @@ public class CharacterManager : MonoBehaviour
         Debug.Log($"Counter Skill {skill.SkillName} added to queue.");
     }
 
-    // 스킬 큐 실행
+    // 스킬 큐 순차 실행
     private void ExecuteSkillQueue(System.Action onTurnEnd)
     {
         StopCoroutine(turnTimerCoroutine);
@@ -162,6 +173,14 @@ public class CharacterManager : MonoBehaviour
         {
             SkillBase skill = item.skill;
             CharacterManager target = item.target;
+
+            // 경합 상태에서 원거리 스킬 사용 불가
+            if (isInMeleeCombat && skill.IsRangedSkill)
+            {
+                Debug.Log("경합 상태에서는 원거리 스킬을 사용할 수 없습니다.");
+                continue;
+            }
+
             UseSkill(skill, target);
             yield return new WaitForSeconds(1.0f); // 스킬 간 대기 시간
         }
@@ -181,54 +200,37 @@ public class CharacterManager : MonoBehaviour
         onTurnEnd();
     }
 
+    #endregion
 
+    #region 경합 상태에서 적 처치 시 스킬 취소 및 리소스 반환
 
-
-    // AI 턴 처리
-    private IEnumerator HandleAITurn(System.Action onTurnEnd)
+    // 경합 중 적 처치 시 스킬 큐 취소 및 리소스 반환
+    public void HandleEnemyDefeated()
     {
-        // AI 로직 구현 필요
-        yield return new WaitForSeconds(1.0f); // AI 대기 시간
-        UseSkill(AIChooseSkill(), FindTargetForAI());
-        onTurnEnd();  // 턴 종료 콜백 호출
-    }
-
-    // AI 사용스킬 지정 메서드
-    private SkillBase AIChooseSkill()
-    {
-        switch (character.personality) // AI 행동양식 제어
+        if (isInMeleeCombat && meleeTarget != null && !meleeTarget.character.IsAlive)
         {
-            case Personality.Simple:
-                break;
-            case Personality.Aggressive:
-                break;
-            case Personality.Cunning:
-                break;
-            case Personality.Cautious:
-                break;
+            Debug.Log($"{meleeTarget.character.Name} 처치 성공. 스킬 큐 취소 및 리소스 반환.");
+            CancelRemainingSkills();
         }
 
-        // 간단한 로직으로 AI가 사용할 스킬 선택
-        return character.Skills[0];
+        // 경합 상태 해제
+        isInMeleeCombat = false;
+        meleeTarget = null;
     }
 
-    // AI 공격대상 지정
-    private CharacterManager FindTargetForAI()
+    // 남은 스킬 취소 및 리소스 반환
+    private void CancelRemainingSkills()
     {
-        // 로직으로 AI가 공격할 대상 선택
-        switch (character.personality) // 성향 별 AI 행동양식 제어
+        foreach (var item in skillQueue)
         {
-            case Personality.Simple:
-                break;
-            case Personality.Aggressive:
-                break;
-            case Personality.Cunning:
-                break;
-            case Personality.Cautious:
-                break;
+            SkillBase skill = item.skill;
+            // 리소스 일부 반환 (예: 50%)
+            character.FinalStats.CurrentStamina += skill.StaminaCost * 0.5f;
+            character.FinalStats.CurrentMentality += skill.MentalCost * 0.5f;
         }
 
-        return this; //GameManager.Instance.GetOpponent(this);
+        skillQueue.Clear();
+        Debug.Log($"Remaining skills canceled. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
     }
 
     // 리소스 회복 메서드 (지구력, 정신력 등)
@@ -243,16 +245,20 @@ public class CharacterManager : MonoBehaviour
         UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
     }
 
+    #endregion
+
+    #region 스킬 사용 메서드
+
     // 스킬 사용 메서드
     public void UseSkill(SkillBase skill, CharacterManager target)
     {
-        Debug.Log("Using skill: " + skill.SkillName);
+        Debug.Log($"Using skill: {skill.SkillName} on {target.character.Name}");
         float damageMultiplier = skill.DamageMultiplier;
         int damage = 0;
 
         if (skill.IsOffHand)
         {
-            damageMultiplier *= 0.9f;
+            damageMultiplier *= 0.9f;  // 보조 무기 패널티 적용
         }
 
         switch (skill.Type)
@@ -271,20 +277,25 @@ public class CharacterManager : MonoBehaviour
         {
             evolvableSkill.OnSkillUsed(finalDamage, character, target.character);
         }
-    }
 
+        // 상대가 사망했는지 확인 후 처리
+        if (!target.character.IsAlive)
+        {
+            HandleEnemyDefeated();
+        }
+    }
 
     #endregion
 
     #region Character Management
 
-    // 데미지를 받는 메서드
+    // 데미지 받기
     public int TakeDamage(int damage, SkillType damageType, SkillAttribute damageAttribute)
     {
         return damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
     }
 
-    // 스탯 포인트를 투자하는 메서드
+    // 스탯 포인트 투자
     public void InvestStatPoint(string statName, int points)
     {
         statHandler.InvestStatPoint(character, statName, points);
