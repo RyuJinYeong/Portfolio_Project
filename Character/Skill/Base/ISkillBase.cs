@@ -1,15 +1,5 @@
 using System.Collections.Generic;
 
-public interface IMagicalSkill // 마법 타입 스킬
-{
-    int MentalCost { get; } // 정신력 소모량
-}
-
-public interface IPhysicalSkill // 물리 타입 스킬
-{
-    int EnduCost { get; } // 지구력 소모량
-}
-
 public interface IEvolvableSkill // 진화가 가능한 스킬
 {    
     public int SkillUseCount { get; }

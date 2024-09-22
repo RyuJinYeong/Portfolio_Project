@@ -87,6 +87,12 @@ public class CharacterManager : MonoBehaviour
 
     #region 턴 관리 및 스킬 선택
 
+    // 플레이어가 조작할 수 있는 UI 활성화 메서드
+    private void ShowPlayerControlUI(System.Action onTurnEnd)
+    {
+        UIManager.Instance.DisplayCharacterInfo(this); // UI 정보 표시
+    }
+
     // 턴 시작 메서드
     public void StartTurn(System.Action onTurnEnd)
     {
@@ -105,12 +111,6 @@ public class CharacterManager : MonoBehaviour
             ExecuteSkillQueue(onTurnEnd); // 턴 종료 전 스킬 큐 실행            
             onTurnEnd();
         }
-    }
-
-    // 플레이어가 조작할 수 있는 UI 활성화 메서드
-    private void ShowPlayerControlUI(System.Action onTurnEnd)
-    {
-        UIManager.Instance.DisplayCharacterInfo(this); // UI 정보 표시
     }
 
     // 스킬 선택 및 큐에 추가 (리소스 소모 적용 및 경합 상태 처리)
@@ -151,6 +151,45 @@ public class CharacterManager : MonoBehaviour
         Debug.Log($"Counter Skill {skill.SkillName} added to queue.");
     }
 
+    #endregion
+
+    #region 경합 상태에서 적 처치 시 스킬 취소 및 리소스 반환
+
+    // 경합 중 적 처치 시 스킬 큐 취소 및 리소스 반환
+    public void HandleEnemyDefeated()
+    {
+        if (isInMeleeCombat && meleeTarget != null && !meleeTarget.character.IsAlive)
+        {
+            Debug.Log($"{meleeTarget.character.Name} 처치 성공. 스킬 큐 취소 및 리소스 반환.");
+            CancelRemainingSkills();
+        }
+
+        // 경합 상태 해제
+        isInMeleeCombat = false;
+        meleeTarget = null;
+    }
+
+    // 남은 스킬 취소 및 리소스 반환
+    private void CancelRemainingSkills()
+    {
+        foreach (var item in skillQueue)
+        {
+            SkillBase skill = item.skill;
+            // 리소스 일부 반환 (예: 50%) - 해당 필드도 변수화시켜서 관리 시 반환 값에 변주를 줄 수 있으니 필요시 추후 개선필요
+            character.FinalStats.CurrentStamina += (int)(skill.StaminaCost * 0.5f);
+            character.FinalStats.CurrentMentality += (int)(skill.MentalCost * 0.5f);
+        }
+
+        skillQueue.Clear();
+        Debug.Log($"Remaining skills canceled. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
+    }
+
+
+
+    #endregion
+
+    #region 스킬 사용 메서드
+
     // 스킬 큐 순차 실행
     private void ExecuteSkillQueue(System.Action onTurnEnd)
     {
@@ -166,7 +205,7 @@ public class CharacterManager : MonoBehaviour
         }
     }
 
-    // 스킬 및 대응 스킬 실행
+    // 스킬, 대응 스킬 큐 객체 순차 접근 및 사용
     private IEnumerator ExecuteSkills(System.Action onTurnEnd)
     {
         foreach (var item in skillQueue)
@@ -199,55 +238,6 @@ public class CharacterManager : MonoBehaviour
         counterSkillQueue.Clear();
         onTurnEnd();
     }
-
-    #endregion
-
-    #region 경합 상태에서 적 처치 시 스킬 취소 및 리소스 반환
-
-    // 경합 중 적 처치 시 스킬 큐 취소 및 리소스 반환
-    public void HandleEnemyDefeated()
-    {
-        if (isInMeleeCombat && meleeTarget != null && !meleeTarget.character.IsAlive)
-        {
-            Debug.Log($"{meleeTarget.character.Name} 처치 성공. 스킬 큐 취소 및 리소스 반환.");
-            CancelRemainingSkills();
-        }
-
-        // 경합 상태 해제
-        isInMeleeCombat = false;
-        meleeTarget = null;
-    }
-
-    // 남은 스킬 취소 및 리소스 반환
-    private void CancelRemainingSkills()
-    {
-        foreach (var item in skillQueue)
-        {
-            SkillBase skill = item.skill;
-            // 리소스 일부 반환 (예: 50%)
-            character.FinalStats.CurrentStamina += skill.StaminaCost * 0.5f;
-            character.FinalStats.CurrentMentality += skill.MentalCost * 0.5f;
-        }
-
-        skillQueue.Clear();
-        Debug.Log($"Remaining skills canceled. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
-    }
-
-    // 리소스 회복 메서드 (지구력, 정신력 등)
-    public void RecoverResources()
-    {
-        character.FinalStats.CurrentStamina = Mathf.Min(character.FinalStats.MaxStamina,
-            character.FinalStats.CurrentStamina + character.FinalStats.StaminaRecovery);
-
-        character.FinalStats.CurrentMentality = Mathf.Min(character.FinalStats.MaxMentality,
-            character.FinalStats.CurrentMentality + character.FinalStats.MentalityRecovery);
-
-        UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
-    }
-
-    #endregion
-
-    #region 스킬 사용 메서드
 
     // 스킬 사용 메서드
     public void UseSkill(SkillBase skill, CharacterManager target)
@@ -287,6 +277,58 @@ public class CharacterManager : MonoBehaviour
 
     #endregion
 
+
+    #region AI 행동 처리 메서드
+
+    // AI 턴 처리
+    private IEnumerator HandleAITurn(System.Action onTurnEnd)
+    {
+        // AI 로직 구현 필요
+        yield return new WaitForSeconds(1.0f); // AI 대기 시간
+        UseSkill(AIChooseSkill(), FindTargetForAI());
+        onTurnEnd();  // 턴 종료 콜백 호출
+    }
+
+    // AI 사용스킬 지정 메서드
+    private SkillBase AIChooseSkill()
+    {
+        switch (character.personality) // AI 행동양식 제어
+        {
+            case Personality.Simple:
+                break;
+            case Personality.Aggressive:
+                break;
+            case Personality.Cunning:
+                break;
+            case Personality.Cautious:
+                break;
+        }
+
+        // 간단한 로직으로 AI가 사용할 스킬 선택
+        return character.Skills[0];
+    }
+
+    // AI 공격대상 지정
+    private CharacterManager FindTargetForAI()
+    {
+        // 로직으로 AI가 공격할 대상 선택
+        switch (character.personality) // 성향 별 AI 행동양식 제어
+        {
+            case Personality.Simple:
+                break;
+            case Personality.Aggressive:
+                break;
+            case Personality.Cunning:
+                break;
+            case Personality.Cautious:
+                break;
+        }
+
+        return this; // 기본적으로 자신을 반환하거나, GameManager에서 적을 가져오도록 구현 가능
+    }
+
+    #endregion
+
     #region Character Management
 
     // 데미지 받기
@@ -299,6 +341,18 @@ public class CharacterManager : MonoBehaviour
     public void InvestStatPoint(string statName, int points)
     {
         statHandler.InvestStatPoint(character, statName, points);
+    }
+
+    // 리소스 회복 메서드 (지구력, 정신력 등)
+    public void RecoverResources()
+    {
+        character.FinalStats.CurrentStamina = Mathf.Min(character.FinalStats.MaxStamina,
+            character.FinalStats.CurrentStamina + character.FinalStats.StaminaRecovery);
+
+        character.FinalStats.CurrentMentality = Mathf.Min(character.FinalStats.MaxMentality,
+            character.FinalStats.CurrentMentality + character.FinalStats.MentalityRecovery);
+
+        UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
     }
 
     #endregion

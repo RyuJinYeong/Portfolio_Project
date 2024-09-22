@@ -2,10 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MagicShieldSkill : DefensiveSkill, IMagicalSkill // 마법 방어 스킬
+public class MagicShieldSkill : DefensiveSkill // 마법 방어 스킬
 {
-    public int MentalCost { get; private set; }
-
     public MagicShieldSkill()
         : base("마력방패", 1,0.5, SkillAttribute.Magic)
     {

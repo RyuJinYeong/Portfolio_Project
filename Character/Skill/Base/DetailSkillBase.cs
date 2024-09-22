@@ -1,30 +1,26 @@
-public abstract class PhysicalAttackSkill : SkillBase, IPhysicalSkill
+public abstract class PhysicalAttackSkill : SkillBase
 {
-    public int EnduCost { get; private set; }
-
-    protected PhysicalAttackSkill(string name, float damageMultiplier, double activationSpeed, int enduCost, SkillAttribute attribute)
+    protected PhysicalAttackSkill(string name, float damageMultiplier, double activationSpeed, int staminaCost, SkillAttribute attribute)
     {
+        StaminaCost = staminaCost;
         SkillName = name;
         DamageMultiplier = damageMultiplier;
         ActivationSpeed = activationSpeed;
         Type = SkillType.Physical;
-        EnduCost = enduCost;
         Attribute = attribute;
         CanUse = false;
     }
 }
 
-public abstract class BowAttackSkill : SkillBase, IPhysicalSkill
+public abstract class BowAttackSkill : SkillBase
 {
-    public int EnduCost { get; private set; }
-
-    protected BowAttackSkill(string name, float damageMultiplier, double activationSpeed, int enduCost, SkillAttribute attribute)
+    protected BowAttackSkill(string name, float damageMultiplier, double activationSpeed, int staminaCost, SkillAttribute attribute)
     {
         SkillName = name;
         ActivationSpeed = activationSpeed;
         DamageMultiplier = damageMultiplier;
         Type = SkillType.Physical;
-        EnduCost = enduCost;
+        StaminaCost = staminaCost;
         Attribute = attribute;
         IsBowSkill = true;
         IsRangedSkill = true;
@@ -32,10 +28,8 @@ public abstract class BowAttackSkill : SkillBase, IPhysicalSkill
     }
 }
 
-public abstract class MagicalAttackSkill : SkillBase, IMagicalSkill
+public abstract class MagicalAttackSkill : SkillBase
 {
-    public int MentalCost { get; private set; }
-
     protected MagicalAttackSkill(string name, float damageMultiplier, double activationSpeed, int mentalCost, SkillAttribute attribute)
     {
         SkillName = name;

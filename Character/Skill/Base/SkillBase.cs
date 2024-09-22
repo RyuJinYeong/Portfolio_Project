@@ -8,6 +8,8 @@ public abstract class SkillBase // 스킬베이스 추상 클래스 구현부
     public string SkillName { get; protected set; } // 스킬 이름    
     public double ActivationSpeed { get; protected set; } // 스킬 발동 속도
     public float DamageMultiplier { get; protected set; } // 스킬의 공격력 배수
+    public int StaminaCost { get; protected set; }  // 지구력 소모
+    public int MentalCost { get; protected set; }  // 정신력 소모
 
     public bool IsCounterSkill { get; protected set; } // 대응 스킬 여부
     public bool IsEvolvableSkill { get; protected set; } // 진화 가능한 스킬인지 여부
