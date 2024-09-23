@@ -52,6 +52,18 @@ public class CharacterStats // 기본 캐릭터 스탯
 
     #endregion
 
+    #region 속성별 특화 ( 백분위 )
+
+    public int FireAffinity { get; set; } // 불 속성 특화
+    public int WaterAffinity { get; set; } // 물 속성 특화
+    public int EarthAffinity { get; set; } // 땅 속성 특화
+    public int WindAffinity { get; set; } // 바람 속성 특화
+    public int PierceAffinity { get; set; } // 관통 특화
+    public int SlashAffinity { get; set; } // 참격 특화
+    public int SmashAffinity { get; set; } // 타격 특화
+
+    #endregion
+
 
     #region 공격력/방어력
     public int PhysicalAttack { get; set; }
@@ -119,7 +131,14 @@ public class CharacterStats // 기본 캐릭터 스탯
             AttackSpeed = a.AttackSpeed + b.AttackSpeed,
             CastSpeed = a.CastSpeed + b.CastSpeed,
             WeaponAttackSpeedMultiplier = a.WeaponAttackSpeedMultiplier + b.WeaponAttackSpeedMultiplier,
-            WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier + b.WeaponCastSpeedMultiplier
+            WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier + b.WeaponCastSpeedMultiplier,                                    
+            FireAffinity = a.FireAffinity + b.FireAffinity,
+            WaterAffinity = a.WaterAffinity + b.WaterAffinity,
+            EarthAffinity = a.EarthAffinity + b.EarthAffinity,
+            WindAffinity = a.WindAffinity + b.WindAffinity,
+            PierceAffinity = a.PierceAffinity + b.PierceAffinity,
+            SlashAffinity = a.SlashAffinity + b.SlashAffinity,
+            SmashAffinity = a.SmashAffinity + b.SmashAffinity
         };
     }
 
@@ -158,7 +177,14 @@ public class CharacterStats // 기본 캐릭터 스탯
             AttackSpeed = a.AttackSpeed - b.AttackSpeed,
             CastSpeed = a.CastSpeed - b.CastSpeed,
             WeaponAttackSpeedMultiplier = a.WeaponAttackSpeedMultiplier - b.WeaponAttackSpeedMultiplier,
-            WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier - b.WeaponCastSpeedMultiplier
+            WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier - b.WeaponCastSpeedMultiplier,
+            FireAffinity = a.FireAffinity - b.FireAffinity,
+            WaterAffinity = a.WaterAffinity - b.WaterAffinity,
+            EarthAffinity = a.EarthAffinity - b.EarthAffinity,
+            WindAffinity = a.WindAffinity - b.WindAffinity,
+            PierceAffinity = a.PierceAffinity - b.PierceAffinity,
+            SlashAffinity = a.SlashAffinity - b.SlashAffinity,
+            SmashAffinity = a.SmashAffinity - b.SmashAffinity
         };
     }
     #endregion

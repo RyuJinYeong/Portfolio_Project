@@ -66,34 +66,49 @@ public class DamageHandler
     public int CalculateDamage(int baseDamage, CharacterStats stats, SkillType type, SkillAttribute attribute)
     {
         int resistance = 0;
+        int affinityBonus = 0;  // 속성 특화로 인한 추가 데미지
+
+        // 속성 저항 적용
         switch (attribute)
         {
             case SkillAttribute.Fire:
                 resistance = stats.FireResistance;
+                affinityBonus = stats.FireAffinity;
                 break;
             case SkillAttribute.Water:
                 resistance = stats.WaterResistance;
+                affinityBonus = stats.WaterAffinity;
                 break;
             case SkillAttribute.Earth:
                 resistance = stats.EarthResistance;
+                affinityBonus = stats.EarthAffinity;
                 break;
             case SkillAttribute.Wind:
                 resistance = stats.WindResistance;
+                affinityBonus = stats.WindAffinity;
                 break;
             case SkillAttribute.Slash:
                 resistance = stats.SlashResistance;
+                affinityBonus = stats.SlashAffinity;
                 break;
             case SkillAttribute.Pierce:
                 resistance = stats.PierceResistance;
+                affinityBonus = stats.PierceAffinity;
                 break;
             case SkillAttribute.Smash:
                 resistance = stats.SmashResistance;
+                affinityBonus = stats.SmashAffinity;
                 break;
-            // 필요에 따라 속성 추가...
+                // 필요에 따라 속성 추가...
         }
 
+        // 속성 저항에 따른 데미지 감소
         int reducedDamage = baseDamage * (100 - resistance) / 100;
 
+        // 속성 특화에 따른 추가 데미지 적용
+        reducedDamage += reducedDamage * affinityBonus / 100; // 속성 특화에 따른 데미지 배율 적용
+
+        // 물리/마법 방어에 따른 데미지 감소
         switch (type)
         {
             case SkillType.Physical:
