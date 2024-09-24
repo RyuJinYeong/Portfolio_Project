@@ -131,4 +131,15 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    // 활성화된 시너지를 UI에 표시하는 메서드
+    public void UpdateSynergyUI(List<string> activeSynergies)
+    {
+        string synergyText = "Active Synergies:\n";
+        foreach (var synergy in activeSynergies)
+        {
+            synergyText += $"{synergy}\n";
+        }
+        // 시너지 정보를 화면에 출력 (구체적인 UI 구현은 별도로)
+        Debug.Log(synergyText);
+    }
 }

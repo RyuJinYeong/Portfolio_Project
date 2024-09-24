@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class CharacterManager : MonoBehaviour
@@ -7,6 +8,9 @@ public class CharacterManager : MonoBehaviour
     public CharacterData character;
     private DamageHandler damageHandler;
     private StatHandler statHandler;
+
+    private SynergyManager synergyManager;
+    private List<SynergyEffect> activeSynergyEffects; // 활성화 되어있는 시너지 효과 리스트
 
     public Transform characterPool;
 
@@ -19,12 +23,21 @@ public class CharacterManager : MonoBehaviour
     public List<(SkillBase skill, CharacterManager target)> skillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 스킬 큐
     public List<(SkillBase skill, CharacterManager target)> counterSkillQueue = new List<(SkillBase skill, CharacterManager target)>();  // 시전할 카운터 스킬 큐
     private Coroutine turnTimerCoroutine;
+    public void Start()
+    {
+        damageHandler = new DamageHandler();
+        statHandler = new StatHandler();
+        synergyManager = new SynergyManager();
+        activeSynergyEffects = new List<SynergyEffect>(); // 시너지 효과 저장 리스트
+    }
 
     public CharacterManager(CharacterData characterData)
     {
         character = characterData;
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
+        synergyManager = new SynergyManager();
+        activeSynergyEffects = new List<SynergyEffect>();
     }
 
     #region 캐릭터 데이터 초기화, 스폰관련 로직 - 세부 기능 구현 필요
@@ -142,6 +155,15 @@ public class CharacterManager : MonoBehaviour
 
         skillQueue.Add((skill, target));
         Debug.Log($"Skill {skill.SkillName} added to queue. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
+
+        // 선택된 스킬이 추가된 후 시너지 조건 체크
+        List<string> activeSynergies = synergyManager.GetActiveSynergies(skillQueue.Select(s => s.skill).ToList());
+
+        // 활성화된 시너지를 UI에 표시
+        UIManager.Instance.UpdateSynergyUI(activeSynergies);
+
+        // 시너지 효과 적용 (큐 전체에 대해 중복 가능)
+        activeSynergyEffects = synergyManager.ApplySynergies(skillQueue.Select(s => s.skill).ToList());
     }
 
     // 플레이어가 대응 스킬 선택 후 큐에 추가
@@ -183,8 +205,6 @@ public class CharacterManager : MonoBehaviour
         skillQueue.Clear();
         Debug.Log($"Remaining skills canceled. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
     }
-
-
 
     #endregion
 
@@ -245,7 +265,7 @@ public class CharacterManager : MonoBehaviour
         Debug.Log($"Using skill: {skill.SkillName} on {target.character.Name}");
         float damageMultiplier = skill.DamageMultiplier;
         int damage = 0;
-
+        
         if (skill.IsOffHand)
         {
             damageMultiplier *= 0.9f;  // 보조 무기 패널티 적용

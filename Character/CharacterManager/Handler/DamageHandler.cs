@@ -6,7 +6,7 @@ public class DamageHandler
 {
     public int TakeDamage(CharacterData character, int damage, SkillType damageType, SkillAttribute damageAttribute)
     {
-        //저항력, 방어력 계산
+        //저항력, 방어력, 속성 특화 계산
         int reducedDamage = CalculateDamage(damage, character.FinalStats, damageType, damageAttribute);
 
         //방어도 적용 - 마법 방어도가 우선 적용
