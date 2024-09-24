@@ -156,14 +156,20 @@ public class CharacterManager : MonoBehaviour
         skillQueue.Add((skill, target));
         Debug.Log($"Skill {skill.SkillName} added to queue. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
 
+        // 스킬 선택 후, 적용 가능한 시너지 효과 확인
+        List<SynergyEffect> newSynergyEffects = synergyManager.GetActiveSynergies(skillQueue.Select(s => s.skill).ToList());
+
         // 선택된 스킬이 추가된 후 시너지 조건 체크
-        List<string> activeSynergies = synergyManager.GetActiveSynergies(skillQueue.Select(s => s.skill).ToList());
+        foreach (var effect in newSynergyEffects)
+        {
+            if (!activeSynergyEffects.Contains(effect))
+            {
+                activeSynergyEffects.Add(effect); // 시너지 효과 리스트에 추가
+            }            
+        }
 
-        // 활성화된 시너지를 UI에 표시
-        UIManager.Instance.UpdateSynergyUI(activeSynergies);
-
-        // 시너지 효과 적용 (큐 전체에 대해 중복 가능)
-        activeSynergyEffects = synergyManager.ApplySynergies(skillQueue.Select(s => s.skill).ToList());
+        // UI 업데이트: 활성화된 시너지 표시
+        //UIManager.Instance.UpdateSynergyUI(effect.Name.ToList());
     }
 
     // 플레이어가 대응 스킬 선택 후 큐에 추가
@@ -262,10 +268,16 @@ public class CharacterManager : MonoBehaviour
     // 스킬 사용 메서드
     public void UseSkill(SkillBase skill, CharacterManager target)
     {
+        // 스킬 발동 시 시너지 효과 적용
+        foreach (var synergyEffect in activeSynergyEffects)
+        {
+            synergyEffect.OnApply(this); // 스킬 발동 시 버프 효과 적용
+        }
+
         Debug.Log($"Using skill: {skill.SkillName} on {target.character.Name}");
         float damageMultiplier = skill.DamageMultiplier;
         int damage = 0;
-        
+
         if (skill.IsOffHand)
         {
             damageMultiplier *= 0.9f;  // 보조 무기 패널티 적용
@@ -274,10 +286,10 @@ public class CharacterManager : MonoBehaviour
         switch (skill.Type)
         {
             case SkillType.Physical:
-                damage = Mathf.FloorToInt(character.FinalStats.PhysicalAttack * damageMultiplier);
+                damage = Mathf.FloorToInt(character.FinalStats.PhysicalAttack * damageMultiplier * character.PhysicalDamageMultiplier);                
                 break;
             case SkillType.Magical:
-                damage = Mathf.FloorToInt(character.FinalStats.MagicalAttack * damageMultiplier);
+                damage = Mathf.FloorToInt(character.FinalStats.MagicalAttack * damageMultiplier * character.MagicalDamageMultiplier);
                 break;
         }
 
@@ -293,6 +305,19 @@ public class CharacterManager : MonoBehaviour
         {
             HandleEnemyDefeated();
         }
+
+        // 시너지 효과 해제
+        EndSynergyEffects();
+    }
+
+    // 시너지 효과 만료 처리
+    private void EndSynergyEffects()
+    {
+        foreach (var effect in activeSynergyEffects)
+        {
+            effect.OnExpire(this); // 각 시너지 효과를 해제
+        }
+        activeSynergyEffects.Clear(); // 리스트 비우기
     }
 
     #endregion

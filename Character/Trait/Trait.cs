@@ -2,6 +2,7 @@
 using System;
 using UnityEngine;
 
+// 특성은 BaseStat에 영향을 주도록 해서 구현
 
 public class DurableTrait : TraitBase // 추상클래스 TraitBase를 상속받아 구현한 상세 특성 정의 클래스
 {

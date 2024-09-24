@@ -208,11 +208,14 @@ public class CharacterData
     public CustomizationData customizationData; // 캐릭터 커스터마이징 데이터 - 이 데이터를 기반으로 생성된 베이스 캐릭터에 변형을 가해서 외형 적용
     public CharacterType Type {  get; set; } = CharacterType.Character;
 
-    public CharacterStats BaseStats { get; set; } // 기본 스탯
-    public CharacterStats ModifiedStats { get; set; } = new CharacterStats(); // 증감 스탯 - 특성, 장비, 버프 등으로 변화한 스탯
+    public CharacterStats BaseStats { get; set; } // 기본 스탯 + 특성으로 증감된 스탯
+    public CharacterStats ModifiedStats { get; set; } = new CharacterStats(); // 증감 스탯 - 장비, 버프 등으로 변화한 스탯
     public CharacterStats FinalStats { get; set; } // 최종 스탯
 
-    public CharacterStats tempStats; // ref 전달을 위한 캐릭터 스탯 구조체 사본
+    public float PhysicalDamageMultiplier { get; set; } = 1.0f; // 물리 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
+    public float MagicalDamageMultiplier { get; set; } = 1.0f; // 마법 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
+    public float AttackSpeedMultiplier { get; set; } = 1.0f; // 공격 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
+    public float CastSpeedMultiplier { get; set; } = 1.0f; // 시전 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
 
     public int BonusStatpoint { get; set; } // 투자 가능 스탯
     public bool IsAlive { get; set; } // 캐릭터의 생존유무
