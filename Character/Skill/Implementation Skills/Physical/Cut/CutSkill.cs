@@ -20,7 +20,7 @@ public class CutSkill : PhysicalAttackSkill, IEvolvableSkill // 베기
         SkillUseCount = 0;
         SkillKillCount = 0;
         SkillDamageCount = 0;
-        iconAddress = "Assets/Icons/Skills/Cut.asset";
+        IconAddress = "Assets/Icons/Skills/Cut.asset";        
     }
 
     // 스킬 사용 시 호출할 수 있는 메서드

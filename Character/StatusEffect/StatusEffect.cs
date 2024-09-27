@@ -2,17 +2,19 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class StatusEffect
+public abstract class StatusEffect : Root
 {
-    public string Name { get; private set; }
     public int RemainingTurns { get; private set; } // 남은 턴 수
     public bool IsDebuff { get; private set; } // 디버프 여부
 
-    protected StatusEffect(string name, int duration, bool isDebuff)
+    public StatusEffect(string name, string description, Sprite icon, int duration, bool isDebuff)
     {
         Name = name;
+        Description = description;
+        Icon = icon;
         RemainingTurns = duration;
         IsDebuff = isDebuff;
+        ObjectType = ObjectType.StatusEffect;
     }
 
     public virtual void ApplyEffect(CharacterManager character) { } // 매턴 효과 적용

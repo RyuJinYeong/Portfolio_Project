@@ -8,10 +8,10 @@ public class SynergyEffect : StatusEffect // 시너지 효과로 발동되는 상태이상
 
     private float accumulatedPhysicalDamageMultiplier;
     private float accumulatedMagicalDamageMultiplier;
-    private int stage; // 시너지 효과의 단계 (누적 시너지)
+    private int stage; // 누적 시너지 효과 단계
 
     public SynergyEffect(float physicalDamageBonus, float magicalDamageBonus, float attackSpeedBonus, float castSpeedBonus, bool ignoreArmor)
-        : base("SynergyEffect", 1, false)
+        : base("SynergyEffect", "SynergyEffect",null, 1, false)
     {
         PhysicalDamageMultiplierBonus = physicalDamageBonus;
         MagicalDamageMultiplierBonus = magicalDamageBonus;
@@ -27,7 +27,7 @@ public class SynergyEffect : StatusEffect // 시너지 효과로 발동되는 상태이상
     public override void OnApply(CharacterManager character)
     {
         stage++;
-        float stageMultiplier = 1.0f + 0.05f * stage; // 시너지 단계별 증가율 (5%씩 증가)
+        float stageMultiplier = 1.0f + 0.05f * stage; // 단계별 증가율 (5%)
 
         accumulatedPhysicalDamageMultiplier += PhysicalDamageMultiplierBonus * stageMultiplier;
         accumulatedMagicalDamageMultiplier += MagicalDamageMultiplierBonus * stageMultiplier;
@@ -39,7 +39,7 @@ public class SynergyEffect : StatusEffect // 시너지 효과로 발동되는 상태이상
 
         if (IgnoreArmor)
         {
-            // 방어력 무시 처리
+            // 방어력 무시 로직 구성
         }
     }
 

@@ -18,7 +18,7 @@ public class ShootSkill : BowAttackSkill, IEvolvableSkill // »ç°Ý
         SkillUseCount = 0;
         SkillKillCount = 0;
         SkillDamageCount = 0;
-        iconAddress = "Assets/Icons/Skills/Shoot.asset";
+        IconAddress = "Assets/Icons/Skills/Shoot.asset";
         IsBowSkill = true;
         IsRangedSkill = true;
     }

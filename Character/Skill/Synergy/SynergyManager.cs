@@ -17,7 +17,7 @@ public class SynergyRule
 
 public class SynergyManager
 {
-    private List<SynergyRule> synergyRules;
+    public List<SynergyRule> synergyRules;
 
     public SynergyManager()
     {

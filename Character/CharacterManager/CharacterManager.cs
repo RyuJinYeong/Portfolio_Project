@@ -154,7 +154,7 @@ public class CharacterManager : MonoBehaviour
         }
 
         skillQueue.Add((skill, target));
-        Debug.Log($"Skill {skill.SkillName} added to queue. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
+        Debug.Log($"Skill {skill.name} added to queue. Stamina: {character.FinalStats.CurrentStamina}, Mentality: {character.FinalStats.CurrentMentality}");
 
         // 스킬 선택 후, 적용 가능한 시너지 효과 확인
         List<SynergyEffect> newSynergyEffects = synergyManager.GetActiveSynergies(skillQueue.Select(s => s.skill).ToList());
@@ -169,14 +169,14 @@ public class CharacterManager : MonoBehaviour
         }
 
         // UI 업데이트: 활성화된 시너지 표시
-        //UIManager.Instance.UpdateSynergyUI(effect.Name.ToList());
+        //UIManager.Instance.UpdateSynergyUI(newSynergyEffects.ToList(), synergyManager.synergyRules);
     }
 
     // 플레이어가 대응 스킬 선택 후 큐에 추가
     public void SelectCounterSkill(SkillBase skill, CharacterManager target)
     {
         counterSkillQueue.Add((skill, target));
-        Debug.Log($"Counter Skill {skill.SkillName} added to queue.");
+        Debug.Log($"Counter Skill {skill.name} added to queue.");
     }
 
     #endregion
@@ -274,7 +274,7 @@ public class CharacterManager : MonoBehaviour
             synergyEffect.OnApply(this); // 스킬 발동 시 버프 효과 적용
         }
 
-        Debug.Log($"Using skill: {skill.SkillName} on {target.character.Name}");
+        Debug.Log($"Using skill: {skill.name} on {target.character.Name}");
         float damageMultiplier = skill.DamageMultiplier;
         int damage = 0;
 

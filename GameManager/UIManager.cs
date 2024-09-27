@@ -7,6 +7,12 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
+    public GameObject synergyInfoPanel; // 시너지 정보가 표시되는 패널
+
+    public GameObject statusEffectIconPrefab;  // 상태이상 아이콘 프리팹
+    public Transform statusEffectIconParent;  // 상태이상 아이콘을 표시할 부모 오브젝트
+    private List<GameObject> activeStatusIcons = new List<GameObject>(); // 활성화 상태이상 아이콘
+
     [Header("Character Info UI Elements")]
     public Image characterPortrait;
     public TextMeshProUGUI characterName;
@@ -24,10 +30,11 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI characterPhysicalDefense;
     public TextMeshProUGUI characterMagicDefense;
 
-    public GameObject skillButtonPrefab;
     public GameObject skillBar;
     public GameObject infoPanel;
-    public Transform skillButtonParent;
+    
+    // 핫바 버튼 연결을 위한 배열
+    public GameObject[] hotbarButtons = new GameObject[12]; // 12개의 핫바 버튼을 위한 GameObject 배열
 
     public CharacterTargeting characterTargeting;
     private void Awake()
@@ -64,27 +71,45 @@ public class UIManager : MonoBehaviour
         characterPhysicalDefense.text = $"{characterData.FinalStats.PhysicalDefense}";
         characterMagicDefense.text = $"{characterData.FinalStats.MagicalDefense}";
 
-        // 기존 스킬 버튼 제거
-        foreach (Transform child in skillButtonParent)
+        skillBar.SetActive(characterData.IsMine); // 캐릭터가 자신의 것일 경우 스킬바 활성화
+
+        // 핫바 스킬 업데이트
+        UpdateHotbarSkills(characterData);        
+    }
+
+    // 핫바 스킬 업데이트 메서드
+    private void UpdateHotbarSkills(CharacterData characterData)
+    {
+        // 모든 핫바 버튼과 RawImage를 비활성화
+        foreach (var button in hotbarButtons)
         {
-            Destroy(child.gameObject);
-            skillBar.SetActive(false);
+            button.GetComponent<Button>().interactable = false; // 버튼 비활성화
+            button.GetComponent<RawImage>().enabled = false;    // 이미지 비활성화
         }
 
-        if (characterData.IsMine)
+        // 사용 가능한 스킬이 있는 경우 핫바에 표시
+        int hotbarIndex = 0;
+
+        foreach (SkillBase skill in characterData.Skills)
         {
-            skillBar.SetActive(true);
-            // 새로운 스킬 버튼 생성
-            foreach (SkillBase skill in characterData.Skills)
+            if (skill.CanUse && !skill.IsCounterSkill) // 사용 가능하고 대응 스킬이 아닌 경우
             {
-                if (skill.CanUse)
+                if (hotbarIndex < hotbarButtons.Length) // 핫바 슬롯이 남아있는 경우
                 {
-                    GameObject skillButton = Instantiate(skillButtonPrefab, skillButtonParent);
-                    skillButton.GetComponentInChildren<Image>().sprite = skill.skillIcon;
-                    skillButton.GetComponent<Button>().onClick.AddListener(() => // 버튼 액션 감지
+                    GameObject button = hotbarButtons[hotbarIndex];
+
+                    button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
+                    button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
+                    button.GetComponent<Button>().interactable = true;    // 버튼 활성화
+
+                    // 버튼 클릭 시 스킬 사용 처리
+                    button.GetComponent<Button>().onClick.RemoveAllListeners(); // 기존 리스너 제거
+                    button.GetComponent<Button>().onClick.AddListener(() =>
                     {
-                        characterTargeting.StartTargeting(skill); 
+                        characterTargeting.StartTargeting(skill); // 스킬 타겟팅 시작
                     });
+
+                    hotbarIndex++; // 다음 핫바 슬롯으로 이동
                 }
             }
         }
@@ -115,31 +140,70 @@ public class UIManager : MonoBehaviour
     }
     public void ShowCounterSkillUI(CharacterManager currentCharacter)
     {
-        skillBar.SetActive(true);  // 대응 스킬 UI 활성화
+        // 대응 스킬 UI 업데이트
+        skillBar.SetActive(true);
+
+        int counterSkillIndex = 0;
 
         foreach (SkillBase skill in currentCharacter.character.Skills)
         {
-            if (skill.IsCounterSkill)  // 대응 가능한 스킬만 보여줌
+            if (skill.IsCounterSkill && skill.CanUse)  // 대응 가능한 스킬만 보여줌
             {
-                GameObject skillButton = Instantiate(skillButtonPrefab, skillButtonParent);
-                skillButton.GetComponentInChildren<Image>().sprite = skill.skillIcon;
-                skillButton.GetComponent<Button>().onClick.AddListener(() =>
+                if (counterSkillIndex < hotbarButtons.Length)
                 {
-                    currentCharacter.SelectSkill(skill, currentCharacter);  // 대응 스킬 선택
-                });
+                    GameObject button = hotbarButtons[counterSkillIndex];
+
+                    button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
+                    button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
+                    button.GetComponent<Button>().interactable = true;    // 버튼 활성화
+
+                    button.GetComponent<Button>().onClick.RemoveAllListeners();
+                    button.GetComponent<Button>().onClick.AddListener(() =>
+                    {
+                        currentCharacter.SelectSkill(skill, currentCharacter);  // 대응 스킬 선택
+                    });
+
+                    counterSkillIndex++; // 다음 핫바 슬롯으로 이동
+                }
             }
         }
     }
 
-    // 활성화된 시너지를 UI에 표시하는 메서드
-    public void UpdateSynergyUI(List<string> activeSynergies)
+    // 시너지 정보를 UI에 표시하는 메서드
+    public void UpdateSynergyUI(List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)
     {
-        string synergyText = "Active Synergies:\n";
-        foreach (var synergy in activeSynergies)
+        // 활성화된 시너지를 UI에 표시
+        foreach (Transform child in synergyInfoPanel.transform)
         {
-            synergyText += $"{synergy}\n";
+            Destroy(child.gameObject);  // 기존 UI 아이템 삭제
         }
-        // 시너지 정보를 화면에 출력 (구체적인 UI 구현은 별도로)
-        Debug.Log(synergyText);
+        /*
+        foreach (var synergy in allSynergies)
+        {
+            //string status = activeSynergies.Contains(synergy.Name) ? " (활성화)" : " (비활성)";
+            GameObject newSynergyText = new GameObject(synergy.Name + status);
+            newSynergyText.transform.SetParent(synergyInfoPanel.transform);
+            newSynergyText.AddComponent<Text>().text = synergy.Name + status; // 텍스트 표시
+        }*/
+    }
+
+    // 상태이상을 UI에 표시하는 메서드
+    public void UpdateStatusEffects(List<StatusEffect> activeEffects)
+    {
+        // 기존 아이콘 초기화
+        foreach (var icon in activeStatusIcons)
+        {
+            Destroy(icon);
+        }
+        activeStatusIcons.Clear();
+
+        // 새로운 상태이상 아이콘 생성
+        foreach (var effect in activeEffects)
+        {
+            GameObject iconInstance = Instantiate(statusEffectIconPrefab, statusEffectIconParent);
+            iconInstance.GetComponentInChildren<Image>().sprite = effect.Icon;
+            //iconInstance.GetComponent<TooltipManager>().SetupTooltip(effect.Description);
+            activeStatusIcons.Add(iconInstance);
+        }
     }
 }

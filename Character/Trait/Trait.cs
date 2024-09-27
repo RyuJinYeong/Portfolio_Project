@@ -29,7 +29,7 @@ public class SwordMasteryTrait : TraitBase
 
     public override void ApplyTrait(CharacterData character)
     {
-        if (character.Weapon is Weapon weapon && weapon.Type == WeaponType.Sword) // 주무기로 도검류 장착시 해당 장비 공격력 10 증가
+        if (character.Weapon is Weapon weapon && weapon.WeaponType == WeaponType.Sword) // 주무기로 도검류 장착시 해당 장비 공격력 10 증가
         {
             character.ModifiedStats.PhysicalAttack += 10; 
         }
@@ -37,7 +37,7 @@ public class SwordMasteryTrait : TraitBase
 
     public override void RemoveTrait(CharacterData character)
     {
-        if (character.Weapon is Weapon weapon && weapon.Type == WeaponType.Sword) 
+        if (character.Weapon is Weapon weapon && weapon.WeaponType == WeaponType.Sword) 
         {
             character.ModifiedStats.PhysicalAttack -= 10;
         }
@@ -68,7 +68,7 @@ public class BowMasteryTrait : TraitBase
 
     public override void ApplyTrait(CharacterData character)
     {
-        if (character.Weapon is Weapon weapon && weapon.Type == WeaponType.Bow) // 주무기로 활 장착시 해당 장비 공격력 10증가
+        if (character.Weapon is Weapon weapon && weapon.WeaponType == WeaponType.Bow) // 주무기로 활 장착시 해당 장비 공격력 10증가
         {
             character.ModifiedStats.PhysicalAttack += 10;
         }
@@ -76,7 +76,7 @@ public class BowMasteryTrait : TraitBase
 
     public override void RemoveTrait(CharacterData character)
     {
-        if (character.Weapon is Weapon weapon && weapon.Type == WeaponType.Bow) 
+        if (character.Weapon is Weapon weapon && weapon.WeaponType == WeaponType.Bow) 
         {
             character.ModifiedStats.PhysicalAttack -= 10;
         }

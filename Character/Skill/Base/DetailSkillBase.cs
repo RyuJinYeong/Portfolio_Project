@@ -1,9 +1,11 @@
+using SoftKitty.InventoryEngine;
+
 public abstract class PhysicalAttackSkill : SkillBase
 {
     protected PhysicalAttackSkill(string name, float damageMultiplier, double activationSpeed, int staminaCost, SkillAttribute attribute)
     {
         StaminaCost = staminaCost;
-        SkillName = name;
+        base.name = name;
         DamageMultiplier = damageMultiplier;
         ActivationSpeed = activationSpeed;
         Type = SkillType.Physical;
@@ -16,7 +18,7 @@ public abstract class BowAttackSkill : SkillBase
 {
     protected BowAttackSkill(string name, float damageMultiplier, double activationSpeed, int staminaCost, SkillAttribute attribute)
     {
-        SkillName = name;
+        base.name = name;
         ActivationSpeed = activationSpeed;
         DamageMultiplier = damageMultiplier;
         Type = SkillType.Physical;
@@ -32,7 +34,7 @@ public abstract class MagicalAttackSkill : SkillBase
 {
     protected MagicalAttackSkill(string name, float damageMultiplier, double activationSpeed, int mentalCost, SkillAttribute attribute)
     {
-        SkillName = name;
+        base.name = name;
         ActivationSpeed = activationSpeed;
         DamageMultiplier = damageMultiplier;
         Type = SkillType.Magical;
@@ -46,7 +48,7 @@ public abstract class BuffSkill : SkillBase, IBuffSkill
 {
     protected BuffSkill(string name, double activationSpeed, bool isCounterSkill, SkillAttribute attribute)
     {
-        SkillName = name;
+        base.name = name;
         ActivationSpeed = activationSpeed;
         IsCounterSkill = isCounterSkill;
         Attribute = attribute;
@@ -60,12 +62,11 @@ public abstract class DefensiveSkill : SkillBase, IDefensiveSkill
 {
     protected DefensiveSkill(string name, float damageMultiplier, double activationSpeed, SkillAttribute attribute)
     {
-        SkillName = name;
+        base.name = name;
         ActivationSpeed = activationSpeed;
         DamageMultiplier = damageMultiplier;
         IsCounterSkill = true;
         Attribute = attribute;
-
         CanUse = true;
     }
 }

@@ -19,7 +19,7 @@ public class SwingSkill : PhysicalAttackSkill, IEvolvableSkill // 휘두르기
         SkillUseCount = 0;
         SkillKillCount = 0;
         SkillDamageCount = 0;
-        iconAddress = "Assets/Icons/Skills/Swing.asset";
+        IconAddress = "Assets/Icons/Skills/Swing.png";
     }
 
     // 스킬 사용 시 호출할 수 있는 메서드

@@ -212,6 +212,8 @@ public class CharacterData
     public CharacterStats ModifiedStats { get; set; } = new CharacterStats(); // 증감 스탯 - 장비, 버프 등으로 변화한 스탯
     public CharacterStats FinalStats { get; set; } // 최종 스탯
 
+    public CharacterStats tempStats = new CharacterStats(); // 임시스탯
+
     public float PhysicalDamageMultiplier { get; set; } = 1.0f; // 물리 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
     public float MagicalDamageMultiplier { get; set; } = 1.0f; // 마법 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
     public float AttackSpeedMultiplier { get; set; } = 1.0f; // 공격 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
