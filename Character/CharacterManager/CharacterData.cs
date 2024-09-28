@@ -440,11 +440,11 @@ public class CharacterData
         }
 
         // 장착중인 무기 카테고리 구분 후 해당 스탯 적용
-        if (this.Weapon is Weapon heavyWeapon && heavyWeapon.Category == WeaponCategory.HeavyWeapon)
+        if (this.Weapon is Weapon heavyWeapon && heavyWeapon.WeaponCategory == WeaponCategory.HeavyWeapon)
         {
             basePhysicalAttack += stats.Strength;
         }
-        else if (this.Weapon is Weapon lightWeapon && lightWeapon.Category == WeaponCategory.LightWeapon)
+        else if (this.Weapon is Weapon lightWeapon && lightWeapon.WeaponCategory == WeaponCategory.LightWeapon)
         {
             if (stats.Strength > stats.Dexterity)
                 basePhysicalAttack += stats.Strength;

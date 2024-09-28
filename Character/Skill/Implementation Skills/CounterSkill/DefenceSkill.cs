@@ -8,6 +8,6 @@ public class DefenceSkill : DefensiveSkill // 물리 방어 스킬
         : base("방어",1 , 0.5, SkillAttribute.None)
     {
         StaminaCost = 1;
-        IconAddress = "Assets/Icons/Skills/Defence.asset";
+        IconAddress = "Assets/Icons/Skills/Defence.png";
     }
 }

@@ -10,7 +10,6 @@ public class Armor : Equipment
         : base(name, equipType, statModifiers)
     {
         ArmorCategory = armorCategory;
-        Price = 100;
     }
 
     public override void Equip(CharacterData character)

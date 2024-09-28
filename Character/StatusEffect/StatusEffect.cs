@@ -7,7 +7,7 @@ public abstract class StatusEffect : Root
     public int RemainingTurns { get; private set; } // 남은 턴 수
     public bool IsDebuff { get; private set; } // 디버프 여부
 
-    public StatusEffect(string name, string description, Sprite icon, int duration, bool isDebuff)
+    public StatusEffect(string name, string description, Texture2D icon, int duration, bool isDebuff)
     {
         Name = name;
         Description = description;

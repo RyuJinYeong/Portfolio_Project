@@ -201,7 +201,7 @@ public class UIManager : MonoBehaviour
         foreach (var effect in activeEffects)
         {
             GameObject iconInstance = Instantiate(statusEffectIconPrefab, statusEffectIconParent);
-            iconInstance.GetComponentInChildren<Image>().sprite = effect.Icon;
+            iconInstance.GetComponentInChildren<RawImage>().texture = effect.Icon;
             //iconInstance.GetComponent<TooltipManager>().SetupTooltip(effect.Description);
             activeStatusIcons.Add(iconInstance);
         }
