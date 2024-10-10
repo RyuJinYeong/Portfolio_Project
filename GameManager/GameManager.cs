@@ -7,7 +7,8 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    public GameObject characterPrefab;
+    public GameObject characterPrefab_M;
+    public GameObject characterPrefab_F;
     public GameObject enemyPrefab;
 
     // 필드의 모든 캐릭터를 관리하는 리스트
@@ -120,8 +121,13 @@ public class GameManager : MonoBehaviour
             Debug.LogError("Spawn point not found.");
             return;
         }
+        GameObject allyCharacter = new GameObject();
 
-        GameObject allyCharacter = Instantiate(characterPrefab, spawnPoint.position, spawnPoint.rotation);
+        if (characterData.customizationData.IsMale == true)
+            allyCharacter = Instantiate(characterPrefab_M, spawnPoint.position, spawnPoint.rotation);
+        else
+            allyCharacter = Instantiate(characterPrefab_F, spawnPoint.position, spawnPoint.rotation);
+
         CharacterManager characterManager = allyCharacter.GetComponent<CharacterManager>();
         if (characterManager != null)
         {

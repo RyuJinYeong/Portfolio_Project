@@ -1,4 +1,4 @@
-using InfinityPBR;
+using System;
 using UnityEngine;
 
 public class CharacterCustomization : MonoBehaviour
@@ -6,35 +6,85 @@ public class CharacterCustomization : MonoBehaviour
     public RenderTexture portraitRenderTexture;
     public Camera portraitCamera;
 
+    // 캐릭터 루트 및 모델들
     public GameObject characterRoot;
-    public GameObject characterHair;
-    public GameObject characterBody;
+
+    public bool isMale;
+
+    // 커스터마이징 요소들
+    public GameObject[] eyebrows;
+    public GameObject[] eyes;
+    public GameObject[] mouth;    
+    public GameObject[] hair;
+    public GameObject[] beard;
+
+    public GameObject[] outFit;
+    public GameObject[] Weapon;
 
     public Sprite characterPortrait { get; set; }
 
-    public void SetHairStyle(string hairStyle)
+    // 눈썹 설정
+    public void SetEyebrows(int index)
     {
-        characterRoot.GetComponent<PrefabAndObjectManager>().ActivateGroup(hairStyle); // hairStyle 업데이트
+        ActivateModelFromArray(eyebrows, index);
     }
 
-    public void SetHairColor(string hairColor)
+    // 눈 설정
+    public void SetEyes(int index)
     {
-        characterHair.GetComponent<ColorShiftRuntime>().SetColorSet(hairColor); // hairColor 업데이트
+        ActivateModelFromArray(eyes, index);
     }
 
-    public void SetSkinTone(string skinTone)
+    // 입 설정
+    public void SetMouth(int index)
     {
-        characterBody.GetComponent<ColorShiftRuntime>().SetColorSet(skinTone); // skinTones 업데이트
+        ActivateModelFromArray(mouth, index);
     }
 
-    public void SetBodyType(string bodyType) // 성별, 몸체 타입, 종족, Random Face, Default Face를 매개변수로 받음.
+    // 수염 설정
+    public void SetBeard(int index)
     {
-        characterRoot.GetComponent<BlendShapesPresetManager>().ActivatePreset(bodyType); // bodyTypes 업데이트
+        if (beard.Length > 0 && isMale)
+        {
+            ActivateModelFromArray(beard, index);
+        }
     }
 
-    public void SetOutfit(string outfit)
+    // 헤어스타일 설정
+    public void SetHairStyle(int index)
     {
-        // outfit에 따른 옷 오브젝트 변경 로직
+        ActivateModelFromArray(hair, index);
+    }
+
+    // 머리색 설정
+    public void SetHairColor(int index)
+    {
+        //머리 색 변경 로직
+    }
+
+    // 피부톤 설정
+    public void SetSkinTone(int index)
+    {
+        //피부 톤 변경 로직
+    }
+
+    // 배열에서 선택한 모델만 활성화
+    private void ActivateModelFromArray(GameObject[] modelArray, int index)
+    {
+        for (int i = 0; i < modelArray.Length; i++)
+        {
+            modelArray[i].SetActive(i == index);
+        }
+    }
+
+    public void SetOutfit(int index) 
+    {
+        ActivateModelFromArray(outFit, index);
+    }
+
+    public void SetWeapon(int index)
+    {
+        ActivateModelFromArray(Weapon, index);
     }
 
     public Sprite CapturePortrait()

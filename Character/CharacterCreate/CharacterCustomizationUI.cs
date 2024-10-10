@@ -1,4 +1,3 @@
-using InfinityPBR;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,133 +6,228 @@ public class CharacterCustomizationUI : MonoBehaviour
 {
     public Toggle maleToggle;
     public Toggle femaleToggle;
+
     public bool isMale;
 
-    public TextMeshProUGUI bodyTypeText;
-    public TextMeshProUGUI hairstyleText;
+    public GameObject character_M;
+    public GameObject character_F;
+
+    public TextMeshProUGUI hairTypeText;
+    public TextMeshProUGUI eyebrowsTypeText;
+    public TextMeshProUGUI eyeTypeText;
+    public TextMeshProUGUI mouthTypeText;    
     public TextMeshProUGUI hairColorText;
     public TextMeshProUGUI skinTonesText;
-    public TextMeshProUGUI voiceText;
+    public TextMeshProUGUI beardTypeText;
 
-    public CustomizationData customizationInfo = new CustomizationData();
+    public GameObject BeardUI; // 수염 옵션 UI
 
     public CharacterCustomization characterCustom;
 
-    private string[] bodyTypes = { "Weak", "Normal", "Strong" };
-    private string[] hairStyles = { "Hair 1", "Hair 2", "Hair 3", "Hair 4", "Hair 5", "Hair 6", "Hair 7", "Hair 8", "Hair 9", "Hair 10", "Hair 11", "Hair 12", "No Hair"};
-    private string[] hairColors = { "Hair 1", "Hair 2", "Hair 3", "Hair 4", "Hair 5", "Hair 6", "Hair 7", "Hair 8", "Hair 9", "Hair 10", "Hair 11", "Hair 12" };
-    private string[] skinTones = { "Skin 1", "Skin 2", "Skin 3", "Skin 4", "Skin 5", "Skin 6" };
-    private string[] voices = { "1", "2", "3" };
+    public CustomizationData customizationInfo = new CustomizationData();
 
-    private int currentBodyTypeIndex = 0;
-    private int currentHairstyleIndex = 0;
+    private int currentEyebrowIndex = 0;
+    private int currentEyesIndex = 0;
+    private int currentMouthIndex = 0;
+    private int currentHairTypeIndex = 0;
+    private int currentBeardIndex = 0; 
     private int currentHairColorIndex = 0;
-    private int currentFaceIndex = 0;
-    private int currentVoiceIndex = 0;
+    private int currentSkinToneIndex = 0;
+        
+    // 커스터마이징 가능한 항목들
+    private string[] hairTypes = { "Hair 1", "Hair 2", "Hair 3", "Hair 4", "Hair 5", "Hair 6", "Hair 7", "Hair 8", "Hair 9", "Hair 10", "Hair 11" };
+    private string[] eyebrowsTypes = { "Eyebrow 1", "Eyebrow 2", "Eyebrow 3", "Eyebrow 4", "Eyebrow 5" };
+    private string[] eyesTypes = { "Eye 1", "Eye 2", "Eye 3", "Eye 4", "Eye 5" };
+    private string[] mouthTypes = { "Mouth 1", "Mouth 2", "Mouth 3", "Mouth 4", "Mouth 5" };
+    private string[] beardTypes = { "Beard 1", "Beard 2", "Beard 3", "Beard 4", "Beard 5", "Beard 6", "Beard 7", "Beard 8" };
+    private string[] hairColors = { "HairColor 1", "HairColor 2", "HairColor 3", "HairColor 4", "HairColor 5" };
+    private string[] skinTones = { "SkinTone 1", "SkinTone 2", "SkinTone 3", "SkinTone 4", "SkinTone 5" };
 
     void Start()
     {
         maleToggle.onValueChanged.AddListener(OnMaleToggleChanged);
         femaleToggle.onValueChanged.AddListener(OnFemaleToggleChanged);
-
         UpdateUI();
+        characterCustom = character_M.GetComponent<CharacterCustomization>();
     }
 
-    void OnMaleToggleChanged(bool isOn) // Inspector의 Toggle On value Changed에서 변경된 값에 해당되는 string값 전달
+    // 성별 선택 토글 로직
+    void OnMaleToggleChanged(bool isOn)
     {
         if (isOn)
         {
-            femaleToggle.isOn = false;
+            characterCustom = character_M.GetComponent<CharacterCustomization>();
+
             isMale = true;
+            femaleToggle.isOn = false;
+            characterCustom.isMale = true; // 커스터마이징 스크립트에 반영
+            character_F.SetActive(false);
+            character_M.SetActive(true);
+            BeardUI.SetActive(true); // 수염 옵션 활성화
+            UpdateUI();            
         }
     }
 
-    void OnFemaleToggleChanged(bool isOn) // Inspector의 Toggle On value Changed에서 변경된 값에 해당되는 string값 전달
+    void OnFemaleToggleChanged(bool isOn)
     {
         if (isOn)
         {
-            maleToggle.isOn = false;
+            characterCustom = character_F.GetComponent<CharacterCustomization>();
+
             isMale = false;
+            maleToggle.isOn = false;
+            characterCustom.isMale = false; // 커스터마이징 스크립트에 반영
+            character_F.SetActive(true);
+            character_M.SetActive(false);
+            BeardUI.SetActive(false); // 수염 옵션 비활성화
+            UpdateUI();
         }
     }
 
-    public void NextBodyType()
+    // 헤어 스타일 변경
+    public void NextHairStyle()
     {
-        currentBodyTypeIndex = (currentBodyTypeIndex + 1) % bodyTypes.Length;
+        ChangeIndex(ref currentHairTypeIndex, hairTypes.Length);
         UpdateUI();
+        characterCustom.SetHairStyle(currentHairTypeIndex); // 커스터마이징에 반영
     }
 
-    public void PreviousBodyType()
+    public void NextEyebrows()
     {
-        currentBodyTypeIndex = (currentBodyTypeIndex - 1 + bodyTypes.Length) % bodyTypes.Length;
+        ChangeIndex(ref currentEyebrowIndex, eyebrowsTypes.Length);
         UpdateUI();
+        characterCustom.SetEyebrows(currentEyebrowIndex);
     }
 
-    public void NextHairstyle()
+    public void NextEyes()
     {
-        currentHairstyleIndex = (currentHairstyleIndex + 1) % hairStyles.Length;
+        ChangeIndex(ref currentEyesIndex, eyesTypes.Length);
         UpdateUI();
+        characterCustom.SetEyes(currentEyesIndex);
     }
 
-    public void PreviousHairstyle()
+    public void NextMouth()
     {
-        currentHairstyleIndex = (currentHairstyleIndex - 1 + hairStyles.Length) % hairStyles.Length;
+        ChangeIndex(ref currentMouthIndex, mouthTypes.Length);
         UpdateUI();
+        characterCustom.SetMouth(currentMouthIndex);
+    }
+
+    public void NextBeard()
+    {
+        if (isMale)
+        {
+            ChangeIndex(ref currentBeardIndex, beardTypes.Length);
+            UpdateUI();
+            characterCustom.SetBeard(currentBeardIndex);
+        }
     }
 
     public void NextHairColor()
     {
-        currentHairColorIndex = (currentHairColorIndex + 1) % hairColors.Length;
+        ChangeIndex(ref currentHairColorIndex, hairColors.Length);
         UpdateUI();
+        characterCustom.SetHairColor(currentHairColorIndex);
     }
 
+    public void NextSkinTone()
+    {
+        ChangeIndex(ref currentSkinToneIndex, skinTones.Length);
+        UpdateUI();
+        characterCustom.SetSkinTone(currentSkinToneIndex);
+    }
+
+    // 인덱스 변경 로직
+    private void ChangeIndex(ref int index, int length)
+    {
+        index = (index + 1) % length;
+    }
+
+    // 헤어 스타일 이전으로
+    public void PreviousHairStyle()
+    {
+        ChangeIndexBackward(ref currentHairTypeIndex, hairTypes.Length);
+        UpdateUI();
+        characterCustom.SetHairStyle(currentHairTypeIndex); // 커스터마이징에 반영
+    }
+
+    // 눈썹 이전으로
+    public void PreviousEyebrows()
+    {
+        ChangeIndexBackward(ref currentEyebrowIndex, eyebrowsTypes.Length);
+        UpdateUI();
+        characterCustom.SetEyebrows(currentEyebrowIndex);
+    }
+
+    // 눈 이전으로
+    public void PreviousEyes()
+    {
+        ChangeIndexBackward(ref currentEyesIndex, eyesTypes.Length);
+        UpdateUI();
+        characterCustom.SetEyes(currentEyesIndex);
+    }
+
+    // 입 이전으로
+    public void PreviousMouth()
+    {
+        ChangeIndexBackward(ref currentMouthIndex, mouthTypes.Length);
+        UpdateUI();
+        characterCustom.SetMouth(currentMouthIndex);
+    }
+
+    // 수염 이전으로 (남성일 때만)
+    public void PreviousBeard()
+    {
+        if (isMale)
+        {
+            ChangeIndexBackward(ref currentBeardIndex, beardTypes.Length);
+            UpdateUI();
+            characterCustom.SetBeard(currentBeardIndex);
+        }
+    }
+
+    // 머리 색상 이전으로
     public void PreviousHairColor()
     {
-        currentHairColorIndex = (currentHairColorIndex - 1 + hairColors.Length) % hairColors.Length;
+        ChangeIndexBackward(ref currentHairColorIndex, hairColors.Length);
         UpdateUI();
+        characterCustom.SetHairColor(currentHairColorIndex);
     }
 
-    public void NextskinTones()
+    // 피부 색상 이전으로
+    public void PreviousSkinTone()
     {
-        currentFaceIndex = (currentFaceIndex + 1) % skinTones.Length;
+        ChangeIndexBackward(ref currentSkinToneIndex, skinTones.Length);
         UpdateUI();
+        characterCustom.SetSkinTone(currentSkinToneIndex);
     }
 
-    public void PreviousskinTones()
+    // 인덱스 감소 로직
+    private void ChangeIndexBackward(ref int index, int length)
     {
-        currentFaceIndex = (currentFaceIndex - 1 + skinTones.Length) % skinTones.Length;
-        UpdateUI();
+        index = (index - 1 + length) % length;
     }
 
-    public void NextVoice()
-    {
-        currentVoiceIndex = (currentVoiceIndex + 1) % voices.Length;
-        UpdateUI();
-    }
-
-    public void PreviousVoice()
-    {
-        currentVoiceIndex = (currentVoiceIndex - 1 + voices.Length) % voices.Length;
-        UpdateUI();
-    }
-
+    // UI 업데이트 로직
     void UpdateUI()
     {
-        bodyTypeText.text = bodyTypes[currentBodyTypeIndex];
-        hairstyleText.text = "Hairstyle: " + hairStyles[currentHairstyleIndex];
-        hairColorText.text = "Hair Color: " + hairColors[currentHairColorIndex];
-        skinTonesText.text = "Skin Tone: " + skinTones[currentFaceIndex];
-        voiceText.text = "Voice: " + voices[currentVoiceIndex];
+        hairTypeText.text = hairTypes[currentHairTypeIndex];
+        eyebrowsTypeText.text = eyebrowsTypes[currentEyebrowIndex];
+        eyeTypeText.text = eyesTypes[currentEyesIndex];
+        mouthTypeText.text = mouthTypes[currentMouthIndex];
+        beardTypeText.text = beardTypes[currentBeardIndex];
+        hairColorText.text = hairColors[currentHairColorIndex];
+        skinTonesText.text = skinTones[currentSkinToneIndex];
 
-        customizationInfo.HairColor = hairColors[currentHairColorIndex];
-        customizationInfo.HairStyle = hairStyles[currentHairstyleIndex];
-        customizationInfo.BodyType = bodyTypes[currentBodyTypeIndex];
-        customizationInfo.SkinTone = skinTones[currentFaceIndex];
         customizationInfo.IsMale = isMale;
 
-        characterCustom.SetHairColor(hairColors[currentHairColorIndex]);
-        characterCustom.SetHairStyle(hairStyles[currentHairstyleIndex]);
-        characterCustom.SetSkinTone(skinTones[currentFaceIndex]);
-        characterCustom.SetBodyType(bodyTypes[currentBodyTypeIndex]);
+        customizationInfo.HairType = currentHairTypeIndex;
+        customizationInfo.EyebrowsType = currentEyebrowIndex;
+        customizationInfo.EyeType = currentEyesIndex;
+        customizationInfo.MouthType = currentMouthIndex;        
+        customizationInfo.BeardType = currentBeardIndex;
+
+        customizationInfo.HairColor = currentHairColorIndex;
+        customizationInfo.SkinTone = currentSkinToneIndex;
     }
 }

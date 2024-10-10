@@ -5,7 +5,6 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine.TextCore.Text;
-using InfinityPBR;
 
 public class CharacterStats // 기본 캐릭터 스탯
 {
@@ -193,10 +192,15 @@ public class CharacterStats // 기본 캐릭터 스탯
 public class CustomizationData
 {
     public bool IsMale { get; set; }
-    public string HairStyle { get; set; }
-    public string HairColor { get; set; }
-    public string SkinTone { get; set; }
-    public string BodyType { get; set; }
+    public int HairType { get; set; }
+    public int EyebrowsType { get; set; }
+    public int EyeType { get; set; }
+    public int MouthType { get; set; }
+    public int BeardType { get; set; }
+
+    public int HairColor { get; set; }
+    public int SkinTone { get; set; }
+
     // 기타 커스터마이징 옵션들
 }
 

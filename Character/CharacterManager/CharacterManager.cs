@@ -56,24 +56,28 @@ public class CharacterManager : MonoBehaviour
 
     private GameObject InstantiateCharacter(CharacterData characterData)
     {
+        GameObject characterInstance = new();
         // 캐릭터를 풀에서 가져오거나 새로 생성
-        GameObject characterInstance = Instantiate(GameManager.Instance.characterPrefab, characterPool);
+        if (characterData.customizationData.IsMale)
+            characterInstance = Instantiate(GameManager.Instance.characterPrefab_M, characterPool);
+        else
+            characterInstance = Instantiate(GameManager.Instance.characterPrefab_F, characterPool);
+
         characterInstance.SetActive(false);
+
         return characterInstance;
     }
 
     public void ApplyCustomization(GameObject characterInstance, CharacterData characterData)
     {
-        if (characterData.customizationData.IsMale)
-            characterInstance.GetComponent<CharacterCustomization>().SetBodyType("Male");
-        else
-            characterInstance.GetComponent<CharacterCustomization>().SetBodyType("Female");
+        if(characterData.customizationData.IsMale)
+            characterInstance.GetComponent<CharacterCustomization>().SetBeard(characterData.customizationData.BeardType);
 
-        characterInstance.GetComponent<CharacterCustomization>().SetHairColor(characterData.customizationData.HairColor);
-        characterInstance.GetComponent<CharacterCustomization>().SetHairStyle(characterData.customizationData.HairStyle);
-        characterInstance.GetComponent<CharacterCustomization>().SetSkinTone(characterData.customizationData.SkinTone);
-        characterInstance.GetComponent<CharacterCustomization>().SetBodyType(characterData.customizationData.BodyType);
-
+        characterInstance.GetComponent<CharacterCustomization>().SetHairStyle(characterData.customizationData.HairType);
+        characterInstance.GetComponent<CharacterCustomization>().SetEyebrows(characterData.customizationData.EyebrowsType);
+        characterInstance.GetComponent<CharacterCustomization>().SetEyes(characterData.customizationData.EyeType);
+        characterInstance.GetComponent<CharacterCustomization>().SetMouth(characterData.customizationData.MouthType);
+        
         characterData.Portrait = characterInstance.GetComponent<CharacterCustomization>().CapturePortrait(); // 초상화 촬영
     }
 
