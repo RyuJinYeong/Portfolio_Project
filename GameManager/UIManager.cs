@@ -118,10 +118,10 @@ public class UIManager : MonoBehaviour
     public void ShowQueuedSkills(CharacterManager currentCharacter)
     {
         // 기존 UI를 업데이트하고, 큐에 있는 스킬 목록을 시각적으로 표시
-        DisplayQueuedSkills(currentCharacter.skillQueue);
+        DisplayQueuedSkills(currentCharacter.GetSkillQueue());
 
         // 상대방에게도 큐에 쌓인 스킬 목록을 보여줌
-        NotifyOpponentOfQueuedSkills(currentCharacter.skillQueue);
+        NotifyOpponentOfQueuedSkills(currentCharacter.GetSkillQueue());
     }
 
     private void DisplayQueuedSkills(List<(SkillBase skill, CharacterManager target)> skillQueue)

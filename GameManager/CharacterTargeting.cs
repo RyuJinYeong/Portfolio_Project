@@ -108,7 +108,7 @@ public class CharacterTargeting : MonoBehaviour
             lineRenderer.SetPosition(i, curvePoint);
         }
 
-        selectedCharacter.UseSkill(selectedSkill, target);
+        selectedCharacter.SelectSkill(selectedSkill, target);
     }
 
     public void StopTargeting()
