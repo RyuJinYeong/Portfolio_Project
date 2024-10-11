@@ -8,6 +8,7 @@ public class CharacterManager : MonoBehaviour
     private DamageHandler damageHandler;
     private StatHandler statHandler;
     private CombatHandler combatHandler;
+    private EquipmentHandler equipmentHandler;
 
     public Transform characterPool;
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드

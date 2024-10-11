@@ -16,7 +16,7 @@ public enum WeaponType
     Sword, // 검
     Bow, // 활
     BluntWeapon, // 둔기
-    Shiled, // 방패
+    Shield, // 방패
     Axe, // 도끼
     Spear, // 창
     Staff // 스태프
