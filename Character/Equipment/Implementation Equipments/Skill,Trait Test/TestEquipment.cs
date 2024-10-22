@@ -8,7 +8,7 @@ public class MagicSword : Weapon, IHasSkill // 스킬 달린 장비 견본 코드
     public List<SkillBase> Skills { get; set; }    
 
     public MagicSword(WeaponCategory category, List<WeaponTag> tags, List<SkillAttribute> attributes, CharacterStats statModifiers)
-        : base("스킬예시용무기", category, tags,WeaponType.Sword, attributes, statModifiers)
+        : base("스킬예시용무기", category, tags,WeaponType.LongSword, attributes, statModifiers)
     {
         Skills[0] = new FireballSkill();
     }

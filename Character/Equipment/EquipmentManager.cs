@@ -6,9 +6,11 @@ using UnityEngine;
 
 public static class EquipmentManager
 {
-    public static void Equip(CharacterData character, Equipment equipment)
+    public static void Equip(CharacterManager manager, Equipment equipment)
     {
-        character.RemoveAllTraits(); // 캐릭터의 모든 특성 적용 해제
+        CharacterData character = manager.character;
+
+        character.RemoveAllTraits(manager); // 캐릭터의 모든 특성 적용 해제
         switch (equipment.EquipType)
         {
             case EquipmentType.Helmet:
@@ -79,7 +81,7 @@ public static class EquipmentManager
                     if (!character.CanEquipMainWeapon(weapon)) // 장착 불가능한 무기일 경우
                     {
                         Debug.Log("장착 불가능한 주무기입니다.");
-                        character.ApplyAllTraits();  // 캐릭터의 모든 특성 적용
+                        character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
                         return;
                     }
                 }
@@ -93,7 +95,7 @@ public static class EquipmentManager
                 if (!character.CanEquipSubWeapon()) // 장착 불가능한 보조 무기일 경우
                 {
                     Debug.Log("장착 불가능한 보조무기입니다.");
-                    character.ApplyAllTraits();  // 캐릭터의 모든 특성 적용
+                    character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
                     return;
                 }
 
@@ -109,13 +111,16 @@ public static class EquipmentManager
         UpdateAvailableAttributes(character);
         UpdateSkillAvailability(character);
 
-        character.ApplyAllTraits();  // 캐릭터의 모든 특성 적용
+        character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
         character.UpdateFinalStats();
+
+        manager.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(manager.character);
     }
 
-    public static void Unequip(CharacterData character, EquipmentType equipType, int slotIndex = 1)
+    public static void Unequip(CharacterManager manager, EquipmentType equipType, int slotIndex = 1)
     {
-        character.RemoveAllTraits(); // 캐릭터의 모든 특성 적용 해제
+        CharacterData character = manager.character;
+        character.RemoveAllTraits(manager); // 캐릭터의 모든 특성 적용 해제
 
         Equipment equipment = null;
 
@@ -190,9 +195,11 @@ public static class EquipmentManager
             UpdateSkillAvailability(character);
 
             equipment.Unequip(character); // 해당 장비로 증감된 능력치 캐릭터에 적용 해제
-            character.ApplyAllTraits();   // 캐릭터의 모든 특성 적용
+            character.ApplyAllTraits(manager);   // 캐릭터의 모든 특성 적용
             character.UpdateFinalStats();
         }
+
+        manager.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(manager.character);
     }
 
     //장비와 스킬 관련 속성 구분 구현부

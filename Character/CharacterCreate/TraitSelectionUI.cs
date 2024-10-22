@@ -24,7 +24,7 @@ public class TraitSelectionUI : MonoBehaviour
         // 나머지 특성들 추가
     };
 
-    private void Start()
+    private void Awake()
     {
         characterCreation = this.GetComponent<CharacterCreation>(); // CharacterCreation 스크립트 참조
         PopulateLeftPanel();
@@ -71,7 +71,7 @@ public class TraitSelectionUI : MonoBehaviour
                     GameObject newButton = Instantiate(traitButtonPrefab, rightPanelContent);
                     TraitButton newTraitButton = newButton.GetComponent<TraitButton>();
                     newTraitButton.Initialize(trait, this, true, traitCost);
-                    TraitManager.AddTrait(characterCreation.selectOrigin, trait);
+                    TraitManager.AddTrait(characterCreation.characterManager, trait);
                     availableTraitPoints -= traitCost;
                     UpdateUI();
                     characterCreation.UIupdate();
@@ -94,7 +94,7 @@ public class TraitSelectionUI : MonoBehaviour
                 GameObject newButton = Instantiate(traitButtonPrefab, leftPanelContent);
                 TraitButton newTraitButton = newButton.GetComponent<TraitButton>();
                 newTraitButton.Initialize(trait, this, false, traitCost);
-                TraitManager.RemoveTrait(characterCreation.selectOrigin, trait);
+                TraitManager.RemoveTrait(characterCreation.characterManager, trait);
                 
                 availableTraitPoints += traitCost;
                 UpdateUI();

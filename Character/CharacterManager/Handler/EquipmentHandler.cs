@@ -15,7 +15,7 @@ public class EquipmentHandler : MonoBehaviour
 
     void Start()
     {
-        // 각 무기 배열에 부모 오브젝트의 자식 오브젝트들을 할당
+        // 각 배열에 부모 오브젝트의 자식 오브젝트들을 할당
         rightHandWeapons = GetChildObjects(WeaponParent.GetChild(0));
         leftHandWeapons = GetChildObjects(WeaponParent.GetChild(1));
         twoHandedWeapons = GetChildObjects(WeaponParent.GetChild(2));
@@ -56,7 +56,7 @@ public class EquipmentHandler : MonoBehaviour
             }
         }
 
-        if (characterData.SubWeapon is Weapon subWeapon)
+        if (characterData.SubWeapon is Weapon subWeapon && subWeapon != null)
         {
             handType = "LeftHanded";
             ChangeWeaponModel(subWeapon.WeaponType);
@@ -96,10 +96,10 @@ public class EquipmentHandler : MonoBehaviour
     {
         switch (weaponType)
         {
-            case WeaponType.Sword:
+            case WeaponType.LongSword:
                 rightHandWeapons[0].SetActive(true);
                 break;
-            case WeaponType.BluntWeapon:
+            case WeaponType.Mace:
                 rightHandWeapons[1].SetActive(true);
                 break;
                 // 나머지 무기 타입 처리
@@ -111,7 +111,7 @@ public class EquipmentHandler : MonoBehaviour
     {
         switch (weaponType)
         {
-            case WeaponType.Sword:
+            case WeaponType.Dagger:
                 leftHandWeapons[0].SetActive(true);
                 break;
             case WeaponType.Shield:

@@ -5,7 +5,7 @@ using System.Linq;
 public class OldSword : Weapon
 {
     public OldSword()
-        : base("³°Àº Àå°Ë", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon },WeaponType.Sword, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 15, WeaponAttackSpeedMultiplier = 1.0f})
+        : base("³°Àº Àå°Ë", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon },WeaponType.LongSword, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 15, WeaponAttackSpeedMultiplier = 1.0f})
     {
     }
 
@@ -42,7 +42,7 @@ public class RoundShield: Weapon
 public class Dagger : Weapon
 {
     public Dagger()
-        : base("´Ü°Ë", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon }, WeaponType.Sword, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 5, WeaponAttackSpeedMultiplier = 1.2f })
+        : base("´Ü°Ë", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon }, WeaponType.Dagger, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 5, WeaponAttackSpeedMultiplier = 1.2f })
     {
 
     }
@@ -99,7 +99,7 @@ public class Shortbow : Weapon
 public class RustySledgeHammer : Weapon
 {
     public RustySledgeHammer()
-    : base("³ì½¼ ´ëÇü ¸ÁÄ¡", WeaponCategory.HeavyWeapon, new List<WeaponTag> { WeaponTag.TwoHanded },WeaponType.BluntWeapon, new List<SkillAttribute> { SkillAttribute.Smash }, new CharacterStats { PhysicalAttack = 20, WeaponAttackSpeedMultiplier = 0.6f })
+    : base("³ì½¼ ´ëÇü ¸ÁÄ¡", WeaponCategory.HeavyWeapon, new List<WeaponTag> { WeaponTag.TwoHanded },WeaponType.Hammer, new List<SkillAttribute> { SkillAttribute.Smash }, new CharacterStats { PhysicalAttack = 20, WeaponAttackSpeedMultiplier = 0.6f })
     {
 
     }

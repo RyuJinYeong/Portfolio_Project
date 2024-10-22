@@ -209,13 +209,14 @@ public class CharacterData
     [JsonIgnore] // JSON 직렬화 시 무시 - Sprite는 DB 공간 낭비가 심해서 인게임에서 처리
     public Sprite Portrait; // 캐릭터 초상화 - 게임 실행시 게임씬에서 렌더이미지를 촬영하여 Sprite로 변환 후 할당
 
-    public CustomizationData customizationData; // 캐릭터 커스터마이징 데이터 - 이 데이터를 기반으로 생성된 베이스 캐릭터에 변형을 가해서 외형 적용
+    public CustomizationData customizationData; // 캐릭터 커스터마이징 데이터 - 이 데이터를 기반으로 생성된 베이스 캐릭터에 커스터마이징 적용
     public CharacterType Type {  get; set; } = CharacterType.Character;
 
     public CharacterStats BaseStats { get; set; } // 기본 스탯 + 특성으로 증감된 스탯
     public CharacterStats ModifiedStats { get; set; } = new CharacterStats(); // 증감 스탯 - 장비, 버프 등으로 변화한 스탯
     public CharacterStats FinalStats { get; set; } // 최종 스탯
 
+    [JsonIgnore]
     public CharacterStats tempStats = new CharacterStats(); // 임시스탯
 
     public float PhysicalDamageMultiplier { get; set; } = 1.0f; // 물리 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
@@ -314,14 +315,14 @@ public class CharacterData
     }
 
     //모든 특성 효과 제거
-    public void RemoveAllTraits()
+    public void RemoveAllTraits(CharacterManager manager)
     {
         // 1단계: % 연산 특성 적용
         foreach (var trait in Traits)
         {
             if (trait.IsPercentage) 
             {
-                trait.RemoveTrait(this);
+                trait.RemoveTrait(manager);
             }
         }
 
@@ -330,20 +331,20 @@ public class CharacterData
         {
             if (!trait.IsPercentage) 
             {
-                trait.RemoveTrait(this);
+                trait.RemoveTrait(manager);
             }
         }
     }
 
     //모든 특성 효과 적용
-    public void ApplyAllTraits()
+    public void ApplyAllTraits(CharacterManager manager)
     {
-        // 1단계: 고정값 연산 적용
+        // 1단계: 고정값 연산 및 기타 특성 적용
         foreach (var trait in Traits)
         {
             if (!trait.IsPercentage) 
             {
-                trait.ApplyTrait(this);
+                trait.ApplyTrait(manager);
             }
         }
 
@@ -352,7 +353,7 @@ public class CharacterData
         {
             if (trait.IsPercentage) 
             {
-                trait.ApplyTrait(this);
+                trait.ApplyTrait(manager);
             }
         }
     }
@@ -431,7 +432,9 @@ public class CharacterData
         int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));
         int baseInsight =  stats.Insight + (int)(stats.Wisdom * ((double)(stats.Wisdom / 10.0)) + stats.Intelligence * ((double)(stats.Intelligence / 10.0)));
         int baseMaxHp = 15 + stats.Lv * 5 + stats.Health * 3 + stats.MaxHp;
-        float baseAtkSpd = (1.0f + Mathf.Log(2, stats.Speed)) * this.Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 무기 배율
+        float baseAtkSpd = (1.0f + Mathf.Log(2, stats.Speed)); // 기본 속도 1.0 + 로그 함수에 의한 속도 증가
+        if (Weapon != null)
+            baseAtkSpd *= this.Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // * 무기 배율
         float baseCastSpd;
 
         if (stats.WeaponCastSpeedMultiplier == 0) // 장착중인 무기가 시전속도 능력치가 없을 경우
@@ -470,8 +473,6 @@ public class CharacterData
         stats.MaxMentality = baseMaxMentality;
         stats.MaxStamina = baseMaxStamina;
         stats.MaxHp = baseMaxHp;
-
-        //CurrentHp = MaxHp; // 현재 HP 초기화
 
         return stats;
     }

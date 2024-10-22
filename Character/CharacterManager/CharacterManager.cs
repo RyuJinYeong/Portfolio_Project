@@ -21,7 +21,7 @@ public class CharacterManager : MonoBehaviour
     {
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
-        combatHandler = new CombatHandler(this);
+        combatHandler = gameObject.AddComponent<CombatHandler>(); // new 키워드 사용 고려
     }
 
     public CharacterManager(CharacterData characterData)
@@ -139,7 +139,7 @@ public class CharacterManager : MonoBehaviour
     // 스탯 포인트 투자
     public void InvestStatPoint(string statName, int points)
     {
-        statHandler.InvestStatPoint(character, statName, points);
+        statHandler.InvestStatPoint(this, statName, points);
     }
 
     // 리소스 회복 메서드 (지구력, 정신력 등)

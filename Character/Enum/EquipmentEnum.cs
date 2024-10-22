@@ -13,13 +13,19 @@ public enum WeaponTag
 
 public enum WeaponType
 {
-    Sword, // 검
-    Bow, // 활
-    BluntWeapon, // 둔기
-    Shield, // 방패
-    Axe, // 도끼
-    Spear, // 창
-    Staff // 스태프
+    TwoHandedSword, // 양손검
+    Greatsword,   // 대검
+    LongSword,    // 장검
+    Dagger,       // 단검
+    Bow,          // 활
+    Mace,         // 철퇴
+    Hammer,       // 망치
+    Shield,       // 방패
+    Axe,          // 도끼
+    Spear,        // 창
+    Staff,        // 지팡이
+    Book,         // 책
+    Orb           // 오브
 }
 
 public enum EquipmentType
