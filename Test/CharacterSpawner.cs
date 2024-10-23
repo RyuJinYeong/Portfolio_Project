@@ -36,7 +36,8 @@ public class CharacterSpawner : MonoBehaviour
 
         if (characterManager != null)
         {
-            characterManager.InitializeCharacter(characterData);
+            characterManager.InitializeCharacter(DeepCopy.DeepCopyCharacter(characterData));
+            characterObject.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(characterManager.character);
             characterManager.character.IsMine = isMine;
             if(isMine)
             {

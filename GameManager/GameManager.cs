@@ -25,6 +25,15 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        SetDefaultCursor();
+    }
+
+    private void SetDefaultCursor()
+    {
+        Texture2D cursorTexture = Resources.Load<Texture2D>("Cursor/Cursor_Basic");
+        Vector2 cursorHotspot = new Vector2(0,0); // 마우스 포인터 클릭 지점 좌표 설정
+        Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);
     }
 
     public void ShowStageSelectionUI()

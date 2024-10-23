@@ -52,6 +52,13 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
+    private void ChangeCursor(string cursorType)
+    {
+        Texture2D cursorTexture = Resources.Load<Texture2D>($"Cursor/Cursor_{cursorType}");
+        Vector2 cursorHotspot = new Vector2(0, 0);
+        Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);        
+    }
+
     void SelectCharacter(CharacterManager characterManager)
     {
         selectedCharacter = characterManager;
@@ -63,8 +70,18 @@ public class CharacterTargeting : MonoBehaviour
         if (selectedCharacter == null) return;
 
         selectedSkill = skill;
-        isTargeting = true;
-        lineRenderer.enabled = true;
+
+        if (selectedSkill.IsRangedSkill)
+        {
+            // 커서를 원거리 스킬용으로 변경
+            ChangeCursor("Shoot");
+        }
+        else
+        {
+            ChangeCursor("Attack");
+            isTargeting = true;
+            lineRenderer.enabled = true;
+        }
     }
 
     void UpdateBezierCurve()
@@ -93,14 +110,16 @@ public class CharacterTargeting : MonoBehaviour
         selectedTarget = target;
         isTargeting = false;
 
+        // 스킬 아이콘 표시
+        //targetUIManager.DisplaySkillIcon(selectedSkill, target);
+
+        // 베지어 곡선 업데이트
         Vector3 startPosition = selectedCharacter.transform.position;
         Vector3 targetPosition = target.transform.position;
-
         Vector3 controlPoint = (startPosition + targetPosition) / 2;
         controlPoint.y += 2.0f;
 
         lineRenderer.positionCount = curveResolution;
-
         for (int i = 0; i < curveResolution; i++)
         {
             float t = i / (float)(curveResolution - 1);
@@ -108,13 +127,16 @@ public class CharacterTargeting : MonoBehaviour
             lineRenderer.SetPosition(i, curvePoint);
         }
 
+        // 스킬 실행 큐에 추가
         selectedCharacter.SelectSkill(selectedSkill, target);
+        ChangeCursor("Basic");
     }
 
     public void StopTargeting()
     {
         isTargeting = false;
         lineRenderer.enabled = false;
+        ChangeCursor("Basic");
     }
 
     Vector3 CalculateBezierPoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)
