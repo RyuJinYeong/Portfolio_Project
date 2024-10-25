@@ -21,7 +21,7 @@ public class CharacterManager : MonoBehaviour
     {
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
-        combatHandler = gameObject.AddComponent<CombatHandler>(); // new 키워드 사용 고려
+        combatHandler = gameObject.AddComponent<CombatHandler>();
     }
 
     public CharacterManager(CharacterData characterData)
@@ -108,7 +108,7 @@ public class CharacterManager : MonoBehaviour
         combatHandler.SelectSkill(skill, target);
     }
 
-    // 스킬 선택 시 CombatHandler로 전달
+    // 대응 스킬 선택 시 CombatHandler로 전달
     public void SelectCounterSkill(SkillBase skill, CharacterManager target)
     {
         combatHandler.SelectCounterSkill(skill, target);

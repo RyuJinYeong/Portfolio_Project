@@ -38,6 +38,7 @@ public class GameManager : MonoBehaviour
 
     public void ShowStageSelectionUI()
     {
+
         // 스테이지 선택 UI를 표시하는 로직 구현
     }
 

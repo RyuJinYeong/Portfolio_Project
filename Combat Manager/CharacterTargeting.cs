@@ -12,6 +12,12 @@ public class CharacterTargeting : MonoBehaviour
 
     public int curveResolution = 50;  // 곡선의 변곡점 수
 
+    public Color hoverOutlineColor = Color.red;
+    public Color selectedOutlineColor = Color.white;
+
+    private Outline currentHoverOutline;  // 마우스 커서가 가리키는 캐릭터의 외곽선
+    private Outline selectedCharacterOutline;  // 현재 선택된 캐릭터의 외곽선
+
     void Start()
     {
         mainCamera = Camera.main;
@@ -20,6 +26,9 @@ public class CharacterTargeting : MonoBehaviour
 
     void Update()
     {
+        // 마우스 커서가 올라간 캐릭터에 외곽선 적용
+        HandleHoverOutline();
+
         if (!isTargeting && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
@@ -52,6 +61,42 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
+    private void HandleHoverOutline()
+    {
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit))
+        {
+            if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
+            {
+                // 현재 선택된 캐릭터와 동일한 캐릭터에 커서가 있을 경우에는 외곽선을 업데이트하지 않음
+                if (selectedCharacter == characterManager)
+                    return;
+
+                // 기존 커서 외곽선을 지워준다
+                if (currentHoverOutline != null && currentHoverOutline != characterManager.GetComponent<Outline>())
+                {
+                    currentHoverOutline.enabled = false;
+                }
+
+                currentHoverOutline = characterManager.GetComponent<Outline>();
+                if (currentHoverOutline != null)
+                {
+                    currentHoverOutline.OutlineColor = hoverOutlineColor;
+                    currentHoverOutline.enabled = true;
+                }
+            }
+            else
+            {
+                // 커서가 다른 곳을 가리키면 외곽선을 제거
+                if (currentHoverOutline != null)
+                {
+                    currentHoverOutline.enabled = false;
+                    currentHoverOutline = null;
+                }
+            }
+        }
+    }
+
     private void ChangeCursor(string cursorType)
     {
         Texture2D cursorTexture = Resources.Load<Texture2D>($"Cursor/Cursor_{cursorType}");
@@ -61,8 +106,35 @@ public class CharacterTargeting : MonoBehaviour
 
     void SelectCharacter(CharacterManager characterManager)
     {
+        // 타겟팅 상태에서는 선택된 캐릭터를 변경하지 않음
+        if (isTargeting)
+        {
+            ChangeCursor("Basic");
+            return;
+        }
+
+        // 기존 선택된 캐릭터 외곽선 해제
+        if (selectedCharacterOutline != null)
+        {
+            selectedCharacterOutline.enabled = false;
+        }
+
         selectedCharacter = characterManager;
         UIManager.Instance.DisplayCharacterInfo(characterManager);
+
+        // 선택된 캐릭터 외곽선 적용
+        selectedCharacterOutline = selectedCharacter.GetComponent<Outline>();
+        if (selectedCharacterOutline != null)
+        {
+            selectedCharacterOutline.OutlineColor = selectedOutlineColor;
+            selectedCharacterOutline.enabled = true;
+        }
+
+        // 커서 외곽선이 동일한 캐릭터를 가리키고 있으면 제거
+        if (currentHoverOutline == selectedCharacterOutline)
+        {
+            currentHoverOutline = null;
+        }
     }
 
     public void StartTargeting(SkillBase skill)
@@ -75,6 +147,7 @@ public class CharacterTargeting : MonoBehaviour
         {
             // 커서를 원거리 스킬용으로 변경
             ChangeCursor("Shoot");
+            // 원거리 타겟팅 로직 구현 필요
         }
         else
         {
