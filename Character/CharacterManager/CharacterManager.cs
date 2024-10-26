@@ -4,11 +4,11 @@ using UnityEngine;
 
 public class CharacterManager : MonoBehaviour
 {
-    public CharacterData character;
-    private DamageHandler damageHandler;
-    private StatHandler statHandler;
-    private CombatHandler combatHandler;
-    private EquipmentHandler equipmentHandler;
+    public CharacterData character = new CharacterData();
+    private DamageHandler damageHandler = new DamageHandler();
+    private StatHandler statHandler = new StatHandler();
+    public CombatHandler combatHandler;
+    public CharacterUIHandler characterUIHandler;
 
     public Transform characterPool;
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
@@ -17,19 +17,22 @@ public class CharacterManager : MonoBehaviour
     public bool isInMeleeCombat = false;  // 경합 상태 여부
     public CharacterManager meleeTarget = null;  // 경합 중 타겟
 
-    public void Start()
+    void Awake()
     {
-        damageHandler = new DamageHandler();
-        statHandler = new StatHandler();
         combatHandler = gameObject.AddComponent<CombatHandler>();
     }
+    /*
+    private void Update()
+    {
+        UpdateCharacterUI();
+        characterUIHandler.FaceCamera(); // UI 작동 테스트용
+    }*/
 
     public CharacterManager(CharacterData characterData)
     {
         character = characterData;
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
-        combatHandler = new CombatHandler(this);
     }
 
     #region 캐릭터 데이터 초기화, 스폰관련 로직 - 세부 기능 구현 필요
@@ -91,7 +94,7 @@ public class CharacterManager : MonoBehaviour
 
     public void UpdateCharacterUI()
     {
-        // UI 업데이트 로직 (필요 시 추가)
+        characterUIHandler.UpdateUI();
     }
 
     #region 전투 관련 로직 위임

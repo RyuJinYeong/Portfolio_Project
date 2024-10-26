@@ -3,10 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Unity;
 
 public class CombatHandler : MonoBehaviour
 {
-    private CharacterManager characterManager;
+    public CharacterManager characterManager;
     private List<(SkillBase skill, CharacterManager target)> skillQueue;
     private List<(SkillBase skill, CharacterManager target)> counterSkillQueue;
     private List<SynergyEffect> activeSynergyEffects; // 시너지 효과 리스트
@@ -14,9 +15,9 @@ public class CombatHandler : MonoBehaviour
 
     private Coroutine turnTimerCoroutine;
 
-    public CombatHandler(CharacterManager manager)
+    public void Awake()
     {
-        characterManager = manager;
+        characterManager = GetComponent<CharacterManager>();
         skillQueue = new List<(SkillBase skill, CharacterManager target)>();
         counterSkillQueue = new List<(SkillBase skill, CharacterManager target)>();
         activeSynergyEffects = new List<SynergyEffect>();
@@ -135,10 +136,6 @@ public class CombatHandler : MonoBehaviour
             HandleEnemyDefeated();
         }
     }
-
-    //
-
-
 
     // 스킬 큐 순차 실행
     private void ExecuteSkillQueue(System.Action onTurnEnd)

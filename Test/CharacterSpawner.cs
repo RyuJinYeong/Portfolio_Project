@@ -39,13 +39,16 @@ public class CharacterSpawner : MonoBehaviour
             characterManager.InitializeCharacter(DeepCopy.DeepCopyCharacter(characterData));
             characterObject.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(characterManager.character);
             characterManager.character.IsMine = isMine;
+
+            characterManager.character.UpdateFinalStats();
+
             if(isMine)
             {
-                characterData.Name = "Test_Ally" + characterData.originName;
+                characterManager.character.Name = "Test_Ally" + characterManager.character.originName;
             }
             else
             {
-                characterData.Name = "Test_Enemy" + characterData.originName;
+                characterManager.character.Name = "Test_Enemy" + characterManager.character.originName;
             }
         }
         else
