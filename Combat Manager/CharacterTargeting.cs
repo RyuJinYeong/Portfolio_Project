@@ -104,7 +104,7 @@ public class CharacterTargeting : MonoBehaviour
         Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);        
     }
 
-    void SelectCharacter(CharacterManager characterManager)
+    public void SelectCharacter(CharacterManager characterManager)
     {
         // 타겟팅 상태에서는 선택된 캐릭터를 변경하지 않음
         if (isTargeting)

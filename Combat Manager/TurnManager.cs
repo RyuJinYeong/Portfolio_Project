@@ -9,7 +9,7 @@ public class TurnManager : MonoBehaviour
     private GameManager gameManager;
     private List<CharacterManager> allCharacters; // 전투에 참여한 모든 캐릭터들을 관리하는 리스트
 
-    private void Awake()
+    private void Start()
     {
         gameManager = GameManager.Instance;
         InitializeTurnOrder();
@@ -19,7 +19,14 @@ public class TurnManager : MonoBehaviour
     {
         allCharacters = gameManager.GetAllCharacters(); // 모든 캐릭터들을 가져와서 리스트에 저장
 
+        foreach (var character in allCharacters)
+        {
+            Debug.Log(character.character.Name + "리소스 회복");
+            character.RecoverResources();
+        }
+
         UpdateTurnQueue();
+        Debug.Log("turn queue : "+turnQueue.Count);
         StartNextTurn();
     }
 
@@ -70,15 +77,18 @@ public class TurnManager : MonoBehaviour
     {
         foreach (var characterManager in allCharacters)
         {
-            foreach (var statusEffect in characterManager.character.StatusEffects.ToList())
+            if (characterManager.character.StatusEffects != null)
             {
-                statusEffect.ApplyEffect(characterManager); // 매턴 지속형 상태이상 효과 적용
-                statusEffect.ReduceTurn(); // 상태이상의 남은 지속 턴 감소
-
-                if (statusEffect.IsExpired()) // 해당 상태이상의 남은 턴이 0일 경우
+                foreach (var statusEffect in characterManager.character.StatusEffects.ToList())
                 {
-                    statusEffect.OnExpire(characterManager); // 효과 적용 해제
-                    characterManager.character.StatusEffects.Remove(statusEffect); // 리스트에서 상태이상 제거
+                    statusEffect.ApplyEffect(characterManager); // 매턴 지속형 상태이상 효과 적용
+                    statusEffect.ReduceTurn(); // 상태이상의 남은 지속 턴 감소
+
+                    if (statusEffect.IsExpired()) // 해당 상태이상의 남은 턴이 0일 경우
+                    {
+                        statusEffect.OnExpire(characterManager); // 효과 적용 해제
+                        characterManager.character.StatusEffects.Remove(statusEffect); // 리스트에서 상태이상 제거
+                    }
                 }
             }
 

@@ -8,38 +8,164 @@ using UnityEngine.TextCore.Text;
 
 public class CharacterStats // 기본 캐릭터 스탯
 {
-    public int Strength { get; set; } // 근력 
-    public int Dexterity { get; set; } // 기교
-    public int Speed { get; set; } // 속도
-    public int Intelligence { get; set; } // 지능
-    public int Wisdom { get; set; } // 지혜
-    public int Health { get; set; } // 건강
-    public int Endurance { get; set; } // 인내
+    // 프라이빗 필드
+    private int strength;
+    private int dexterity;
+    private int speed;
+    private int intelligence;
+    private int wisdom;
+    private int health;
+    private int endurance;
 
-    public int Detection { get; set; } // 눈썰미
-    public int Insight { get; set; } // 통찰력
+    private int detection;
+    private int insight;
 
-    public float AttackSpeed { get; set; } // 공격속도
-    public float CastSpeed { get; set; } // 시전속도
+    private float attackSpeed;
+    private float castSpeed;
 
-    public float WeaponAttackSpeedMultiplier { get; set; } // 장착중인 무기의 공격속도
-    public float WeaponCastSpeedMultiplier { get; set; } // 장착중인 무기의 시전속도
+    private float weaponAttackSpeedMultiplier;
+    private float weaponCastSpeedMultiplier;
 
-    public int MaxHp { get; set; } // 최대 HP
-    public int CurrentHp { get; set; } // 현재 HP
+    private int maxHp;
+    private int currentHp;
+    private int maxMentality;
+    private int maxStamina;
+    private int currentMentality;
+    private int currentStamina;
 
-    public int MaxMentality { get; set; } // 최대 정신력
-    public int MaxStamina { get; set; } // 최대 지구력
+    private int staminaRecovery;
+    private int mentalityRecovery;
 
-    public int CurrentMentality { get; set; } // 현재정신력
-    public int CurrentStamina { get; set; } // 현재지구력
+    // 프로퍼티
+    public int Strength
+    {
+        get => strength;
+        set => strength = Mathf.Max(0, value); // 최소값 0 보장
+    }
 
-    public int StaminaRecovery { get; set; } // 지구력 회복량
-    public int MentalityRecovery { get; set; } // 정신력 회복량
-        
+    public int Dexterity
+    {
+        get => dexterity;
+        set => dexterity = Mathf.Max(0, value);
+    }
+
+    public int Speed
+    {
+        get => speed;
+        set => speed = Mathf.Max(0, value);
+    }
+
+    public int Intelligence
+    {
+        get => intelligence;
+        set => intelligence = Mathf.Max(0, value);
+    }
+
+    public int Wisdom
+    {
+        get => wisdom;
+        set => wisdom = Mathf.Max(0, value);
+    }
+
+    public int Health
+    {
+        get => health;
+        set => health = Mathf.Max(0, value);
+    }
+
+    public int Endurance
+    {
+        get => endurance;
+        set => endurance = Mathf.Max(0, value);
+    }
+
+    public int Detection
+    {
+        get => detection;
+        set => detection = Mathf.Max(0, value);
+    }
+
+    public int Insight
+    {
+        get => insight;
+        set => insight = Mathf.Max(0, value);
+    }
+
+    public float AttackSpeed
+    {
+        get => attackSpeed;
+        set => attackSpeed = Mathf.Max(0, value);
+    }
+
+    public float CastSpeed
+    {
+        get => castSpeed;
+        set => castSpeed = Mathf.Max(0, value);
+    }
+
+    public float WeaponAttackSpeedMultiplier
+    {
+        get => weaponAttackSpeedMultiplier;
+        set => weaponAttackSpeedMultiplier = Mathf.Max(0, value);
+    }
+
+    public float WeaponCastSpeedMultiplier
+    {
+        get => weaponCastSpeedMultiplier;
+        set => weaponCastSpeedMultiplier = Mathf.Max(0, value);
+    }
+
+    public int MaxHp
+    {
+        get => maxHp;
+        set => maxHp = Mathf.Max(0, value);
+    }
+
+    public int CurrentHp
+    {
+        get => currentHp;
+        set => currentHp = Mathf.Clamp(value, 0, MaxHp); // 0에서 MaxHp 사이로 제한
+    }
+
+    public int MaxMentality
+    {
+        get => maxMentality;
+        set => maxMentality = Mathf.Max(0, value);
+    }
+
+    public int MaxStamina
+    {
+        get => maxStamina;
+        set => maxStamina = Mathf.Max(0, value);
+    }
+
+    public int CurrentMentality
+    {
+        get => currentMentality;
+        set => currentMentality = Mathf.Clamp(value, 0, MaxMentality);
+    }
+
+    public int CurrentStamina
+    {
+        get => currentStamina;
+        set => currentStamina = Mathf.Clamp(value, 0, MaxStamina);
+    }
+
+    public int StaminaRecovery
+    {
+        get => staminaRecovery;
+        set => staminaRecovery = Mathf.Max(0, value);
+    }
+
+    public int MentalityRecovery
+    {
+        get => mentalityRecovery;
+        set => mentalityRecovery = Mathf.Max(0, value);
+    }
+
     #region 속성별저항력 ( 백분위 )
 
-    public int FireResistance { get; set; }
+public int FireResistance { get; set; }
     public int WaterResistance { get; set; }
     public int EarthResistance { get; set; }
     public int WindResistance { get; set; }
@@ -358,9 +484,7 @@ public class CharacterData
         }
     }
 
-
-    //생성자 오버로딩 구현부 - region
-    #region 생성자 구현부
+    #region 생성자 오버로딩 구현부
     public CharacterData(CharacterStats baseStats) // 베이스 스탯을 받아서 나머지 값을 초기화하는 생성자.
     {
         BaseStats = baseStats;

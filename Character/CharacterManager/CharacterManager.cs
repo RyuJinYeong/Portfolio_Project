@@ -21,12 +21,11 @@ public class CharacterManager : MonoBehaviour
     {
         combatHandler = gameObject.AddComponent<CombatHandler>();
     }
-    /*
-    private void Update()
+    private void Update() // UI 작동 테스트용
     {
         UpdateCharacterUI();
-        characterUIHandler.FaceCamera(); // UI 작동 테스트용
-    }*/
+        characterUIHandler.FaceCamera(); 
+    }
 
     public CharacterManager(CharacterData characterData)
     {
@@ -148,11 +147,8 @@ public class CharacterManager : MonoBehaviour
     // 리소스 회복 메서드 (지구력, 정신력 등)
     public void RecoverResources()
     {
-        character.FinalStats.CurrentStamina = Mathf.Min(character.FinalStats.MaxStamina,
-            character.FinalStats.CurrentStamina + character.FinalStats.StaminaRecovery);
-
-        character.FinalStats.CurrentMentality = Mathf.Min(character.FinalStats.MaxMentality,
-            character.FinalStats.CurrentMentality + character.FinalStats.MentalityRecovery);
+        character.FinalStats.CurrentStamina += character.FinalStats.StaminaRecovery;
+        character.FinalStats.CurrentMentality += character.FinalStats.MentalityRecovery;
 
         UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
     }

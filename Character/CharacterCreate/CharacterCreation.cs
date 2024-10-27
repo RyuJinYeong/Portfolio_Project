@@ -160,6 +160,8 @@ public class CharacterCreation : MonoBehaviour
         characterManager.character.customizationData = CustomInfo.customizationInfo; // 커스터마이징 정보 저장
         characterManager.character.Portrait = CustomInfo.characterCustom.CapturePortrait(); // 초상화 촬영용 렌더카메라로 초상화 촬영 후 Sprite로 변환하여 캐릭터 데이터에 저장
         characterManager.character.IsMine = true; //캐릭터 소유권 지정
+        characterManager.character.UpdateFinalStats();
+        characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
 
         PlayerManager._instance.CreateCharacter(characterManager.character);
         PlayerManager._instance.AddCharacterID(characterManager.character.ID);

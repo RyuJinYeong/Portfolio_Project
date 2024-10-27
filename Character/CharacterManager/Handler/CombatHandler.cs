@@ -29,7 +29,9 @@ public class CombatHandler : MonoBehaviour
     {
         characterManager.isPlayerTurn = true;
         turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd));
-        UIManager.Instance.DisplayCharacterInfo(characterManager); // UI 정보 표시
+
+        UIManager.Instance.characterTargeting.SelectCharacter(characterManager);
+            //.DisplayCharacterInfo(characterManager); // UI 정보 표시
     }
 
     // 턴 타이머

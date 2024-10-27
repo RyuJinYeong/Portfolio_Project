@@ -57,11 +57,6 @@ public class CharacterCustomization : MonoBehaviour
         {
             twoHandedWeapons[i] = newTwoHandedWeapons[i];
         }
-
-        // 배열 초기화가 제대로 되었는지 로그로 확인
-        Debug.Log($"Right Hand Weapons Count: {rightHandWeapons.Length}");
-        Debug.Log($"Left Hand Weapons Count: {leftHandWeapons.Length}");
-        Debug.Log($"Two Handed Weapons Count: {twoHandedWeapons.Length}");
     }
 
     // 자식 오브젝트 배열로 반환
