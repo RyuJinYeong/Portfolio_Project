@@ -1,6 +1,8 @@
+using SoftKitty.InventoryEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static SoftKitty.InventoryEngine.InventoryHolder;
 
 public class CharacterManager : MonoBehaviour
 {
@@ -19,12 +21,13 @@ public class CharacterManager : MonoBehaviour
 
     void Awake()
     {
-        combatHandler = gameObject.AddComponent<CombatHandler>();
+        combatHandler = gameObject.AddComponent<CombatHandler>();        
     }
-    private void Update() // UI 작동 테스트용
+
+    public void Start() // UI 작동 테스트
     {
         UpdateCharacterUI();
-        characterUIHandler.FaceCamera(); 
+        characterUIHandler.FaceCamera();
     }
 
     public CharacterManager(CharacterData characterData)
@@ -85,6 +88,19 @@ public class CharacterManager : MonoBehaviour
         characterData.InitializeSkills(); // 스킬 아이콘 초기화
         EquipmentManager.UpdateAvailableAttributes(characterData); // 캐릭터 장비 세부속성 초기화
         EquipmentManager.UpdateSkillAvailability(characterData); // 장비 세부 속성에 따른 사용 가능 스킬 초기화
+
+        InventoryHolder[] inventoryHolders = this.GetComponents<InventoryHolder>();
+        foreach (var holder in inventoryHolders)
+        {
+            if (holder.Type == InventoryHolder.HolderType.PlayerInventory)
+            {
+                character.CharacterInventory = holder;
+            }
+            else if (holder.Type == InventoryHolder.HolderType.PlayerEquipment)
+            {
+                character.CharacterEquipment = holder;
+            }
+        }
 
         UpdateCharacterUI();
     }

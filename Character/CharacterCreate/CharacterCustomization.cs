@@ -186,9 +186,14 @@ public class CharacterCustomization : MonoBehaviour
     // 무기 외형 업데이트 메서드
     public void UpdateWeaponAppearance(CharacterData characterData)
     {
+        if(characterData.Weapon is Weapon wea)
+        {
+            Debug.Log(wea.weaponTags[0]);
+            Debug.Log(wea.WeaponType);
+        }
         if (characterData.Weapon is Weapon weapon)
         {
-            if (weapon.Tags.Contains(WeaponTag.TwoHanded))
+            if (weapon.weaponTags.Contains(WeaponTag.TwoHanded))
             {
                 handType = "TwoHanded";
                 ChangeWeaponModel(weapon.WeaponType);
@@ -332,7 +337,7 @@ public class CharacterCustomization : MonoBehaviour
             case WeaponType.Axe:
                 twoHandedWeapons[3].SetActive(true);
                 break;
-            case WeaponType.TwoHandedSword:
+            case WeaponType.Two_HandedSword:
                 twoHandedWeapons[4].SetActive(true);
                 break;
                 // 기타 양손 무기

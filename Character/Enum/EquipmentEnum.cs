@@ -6,14 +6,14 @@ public enum WeaponCategory
 
 public enum WeaponTag
 {
-    TwoHanded,     // 양손 무기 - 원거리 무기의 경우 보조무기 장착이 불가능하게 임의로 설정
-    MagicWeapon,    // 마법 무기 - 마법 공격력 유무를 가리는 태그
-    OffhandWeapon,  // 보조 무기
+    TwoHanded = 0,     // 양손 무기 - 활의 경우 보조무기 장착이 불가능하게 임의로 설정
+    MagicWeapon = 1,    // 마법 무기 - 마법 공격력 유무를 가리는 태그
+    OffhandWeapon = 2  // 보조 무기
 }
 
 public enum WeaponType
 {
-    TwoHandedSword, // 양손검
+    Two_HandedSword, // 양손검
     Greatsword,   // 대검
     LongSword,    // 장검
     Dagger,       // 단검

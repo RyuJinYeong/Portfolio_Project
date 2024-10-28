@@ -61,7 +61,7 @@ public class Dagger : Weapon
 public class Quarterstaff : Weapon
 {
     public Quarterstaff()
-        : base("쿼터스태프", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.MagicWeapon }, WeaponType.Staff ,new List<SkillAttribute> { SkillAttribute.Smash, SkillAttribute.Pierce, SkillAttribute.Magic }, new CharacterStats { PhysicalAttack = 10, MagicalAttack = 10, WeaponAttackSpeedMultiplier = 1.0f, WeaponCastSpeedMultiplier = 1.0f })
+        : base("쿼터스태프", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.MagicWeapon }, WeaponType.Staff ,new List<SkillAttribute> { SkillAttribute.Smash, SkillAttribute.Magic }, new CharacterStats { PhysicalAttack = 10, MagicalAttack = 10, WeaponAttackSpeedMultiplier = 1.0f, WeaponCastSpeedMultiplier = 1.0f })
     {
 
     }

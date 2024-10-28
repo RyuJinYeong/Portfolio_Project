@@ -12,6 +12,7 @@ public abstract class Equipment : Item // 장착 가능한 장비에 대한 추상 클래스
     // 기본 생성자
     protected Equipment(string name, CharacterStats statModifiers, Item baseitem)
     {
+        type = 1;
         base.name = name;
         StatModifiers = statModifiers;
     }

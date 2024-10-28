@@ -9,10 +9,6 @@ public class UIManager : MonoBehaviour
 
     public GameObject synergyInfoPanel; // 시너지 정보가 표시되는 패널
 
-    public GameObject statusEffectIconPrefab;  // 상태이상 아이콘 프리팹
-    public Transform statusEffectIconParent;  // 상태이상 아이콘을 표시할 부모 오브젝트
-    private List<GameObject> activeStatusIcons = new List<GameObject>(); // 활성화 상태이상 아이콘
-
     [Header("Character Info UI Elements")]
     public Image characterPortrait;
     public TextMeshProUGUI characterName;
@@ -185,25 +181,5 @@ public class UIManager : MonoBehaviour
             newSynergyText.transform.SetParent(synergyInfoPanel.transform);
             newSynergyText.AddComponent<Text>().text = synergy.Name + status; // 텍스트 표시
         }*/
-    }
-
-    // 상태이상을 UI에 표시하는 메서드
-    public void UpdateStatusEffects(List<StatusEffect> activeEffects)
-    {
-        // 기존 아이콘 초기화
-        foreach (var icon in activeStatusIcons)
-        {
-            Destroy(icon);
-        }
-        activeStatusIcons.Clear();
-
-        // 새로운 상태이상 아이콘 생성
-        foreach (var effect in activeEffects)
-        {
-            GameObject iconInstance = Instantiate(statusEffectIconPrefab, statusEffectIconParent);
-            iconInstance.GetComponentInChildren<RawImage>().texture = effect.Icon;
-            //iconInstance.GetComponent<TooltipManager>().SetupTooltip(effect.Description);
-            activeStatusIcons.Add(iconInstance);
-        }
     }
 }

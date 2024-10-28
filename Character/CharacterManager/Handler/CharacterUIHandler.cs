@@ -1,3 +1,5 @@
+using SoftKitty.InventoryEngine;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -81,9 +83,29 @@ public class CharacterUIHandler : MonoBehaviour
         mentalityBar.GetComponent<Slider>().value = mentalityPercentage;
     }
 
-    private void UpdateStatusEffects()
+    public GameObject statusEffectIconPrefab;  // 상태이상 아이콘 프리팹
+    public Transform statusEffectIconParent;  // 상태이상 아이콘을 표시할 부모 오브젝트
+    private List<GameObject> activeStatusIcons = new List<GameObject>(); // 활성화 상태이상 아이콘
+
+    // 상태이상을 UI에 표시하는 메서드
+    public void UpdateStatusEffects()
     {
-        // 캐릭터의 상태 이상 아이콘을 업데이트하는 로직 추가
+        /*
+        // 기존 아이콘 초기화
+        foreach (var icon in activeStatusIcons)
+        {
+            Destroy(icon);
+        }
+        activeStatusIcons.Clear();
+
+        // 새로운 상태이상 아이콘 생성
+        foreach (var effect in activeEffects)
+        {
+            GameObject iconInstance = Instantiate(statusEffectIconPrefab, statusEffectIconParent);
+            iconInstance.GetComponentInChildren<RawImage>().texture = effect.Icon;
+            //iconInstance.GetComponent<TooltipManager>().SetupTooltip(effect.Description);
+            activeStatusIcons.Add(iconInstance);
+        }*/
     }
 
     private void UpdateTurnIcon()

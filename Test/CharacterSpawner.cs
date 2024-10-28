@@ -13,6 +13,8 @@ public class CharacterSpawner : MonoBehaviour
 
     private void Awake()
     {
+        EquipmentDatabase.InitializeDatabase();
+
         // 아군 캐릭터 데이터 초기화
         InitializeCharacter(frontCharacterObject, CharacterOrigin.GetOriginData()["방랑기사"], true);
         InitializeCharacter(backCharacterObject1, CharacterOrigin.GetOriginData()["사냥꾼"], true);
@@ -40,6 +42,16 @@ public class CharacterSpawner : MonoBehaviour
             characterObject.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(characterManager.character);
             characterManager.character.IsMine = isMine;
             characterManager.character.IsAlive = true;
+
+            List<Equipment> equips = (List<Equipment>)characterManager.character.GetEquipments();
+
+            foreach (Equipment equip in equips)
+            {
+                if (equip is not null)
+                {
+                    equip.Equip(characterManager.character);
+                }
+            }
 
             characterManager.character.UpdateFinalStats();
             characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;

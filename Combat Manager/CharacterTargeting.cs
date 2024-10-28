@@ -1,5 +1,7 @@
+using SoftKitty.InventoryEngine;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using static SoftKitty.InventoryEngine.InventoryHolder;
 
 public class CharacterTargeting : MonoBehaviour
 {
@@ -59,6 +61,25 @@ public class CharacterTargeting : MonoBehaviour
                 UpdateBezierCurve();
             }
         }
+    }
+
+    //인벤토리 열람
+
+    public void OpenPlayerInventory()
+    {
+        if (selectedCharacter.character.IsMine)
+            ItemManager.PlayerInventoryHolder.OpenWindow();
+    }
+
+    public void OpenPlayerEquipment()
+    {
+        if (selectedCharacter.character.IsMine)
+            ItemManager.PlayerEquipmentHolder.OpenWindow();
+    }
+    public void OpenSkills()
+    {
+        if (selectedCharacter.character.IsMine)
+            ItemManager.PlayerInventoryHolder.OpenWindowByName("Skills", "Skills"); //An example to use "Hidden Items" to achive "Skills" management.
     }
 
     private void HandleHoverOutline()
@@ -121,6 +142,14 @@ public class CharacterTargeting : MonoBehaviour
 
         selectedCharacter = characterManager;
         UIManager.Instance.DisplayCharacterInfo(characterManager);
+
+        if (selectedCharacter.character.IsMine)
+        {
+            // Player Inventory Holder 선택된 아군 캐릭터로 교체
+            ItemManager.PlayerInventoryHolder = selectedCharacter.character.CharacterInventory;
+            ItemManager.PlayerEquipmentHolder = selectedCharacter.character.CharacterEquipment;
+            HoverInformation.SetCompareHolder(selectedCharacter.character.CharacterEquipment);
+        }
 
         // 선택된 캐릭터 외곽선 적용
         selectedCharacterOutline = selectedCharacter.GetComponent<Outline>();

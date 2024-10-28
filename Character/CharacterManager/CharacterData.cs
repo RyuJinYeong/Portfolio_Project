@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine.TextCore.Text;
+using SoftKitty.InventoryEngine;
 
 public class CharacterStats // 기본 캐릭터 스탯
 {
@@ -165,7 +166,7 @@ public class CharacterStats // 기본 캐릭터 스탯
 
     #region 속성별저항력 ( 백분위 )
 
-public int FireResistance { get; set; }
+    public int FireResistance { get; set; }
     public int WaterResistance { get; set; }
     public int EarthResistance { get; set; }
     public int WindResistance { get; set; }
@@ -191,8 +192,8 @@ public int FireResistance { get; set; }
 
 
     #region 공격력/방어력
-    public int PhysicalAttack { get; set; }
-    public int MagicalAttack { get; set; }
+    public uint PhysicalAttack { get; set; }
+    public uint MagicalAttack { get; set; }
     public int PhysicalDefense { get; set; }
     public int MagicalDefense { get; set; }
     #endregion
@@ -217,6 +218,7 @@ public int FireResistance { get; set; }
         Wisdom = wis;
         Health = hth;
         Endurance = end;
+        Lv = 1;
     }
     #endregion
 
@@ -256,14 +258,16 @@ public int FireResistance { get; set; }
             AttackSpeed = a.AttackSpeed + b.AttackSpeed,
             CastSpeed = a.CastSpeed + b.CastSpeed,
             WeaponAttackSpeedMultiplier = a.WeaponAttackSpeedMultiplier + b.WeaponAttackSpeedMultiplier,
-            WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier + b.WeaponCastSpeedMultiplier,                                    
+            WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier + b.WeaponCastSpeedMultiplier,
             FireAffinity = a.FireAffinity + b.FireAffinity,
             WaterAffinity = a.WaterAffinity + b.WaterAffinity,
             EarthAffinity = a.EarthAffinity + b.EarthAffinity,
             WindAffinity = a.WindAffinity + b.WindAffinity,
             PierceAffinity = a.PierceAffinity + b.PierceAffinity,
             SlashAffinity = a.SlashAffinity + b.SlashAffinity,
-            SmashAffinity = a.SmashAffinity + b.SmashAffinity
+            SmashAffinity = a.SmashAffinity + b.SmashAffinity,
+            Lv = a.Lv + b.Lv,
+            Exp = a.Exp + b.Exp
         };
     }
 
@@ -309,7 +313,9 @@ public int FireResistance { get; set; }
             WindAffinity = a.WindAffinity - b.WindAffinity,
             PierceAffinity = a.PierceAffinity - b.PierceAffinity,
             SlashAffinity = a.SlashAffinity - b.SlashAffinity,
-            SmashAffinity = a.SmashAffinity - b.SmashAffinity
+            SmashAffinity = a.SmashAffinity - b.SmashAffinity,
+            Lv = a.Lv - b.Lv,
+            Exp = a.Exp - b.Exp
         };
     }
     #endregion
@@ -345,6 +351,9 @@ public class CharacterData
     [JsonIgnore]
     public CharacterStats tempStats = new CharacterStats(); // 임시스탯
 
+    [JsonIgnore]
+    public List<Attribute> updatedAttributes;
+
     public float PhysicalDamageMultiplier { get; set; } = 1.0f; // 물리 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
     public float MagicalDamageMultiplier { get; set; } = 1.0f; // 마법 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
     public float AttackSpeedMultiplier { get; set; } = 1.0f; // 공격 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
@@ -369,6 +378,11 @@ public class CharacterData
     // 장비로 인해 습득한 스킬과 특성 리스트
     public List<TraitBase> EquipmentTraits { get; set; }
     public List<SkillBase> EquipmentSkills { get; set; }
+
+    //캐릭터 인벤토리, 장비창 관리      
+    public InventoryHolder CharacterInventory;
+    public InventoryHolder CharacterEquipment;
+    
 
 
     //캐릭터의 장비
@@ -420,7 +434,7 @@ public class CharacterData
     {
         foreach (TraitBase trait in Traits)
         {
-            if (trait is OneArmedTrait && (weapon.Tags.Contains(WeaponTag.TwoHanded)))
+            if (trait is OneArmedTrait && (weapon.weaponTags.Contains(WeaponTag.TwoHanded)))
             {
                 return false;
             }
@@ -529,6 +543,9 @@ public class CharacterData
 
         // 기타 스탯 계산        
         FinalStats = CalcStat(tempStats);
+
+        // 최종 스탯을 업데이트한 후, Attribute로 변환하여 필요한 곳에서 사용할 수 있도록 동기화
+        updatedAttributes = StatsConverter.ConvertStatsToAttributes(FinalStats);
     }
 
     // 캐릭터의 스킬을 초기화하고 아이콘을 로드하는 메서드
@@ -550,37 +567,37 @@ public class CharacterData
         int baseStaminaRecovery = stats.StaminaRecovery + stats.Health / 10 + 1;
         int baseMentalityRecovery = stats.MentalityRecovery + stats.Intelligence / 10 + 1;
         int basePhysicalDefense = stats.PhysicalDefense + stats.Endurance / 5;
-        int baseMagicalDefense = stats.MagicalDefense + stats.Endurance / 5; 
-        int basePhysicalAttack = stats.PhysicalAttack;
-        int baseMagicalAttack = stats.MagicalAttack + stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
+        int baseMagicalDefense = stats.MagicalDefense + stats.Endurance / 5;
+        uint basePhysicalAttack = stats.PhysicalAttack;
+        uint baseMagicalAttack = stats.MagicalAttack + (uint)stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
         int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));
         int baseInsight =  stats.Insight + (int)(stats.Wisdom * ((double)(stats.Wisdom / 10.0)) + stats.Intelligence * ((double)(stats.Intelligence / 10.0)));
         int baseMaxHp = 15 + stats.Lv * 5 + stats.Health * 3 + stats.MaxHp;
-        float baseAtkSpd = (1.0f + Mathf.Log(2, stats.Speed)); // 기본 속도 1.0 + 로그 함수에 의한 속도 증가
+        float baseAtkSpd = (1.0f + stats.Speed * 0.01f); // 기본 속도 1.0 + 속도 스탯 * 0.01
         if (Weapon != null)
-            baseAtkSpd *= this.Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // * 무기 배율
+            baseAtkSpd *= this.Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // * 무기 속도 배율
         float baseCastSpd;
 
         if (stats.WeaponCastSpeedMultiplier == 0) // 장착중인 무기가 시전속도 능력치가 없을 경우
         {
-            baseCastSpd = (1.0f + Mathf.Log(2, stats.Wisdom)) * 0.8f; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 0.8 ( 시전속도 20% 감소 )
+            baseCastSpd = ((1.0f + stats.Wisdom * 0.01f) * 0.8f); // (기본 속도 1.0 + 지혜 * 0.01) * 0.8 ( 시전속도 20% 감소 )
         }
         else
         {            
-            baseCastSpd = (1.0f + Mathf.Log(2, stats.Wisdom)) * stats.WeaponCastSpeedMultiplier; // 기본 속도 1.0 + 로그 함수에 의한 속도 증가 * 무기 배율, 시전속도는 보조무기의 영향도 받게 구성
+            baseCastSpd = (1.0f + stats.Wisdom * 0.01f) * stats.WeaponCastSpeedMultiplier; // (기본 속도 1.0 + 지혜 * 0.01) * 무기 배율, 시전속도는 보조무기의 영향도 받게 구성
         }
 
         // 장착중인 무기 카테고리 구분 후 해당 스탯 적용
         if (this.Weapon is Weapon heavyWeapon && heavyWeapon.WeaponCategory == WeaponCategory.HeavyWeapon)
         {
-            basePhysicalAttack += stats.Strength;
+            basePhysicalAttack += (uint)stats.Strength;
         }
         else if (this.Weapon is Weapon lightWeapon && lightWeapon.WeaponCategory == WeaponCategory.LightWeapon)
         {
             if (stats.Strength > stats.Dexterity)
-                basePhysicalAttack += stats.Strength;
+                basePhysicalAttack += (uint)stats.Strength;
             else
-                basePhysicalAttack += stats.Dexterity;
+                basePhysicalAttack += (uint)stats.Dexterity;
         }
 
         // 새로운 값으로 업데이트

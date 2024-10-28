@@ -9,7 +9,7 @@ public static class DeepCopy
     {
         string character;
         character = JsonHelper.SerializeCharacterData(original);
-
-        return JsonHelper.DeserializeCharacterData(character);
+        CharacterData copy = JsonHelper.DeserializeCharacterData(character);
+        return copy;
     }
 }

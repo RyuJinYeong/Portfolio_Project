@@ -147,6 +147,19 @@ public class CharacterCreation : MonoBehaviour
         baseStats[9].text = characterManager.character.FinalStats.Endurance.ToString();
     }
 
+    public void UpdateEquipmentEffect()
+    {
+        List<Equipment> equips = (List<Equipment>)characterManager.character.GetEquipments();
+
+        foreach (Equipment equip in equips)
+        {
+            if (equip is not null)
+            {
+                equip.Equip(characterManager.character);
+            }
+        }
+    }
+
     public void OnCreateCharacterButtonPressed()
     {
         if (string.IsNullOrEmpty(characterNameInput.text))
@@ -155,6 +168,8 @@ public class CharacterCreation : MonoBehaviour
             ConfirmWindow.SetActive(true);
             return;
         }
+
+        UpdateEquipmentEffect();
 
         characterManager.character.Name = characterNameInput.text;
         characterManager.character.customizationData = CustomInfo.customizationInfo; // 커스터마이징 정보 저장
