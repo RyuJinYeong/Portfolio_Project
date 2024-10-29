@@ -9,7 +9,7 @@ public class PlayerData // 플레이어 계정 정보
     // 플레이어의 골드
     public int gold;
     // 플레이어의 인벤토리 아이템 목록
-    public List<InventoryItem> inventoryItems = new List<InventoryItem>();
+    //public List<InventoryItem> inventoryItems = new List<InventoryItem>();
     // 보유한 캐릭터 ID 목록
     public List<string> characterIds = new List<string>();
 
@@ -19,11 +19,4 @@ public class PlayerData // 플레이어 계정 정보
 
     // 캐릭터 위치 정보
     public Dictionary<string, bool> characterPositionMapping = new Dictionary<string, bool>(); // true for front row, false for back row
-}
-
-[System.Serializable]
-public class InventoryItem
-{
-    //public ItemData item;
-    public int quantity;
 }

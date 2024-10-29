@@ -185,12 +185,12 @@ public class CharacterCustomization : MonoBehaviour
 
     // 무기 외형 업데이트 메서드
     public void UpdateWeaponAppearance(CharacterData characterData)
-    {
+    {/*
         if(characterData.Weapon is Weapon wea)
         {
             Debug.Log(wea.weaponTags[0]);
             Debug.Log(wea.WeaponType);
-        }
+        }*/
         if (characterData.Weapon is Weapon weapon)
         {
             if (weapon.weaponTags.Contains(WeaponTag.TwoHanded))

@@ -88,6 +88,7 @@ public static class EquipmentDatabase
         shortbow.price = 150;
         shortbow.weight = 2.5f;
         shortbow.actions.Add("equip");
+        shortbow.tags.Add("MainHand");
         shortbow.tags.Add("TwoHanded");
         equipmentList.Add(shortbow);
 
@@ -98,26 +99,26 @@ public static class EquipmentDatabase
         rustySledgeHammer.price = 250;
         rustySledgeHammer.weight = 5.0f;
         rustySledgeHammer.actions.Add("equip");
-        rustySledgeHammer.tags.Add("TwoHanded");
         rustySledgeHammer.tags.Add("MainHand");
+        rustySledgeHammer.tags.Add("TwoHanded");
         equipmentList.Add(rustySledgeHammer);
 
 
         // 모든 장비를 itemDic에 추가
         foreach (var item in equipmentList)
         {
-            if (item is Weapon weapon)
+            /*if (item is Weapon weapon)
             {
                 Debug.Log("WeaponCategory = " + weapon.WeaponCategory);
                 Debug.Log("WeaponType = " + weapon.WeaponType);
-            }
+            }*/
             ItemManager.itemDic.Add(item.uid, item);
         }
-
+        /*
         if (ItemManager.itemDic[1004] is Weapon wea)
         {
             Debug.Log("WeaponCategory = " + wea.WeaponCategory);
             Debug.Log("WeaponType = " + wea.WeaponType);
-        }
+        }*/
     }
 }

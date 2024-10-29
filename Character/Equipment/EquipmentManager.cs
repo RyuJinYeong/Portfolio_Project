@@ -37,6 +37,12 @@ public static class EquipmentManager
                 character.Shoes = equipment;
                 break;
 
+            case EquipmentType.Cape:
+                if (character.Cape != null)
+                    character.Cape.Unequip(character);
+                character.Cape = equipment;
+                break;
+
             case EquipmentType.Ring:
                 if (character.Ring1 == null)
                 {
@@ -50,22 +56,6 @@ public static class EquipmentManager
                 {
                     character.Ring2.Unequip(character);
                     character.Ring2 = equipment;
-                }
-                break;
-
-            case EquipmentType.Earring:
-                if (character.Earring1 == null)
-                {
-                    character.Earring1 = equipment;
-                }
-                else if (character.Earring2 == null)
-                {
-                    character.Earring2 = equipment;
-                }
-                else
-                {
-                    character.Earring2.Unequip(character);
-                    character.Earring2 = equipment;
                 }
                 break;
 
@@ -146,6 +136,11 @@ public static class EquipmentManager
                 character.Shoes = null;
                 break;
 
+            case EquipmentType.Cape:
+                equipment = character.Shoes;
+                character.Cape = null;
+                break;
+
             case EquipmentType.Ring:
                 if (slotIndex == 1)
                 {
@@ -158,20 +153,6 @@ public static class EquipmentManager
                     character.Ring2 = null;
                 }
                 break;
-
-            case EquipmentType.Earring:
-                if (slotIndex == 1)
-                {
-                    equipment = character.Earring1;
-                    character.Earring1 = null;
-                }
-                else
-                {
-                    equipment = character.Earring2;
-                    character.Earring2 = null;
-                }
-                break;
-
             case EquipmentType.Necklace:
                 equipment = character.Necklace;
                 character.Necklace = null;
@@ -202,8 +183,8 @@ public static class EquipmentManager
         manager.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(manager.character);
     }
 
-    //장비와 스킬 관련 속성 구분 구현부
 
+    //장비와 스킬 관련 속성 구분 구현부
     public static void UpdateAvailableAttributes(CharacterData character)
     {
         // 캐릭터가 장착한 주무기 및 보조무기에 따라 사용 가능한 속성 업데이트
@@ -220,6 +201,7 @@ public static class EquipmentManager
         }
     }
 
+    //스킬 사용 가능 여부
     public static void UpdateSkillAvailability(CharacterData character)
     {
         foreach (var skill in character.Skills)
@@ -245,4 +227,21 @@ public static class EquipmentManager
             }
         }
     }
+    public static bool CanEquip(CharacterData character, Equipment equipment)
+    {
+        switch (equipment.EquipType)
+        {
+            case EquipmentType.Weapon:
+                if (equipment is Weapon weapon)
+                {
+                    return character.CanEquipMainWeapon(weapon);
+                }
+                break;
+            case EquipmentType.SubWeapon:
+                return character.CanEquipSubWeapon();
+                // 나머지 장비 타입에 대한 조건 추가
+        }
+        return true; // 기본적으로 장착 가능하다고 가정
+    }
+
 }

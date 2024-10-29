@@ -389,11 +389,10 @@ public class CharacterData
     public Equipment Helmet { get; set; }
     public Equipment Armor { get; set; }
     public Equipment Gloves { get; set; }
-    public Equipment Shoes { get; set; }    
+    public Equipment Shoes { get; set; }
+    public Equipment Cape { get; set; }
     public Equipment Ring1 { get; set; }   
     public Equipment Ring2 { get; set; }
-    public Equipment Earring1 { get; set; }
-    public Equipment Earring2 { get; set; }
     public Equipment Necklace { get; set; }
     public Equipment Weapon { get; set; }
     public Equipment SubWeapon { get; set; }
@@ -414,7 +413,7 @@ public class CharacterData
     // 장비 리스트를 반환하는 메서드 - 캐릭터의 장착중인 모든 장비 순회를 위한 메서드
     public IEnumerable<Equipment> GetEquipments()
     {
-        return new List<Equipment> { Helmet, Armor, Gloves, Shoes, Ring1, Ring2, Earring1, Earring2, Necklace, Weapon, SubWeapon };
+        return new List<Equipment> { Helmet, Armor, Gloves, Shoes, Ring1, Ring2, Cape, Necklace, Weapon, SubWeapon };
     }
 
     // 스킬 중복 체크 함수

@@ -34,9 +34,9 @@ public enum EquipmentType
     Armor,      // 갑옷
     Gloves,     // 장갑
     Shoes,      // 신발
+    Cape,       // 망토
     Ring,       // 반지
-    Earring,    // 귀걸이
-    Necklace,   // 목걸이
+    Necklace,   // 목걸이        
     Weapon,     // 무기
     SubWeapon   // 보조무기
 }
