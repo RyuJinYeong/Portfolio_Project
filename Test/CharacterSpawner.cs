@@ -17,10 +17,8 @@ public class CharacterSpawner : MonoBehaviour
     public GameObject enemyBackCharacterObject1; // 적군 후열 첫 번째 캐릭터 오브젝트
     public GameObject enemyBackCharacterObject2; // 적군 후열 두 번째 캐릭터 오브젝트
 
-    private void Awake()
+    private void Start()
     {
-        EquipmentDatabase.InitializeDatabase();
-
         // 아군 캐릭터 데이터 초기화
         InitializeCharacter(frontCharacterObject, CharacterOrigin.GetOriginData()["방랑기사"], true);
         InitializeCharacter(backCharacterObject1, CharacterOrigin.GetOriginData()["사냥꾼"], true);

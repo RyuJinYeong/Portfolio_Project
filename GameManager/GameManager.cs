@@ -26,7 +26,7 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
 
-        //EquipmentDatabase.InitializeDatabase();
+        EquipmentDatabase.InitializeDatabase();
         SetDefaultCursor();
     }
 
