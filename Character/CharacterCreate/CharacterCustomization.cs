@@ -193,7 +193,7 @@ public class CharacterCustomization : MonoBehaviour
         }*/
         if (characterData.Weapon is Weapon weapon)
         {
-            if (weapon.weaponTags.Contains(WeaponTag.TwoHanded))
+            if (weapon.WeaponTags.Contains(WeaponTag.TwoHanded))
             {
                 handType = "TwoHanded";
                 ChangeWeaponModel(weapon.WeaponType);

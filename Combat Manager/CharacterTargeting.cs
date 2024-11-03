@@ -68,13 +68,16 @@ public class CharacterTargeting : MonoBehaviour
     public void OpenPlayerInventory()
     {
         if (selectedCharacter.character.IsMine)
-            ItemManager.PlayerInventoryHolder.OpenWindow();
+            selectedCharacter.character.CharacterInventory.OpenWindow();
+        Debug.Log(selectedCharacter.character.CharacterInventory);
+                //ItemManager.PlayerInventoryHolder.OpenWindow();
     }
 
     public void OpenPlayerEquipment()
     {
         if (selectedCharacter.character.IsMine)
-            ItemManager.PlayerEquipmentHolder.OpenWindow();
+            selectedCharacter.character.CharacterEquipment.OpenWindow();
+        //ItemManager.PlayerEquipmentHolder.OpenWindow();
     }
     public void OpenSkills()
     {

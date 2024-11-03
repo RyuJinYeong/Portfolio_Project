@@ -21,7 +21,7 @@ public class TurnManager : MonoBehaviour
 
         foreach (var character in allCharacters)
         {
-            Debug.Log(character.character.Name + "리소스 회복");
+            Debug.Log("리소스 회복");
             character.RecoverResources();
         }
 

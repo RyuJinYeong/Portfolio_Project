@@ -17,7 +17,7 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1002] as Armor,  // Leather Gloves
                     ItemManager.itemDic[1003] as Armor,  // Leather Boots
                     ItemManager.itemDic[1004] as Weapon,  // Old Sword
-                    ItemManager.itemDic[1005] as Weapon,  // Round Shield
+                    ItemManager.itemDic[1005] as Weapon,  // Round Shield                    
                     new List<TraitBase> { new DurableTrait() },
                     new List<SkillBase> { new StingSkill(), new CutSkill(), new DefenceSkill() }
                 )

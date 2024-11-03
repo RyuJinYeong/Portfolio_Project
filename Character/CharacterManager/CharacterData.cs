@@ -9,7 +9,7 @@ using SoftKitty.InventoryEngine;
 
 public class CharacterStats // 기본 캐릭터 스탯
 {
-    // 프라이빗 필드
+    #region Private 필드
     private int strength;
     private int dexterity;
     private int speed;
@@ -36,8 +36,9 @@ public class CharacterStats // 기본 캐릭터 스탯
 
     private int staminaRecovery;
     private int mentalityRecovery;
+    #endregion
 
-    // 프로퍼티
+    #region 프로퍼티
     public int Strength
     {
         get => strength;
@@ -163,6 +164,7 @@ public class CharacterStats // 기본 캐릭터 스탯
         get => mentalityRecovery;
         set => mentalityRecovery = Mathf.Max(0, value);
     }
+    #endregion
 
     #region 속성별저항력 ( 백분위 )
 
@@ -198,10 +200,8 @@ public class CharacterStats // 기본 캐릭터 스탯
     public int MagicalDefense { get; set; }
     #endregion
 
-
     public int Lv { get; set; }
     public int Exp { get; set; }
-
 
     #region 생성자
     public CharacterStats()
@@ -319,6 +319,112 @@ public class CharacterStats // 기본 캐릭터 스탯
         };
     }
     #endregion
+
+    #region Stats -> Dictionary 메서드
+    // GetStats 메서드 완성
+    public Dictionary<string, float> GetStats()
+    {
+        Dictionary<string, float> stats = new Dictionary<string, float>();
+
+        if (Strength != 0) stats.Add("Strength", Strength);
+        if (Dexterity != 0) stats.Add("Dexterity", Dexterity);
+        if (Speed != 0) stats.Add("Speed", Speed);
+        if (Intelligence != 0) stats.Add("Intelligence", Intelligence);
+        if (Wisdom != 0) stats.Add("Wisdom", Wisdom);
+        if (Health != 0) stats.Add("Health", Health);
+        if (Endurance != 0) stats.Add("Endurance", Endurance);
+        if (Detection != 0) stats.Add("Detection", Detection);
+        if (Insight != 0) stats.Add("Insight", Insight);
+        if (AttackSpeed != 0) stats.Add("Attack Speed", AttackSpeed);
+        if (CastSpeed != 0) stats.Add("Cast Speed", CastSpeed);
+        if (WeaponAttackSpeedMultiplier != 0) stats.Add("Weapon Attack Speed Multiplier", WeaponAttackSpeedMultiplier);
+        if (WeaponCastSpeedMultiplier != 0) stats.Add("Weapon Cast Speed Multiplier", WeaponCastSpeedMultiplier);
+        if (MaxHp != 0) stats.Add("Max HP", MaxHp);
+        if (CurrentHp != 0) stats.Add("Current HP", CurrentHp);
+        if (MaxMentality != 0) stats.Add("Max Mentality", MaxMentality);
+        if (MaxStamina != 0) stats.Add("Max Stamina", MaxStamina);
+        if (CurrentMentality != 0) stats.Add("Current Mentality", CurrentMentality);
+        if (CurrentStamina != 0) stats.Add("Current Stamina", CurrentStamina);
+        if (StaminaRecovery != 0) stats.Add("Stamina Recovery", StaminaRecovery);
+        if (MentalityRecovery != 0) stats.Add("Mentality Recovery", MentalityRecovery);
+
+        // 속성별 저항력
+        if (FireResistance != 0) stats.Add("Fire Resistance", FireResistance);
+        if (WaterResistance != 0) stats.Add("Water Resistance", WaterResistance);
+        if (EarthResistance != 0) stats.Add("Earth Resistance", EarthResistance);
+        if (WindResistance != 0) stats.Add("Wind Resistance", WindResistance);
+        if (PierceResistance != 0) stats.Add("Pierce Resistance", PierceResistance);
+        if (SlashResistance != 0) stats.Add("Slash Resistance", SlashResistance);
+        if (SmashResistance != 0) stats.Add("Smash Resistance", SmashResistance);
+
+        // 속성별 특화
+        if (FireAffinity != 0) stats.Add("Fire Affinity", FireAffinity);
+        if (WaterAffinity != 0) stats.Add("Water Affinity", WaterAffinity);
+        if (EarthAffinity != 0) stats.Add("Earth Affinity", EarthAffinity);
+        if (WindAffinity != 0) stats.Add("Wind Affinity", WindAffinity);
+        if (PierceAffinity != 0) stats.Add("Pierce Affinity", PierceAffinity);
+        if (SlashAffinity != 0) stats.Add("Slash Affinity", SlashAffinity);
+        if (SmashAffinity != 0) stats.Add("Smash Affinity", SmashAffinity);
+
+        // 공격력/방어력
+        if (PhysicalAttack != 0) stats.Add("Physical Attack", PhysicalAttack);
+        if (MagicalAttack != 0) stats.Add("Magical Attack", MagicalAttack);
+        if (PhysicalDefense != 0) stats.Add("Physical Defense", PhysicalDefense);
+        if (MagicalDefense != 0) stats.Add("Magical Defense", MagicalDefense);
+
+        return stats;
+    }
+    #endregion
+
+    #region DeepCopy 메서드
+    public CharacterStats Copy()
+    {
+        return new CharacterStats
+        {
+            Strength = this.Strength,
+            Dexterity = this.Dexterity,
+            Speed = this.Speed,
+            Intelligence = this.Intelligence,
+            Wisdom = this.Wisdom,
+            Health = this.Health,
+            Endurance = this.Endurance,
+            Detection = this.Detection,
+            Insight = this.Insight,
+            AttackSpeed = this.AttackSpeed,
+            CastSpeed = this.CastSpeed,
+            WeaponAttackSpeedMultiplier = this.WeaponAttackSpeedMultiplier,
+            WeaponCastSpeedMultiplier = this.WeaponCastSpeedMultiplier,
+            MaxHp = this.MaxHp,
+            CurrentHp = this.CurrentHp,
+            MaxMentality = this.MaxMentality,
+            MaxStamina = this.MaxStamina,
+            CurrentMentality = this.CurrentMentality,
+            CurrentStamina = this.CurrentStamina,
+            StaminaRecovery = this.StaminaRecovery,
+            MentalityRecovery = this.MentalityRecovery,
+            FireResistance = this.FireResistance,
+            WaterResistance = this.WaterResistance,
+            EarthResistance = this.EarthResistance,
+            WindResistance = this.WindResistance,
+            PierceResistance = this.PierceResistance,
+            SlashResistance = this.SlashResistance,
+            SmashResistance = this.SmashResistance,
+            FireAffinity = this.FireAffinity,
+            WaterAffinity = this.WaterAffinity,
+            EarthAffinity = this.EarthAffinity,
+            WindAffinity = this.WindAffinity,
+            PierceAffinity = this.PierceAffinity,
+            SlashAffinity = this.SlashAffinity,
+            SmashAffinity = this.SmashAffinity,
+            PhysicalAttack = this.PhysicalAttack,
+            MagicalAttack = this.MagicalAttack,
+            PhysicalDefense = this.PhysicalDefense,
+            MagicalDefense = this.MagicalDefense,
+            Lv = this.Lv,
+            Exp = this.Exp
+        };
+    }
+    #endregion
 }
 
 public class CustomizationData
@@ -382,8 +488,20 @@ public class CharacterData
     //캐릭터 인벤토리, 장비창 관리      
     public InventoryHolder CharacterInventory;
     public InventoryHolder CharacterEquipment;
-    
 
+
+    public Equipment GetEquipmentByType(EquipmentType type)
+    {
+        List<Equipment> EquippedItems = (List<Equipment>)GetEquipments();
+        foreach (var equipment in EquippedItems)
+        {
+            if (equipment != null && equipment.EquipType == type)
+            {
+                return equipment;
+            }
+        }
+        return null; // 해당 타입의 장비가 장착되지 않은 경우 null 반환
+    }
 
     //캐릭터의 장비
     public Equipment Helmet { get; set; }
@@ -433,7 +551,7 @@ public class CharacterData
     {
         foreach (TraitBase trait in Traits)
         {
-            if (trait is OneArmedTrait && (weapon.weaponTags.Contains(WeaponTag.TwoHanded)))
+            if (trait is OneArmedTrait && (weapon.WeaponTags.Contains(WeaponTag.TwoHanded)))
             {
                 return false;
             }
@@ -574,7 +692,9 @@ public class CharacterData
         int baseMaxHp = 15 + stats.Lv * 5 + stats.Health * 3 + stats.MaxHp;
         float baseAtkSpd = (1.0f + stats.Speed * 0.01f); // 기본 속도 1.0 + 속도 스탯 * 0.01
         if (Weapon != null)
-            baseAtkSpd *= this.Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // * 무기 속도 배율
+        {
+            baseAtkSpd *= Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // * 무기 속도 배율
+        }
         float baseCastSpd;
 
         if (stats.WeaponCastSpeedMultiplier == 0) // 장착중인 무기가 시전속도 능력치가 없을 경우

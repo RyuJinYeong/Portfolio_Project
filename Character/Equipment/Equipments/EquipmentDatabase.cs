@@ -1,13 +1,12 @@
 using SoftKitty.InventoryEngine;
 using System.Collections.Generic;
 using UnityEngine;
-using static UnityEditor.Progress;
 
 public static class EquipmentDatabase
 {
     public static void InitializeDatabase()
     {
-        List<SoftKitty.InventoryEngine.Item> equipmentList = new List<SoftKitty.InventoryEngine.Item>(); // 지역 변수로 아이템 리스트 생성
+        List<Equipment> equipmentList = new List<Equipment>(); // 지역 변수로 아이템 리스트 생성
 
         // 기본 방어구 추가
         Armor leatherArmor = new Armor("Leather Armor", ArmorCategory.LightArmor, EquipmentType.Armor, new CharacterStats { PhysicalDefense = 5, MagicalDefense = 3 });
@@ -18,6 +17,8 @@ public static class EquipmentDatabase
         leatherArmor.weight = 2.5f;
         leatherArmor.actions.Add("equip");
         leatherArmor.tags.Add("Torso");
+        leatherArmor.type = 1;
+        leatherArmor.maxiumStack = 1;
         equipmentList.Add(leatherArmor);
 
         Armor leatherGloves = new Armor("Leather Gloves", ArmorCategory.LightArmor, EquipmentType.Gloves, new CharacterStats { PhysicalDefense = 1, MagicalDefense = 1 });
@@ -28,6 +29,8 @@ public static class EquipmentDatabase
         leatherGloves.weight = 0.5f;
         leatherGloves.actions.Add("equip");
         leatherGloves.tags.Add("Gauntlet");
+        leatherGloves.type = 1;
+        leatherGloves.maxiumStack = 1;
         equipmentList.Add(leatherGloves);
 
         Armor leatherBoots = new Armor("Leather Boots", ArmorCategory.LightArmor, EquipmentType.Shoes, new CharacterStats { PhysicalDefense = 1, MagicalDefense = 1 });
@@ -38,6 +41,8 @@ public static class EquipmentDatabase
         leatherBoots.weight = 0.8f;
         leatherBoots.actions.Add("equip");
         leatherBoots.tags.Add("Boots");
+        leatherBoots.type = 1;
+        leatherBoots.maxiumStack = 1;
         equipmentList.Add(leatherBoots);
 
         // 기본 무기들 추가
@@ -49,6 +54,8 @@ public static class EquipmentDatabase
         oldSword.weight = 3.0f;
         oldSword.actions.Add("equip");
         oldSword.tags.Add("MainHand");
+        oldSword.type = 1;
+        oldSword.maxiumStack = 1;
         equipmentList.Add(oldSword);
 
         Weapon roundShield = new Weapon("Round Shield", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon }, WeaponType.Shield, new List<SkillAttribute> { SkillAttribute.Smash }, new CharacterStats { PhysicalAttack = 1, PhysicalDefense = 1, WeaponAttackSpeedMultiplier = 1.0f });
@@ -59,6 +66,8 @@ public static class EquipmentDatabase
         roundShield.weight = 4.0f;
         roundShield.actions.Add("equip");
         roundShield.tags.Add("OffHand");
+        roundShield.type = 1;
+        roundShield.maxiumStack = 1;
         equipmentList.Add(roundShield);
 
         Weapon dagger = new Weapon("Dagger", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon }, WeaponType.Dagger, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 5, WeaponAttackSpeedMultiplier = 1.2f });
@@ -69,6 +78,8 @@ public static class EquipmentDatabase
         dagger.weight = 1.0f;
         dagger.actions.Add("equip");
         dagger.tags.Add("MainHand");
+        dagger.type = 1;
+        dagger.maxiumStack = 1;
         equipmentList.Add(dagger);
 
         Weapon quarterstaff = new Weapon("Quarterstaff", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.MagicWeapon }, WeaponType.Staff, new List<SkillAttribute> { SkillAttribute.Smash, SkillAttribute.Magic }, new CharacterStats { PhysicalAttack = 10, MagicalAttack = 10, WeaponAttackSpeedMultiplier = 1.0f, WeaponCastSpeedMultiplier = 1.0f });
@@ -79,6 +90,8 @@ public static class EquipmentDatabase
         quarterstaff.weight = 2.0f;
         quarterstaff.actions.Add("equip");
         quarterstaff.tags.Add("MainHand");
+        quarterstaff.type = 1;
+        quarterstaff.maxiumStack = 1;
         equipmentList.Add(quarterstaff);
 
         Weapon shortbow = new Weapon("Shortbow", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.TwoHanded }, WeaponType.Bow, new List<SkillAttribute> { SkillAttribute.Smash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 10, WeaponAttackSpeedMultiplier = 1.2f });
@@ -88,8 +101,11 @@ public static class EquipmentDatabase
         shortbow.price = 150;
         shortbow.weight = 2.5f;
         shortbow.actions.Add("equip");
+        shortbow.tags.Clear();
         shortbow.tags.Add("MainHand");
         shortbow.tags.Add("TwoHanded");
+        shortbow.type = 1;
+        shortbow.maxiumStack = 1;
         equipmentList.Add(shortbow);
 
         Weapon rustySledgeHammer = new Weapon("Rusty Sledgehammer", WeaponCategory.HeavyWeapon, new List<WeaponTag> { WeaponTag.TwoHanded }, WeaponType.Hammer, new List<SkillAttribute> { SkillAttribute.Smash }, new CharacterStats { PhysicalAttack = 20, WeaponAttackSpeedMultiplier = 0.6f });
@@ -101,24 +117,17 @@ public static class EquipmentDatabase
         rustySledgeHammer.actions.Add("equip");
         rustySledgeHammer.tags.Add("MainHand");
         rustySledgeHammer.tags.Add("TwoHanded");
+        rustySledgeHammer.type = 1;
+        rustySledgeHammer.maxiumStack = 1;
         equipmentList.Add(rustySledgeHammer);
 
-
         // 모든 장비를 itemDic에 추가
-        foreach (var item in equipmentList)
+        foreach (Equipment item in equipmentList)
         {
-            /*if (item is Weapon weapon)
-            {
-                Debug.Log("WeaponCategory = " + weapon.WeaponCategory);
-                Debug.Log("WeaponType = " + weapon.WeaponType);
-            }*/
-            ItemManager.itemDic.Add(item.uid, item);
+            if(item is Weapon weapon)
+                ItemManager.itemDic.Add(weapon.uid, weapon);
+            if (item is Armor armor)
+                ItemManager.itemDic.Add(armor.uid, armor);
         }
-        /*
-        if (ItemManager.itemDic[1004] is Weapon wea)
-        {
-            Debug.Log("WeaponCategory = " + wea.WeaponCategory);
-            Debug.Log("WeaponType = " + wea.WeaponType);
-        }*/
     }
 }
