@@ -14,32 +14,22 @@ public static class EquipmentManager
         switch (equipment.EquipType)
         {
             case EquipmentType.Helmet:
-                if (character.Helmet != null)
-                    character.Helmet.Unequip(character);
                 character.Helmet = equipment;
                 break;
 
             case EquipmentType.Armor:
-                if (character.Armor != null)
-                    character.Armor.Unequip(character);
                 character.Armor = equipment;
                 break;
 
             case EquipmentType.Gloves:
-                if (character.Gloves != null)
-                    character.Gloves.Unequip(character);
                 character.Gloves = equipment;
                 break;
 
             case EquipmentType.Shoes:
-                if (character.Shoes != null)
-                    character.Shoes.Unequip(character);
                 character.Shoes = equipment;
                 break;
 
             case EquipmentType.Cape:
-                if (character.Cape != null)
-                    character.Cape.Unequip(character);
                 character.Cape = equipment;
                 break;
 
@@ -48,20 +38,13 @@ public static class EquipmentManager
                 {
                     character.Ring1 = equipment;
                 }
-                else if (character.Ring2 == null)
+                else 
                 {
-                    character.Ring2 = equipment;
-                }
-                else
-                {
-                    character.Ring2.Unequip(character);
                     character.Ring2 = equipment;
                 }
                 break;
 
             case EquipmentType.Necklace:
-                if (character.Necklace != null)
-                    character.Necklace.Unequip(character);
                 character.Necklace = equipment;
                 break;
 
@@ -75,9 +58,6 @@ public static class EquipmentManager
                         return;
                     }
                 }
-
-                if (character.Weapon != null)
-                    character.Weapon.Unequip(character);
                 character.Weapon = equipment;
                 break;
 
@@ -88,9 +68,6 @@ public static class EquipmentManager
                     character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
                     return;
                 }
-
-                if (character.SubWeapon != null)
-                    character.SubWeapon.Unequip(character);
                 character.SubWeapon = equipment;
                 break;
         }
@@ -209,12 +186,20 @@ public static class EquipmentManager
             if (skill.Type == SkillType.Physical && !skill.IsCounterSkill)
             {
                 skill.CanUse = character.AvailableAttributes.Contains(skill.Attribute);
+                if(skill.IsBowSkill && character.Weapon is Weapon weapon && weapon.WeaponType == WeaponType.Bow) // 활 스킬 처리
+                {
+                    skill.CanUse = true;
+                }
+                else if(skill.IsBowSkill && character.Weapon is Weapon wea && wea.WeaponType != WeaponType.Bow)
+                {
+                    skill.CanUse = false;
+                }
             }
 
             skill.IsOffHand = false;
 
             // 보조무기 사용 여부를 고려한 스킬 사용 가능 여부 설정
-            if (character.Weapon is Weapon mainWeapon)
+            if (character.Weapon is Weapon mainWeapon && skill.CanUse)
             {
                 foreach(var att in mainWeapon.Attribute)
                 {
@@ -227,21 +212,4 @@ public static class EquipmentManager
             }
         }
     }
-    public static bool CanEquip(CharacterData character, Equipment equipment)
-    {
-        switch (equipment.EquipType)
-        {
-            case EquipmentType.Weapon:
-                if (equipment is Weapon weapon)
-                {
-                    return character.CanEquipMainWeapon(weapon);
-                }
-                break;
-            case EquipmentType.SubWeapon:
-                return character.CanEquipSubWeapon();
-                // 나머지 장비 타입에 대한 조건 추가
-        }
-        return true; // 기본적으로 장착 가능하다고 가정
-    }
-
 }

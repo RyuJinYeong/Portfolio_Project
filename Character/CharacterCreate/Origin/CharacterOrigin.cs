@@ -19,7 +19,14 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1004] as Weapon,  // Old Sword
                     ItemManager.itemDic[1005] as Weapon,  // Round Shield                    
                     new List<TraitBase> { new DurableTrait() },
-                    new List<SkillBase> { new StingSkill(), new CutSkill(), new DefenceSkill() }
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3009] as SkillBase  // 방어
+                    }
                 )
             },
             {
@@ -34,7 +41,14 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1004] as Weapon,
                     null,
                     new List<TraitBase> { new SwordMasteryTrait() },
-                    new List<SkillBase> { new StingSkill(), new CutSkill(), new DefenceSkill() }
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3009] as SkillBase  // 방어
+                    }
                 )
             },
             {
@@ -49,7 +63,14 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1009] as Weapon,  // Rusty Sledgehammer
                     null,
                     new List<TraitBase> { new BarbarianPowerTrait() },
-                    new List<SkillBase> { new SwingSkill(), new DefenceSkill() }
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3009] as SkillBase  // 방어
+                    }
                 )
             },
             {
@@ -64,7 +85,14 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1008] as Weapon,  // Shortbow
                     null,
                     new List<TraitBase> { new BowMasteryTrait() },
-                    new List<SkillBase> { new SwingSkill(), new ShootSkill(), new DefenceSkill() }
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3009] as SkillBase  // 방어
+                    }
                 )
             },
             {
@@ -79,7 +107,14 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1006] as Weapon,  // Dagger
                     ItemManager.itemDic[1006] as Weapon,  // Another Dagger
                     new List<TraitBase> { new DeftnessTrait() },
-                    new List<SkillBase> { new StingSkill(), new CutSkill(), new DefenceSkill() }
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3009] as SkillBase  // 방어
+                    }
                 )
             },
             {
@@ -94,7 +129,16 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1007] as Weapon,  // Quarterstaff
                     null,
                     new List<TraitBase> { new BasicElementalAptitudeTrait() },
-                    new List<SkillBase> { new SwingSkill(), new MagicBulletSkill(), new MagicShieldSkill(), new DefenceSkill() }
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3008] as SkillBase,  // 마력탄
+                        ItemManager.itemDic[3009] as SkillBase,  // 방어
+                        ItemManager.itemDic[3010] as SkillBase   // 마력방패
+                    }
                 )
             },
             {
@@ -109,7 +153,16 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1004] as Weapon,  // Old Sword
                     null,
                     new List<TraitBase> { },
-                    new List<SkillBase> { new StingSkill(), new CutSkill(), new MagicBulletSkill(), new DefenceSkill(), new MagicShieldSkill() }
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3008] as SkillBase,  // 마력탄
+                        ItemManager.itemDic[3009] as SkillBase,  // 방어
+                        ItemManager.itemDic[3010] as SkillBase   // 마력방패
+                    }
                 )
             }
         };

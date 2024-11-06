@@ -6,6 +6,7 @@ using System.Linq;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine.TextCore.Text;
 using SoftKitty.InventoryEngine;
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
 
 public class CharacterStats // 기본 캐릭터 스탯
 {
@@ -194,10 +195,10 @@ public class CharacterStats // 기본 캐릭터 스탯
 
 
     #region 공격력/방어력
-    public uint PhysicalAttack { get; set; }
-    public uint MagicalAttack { get; set; }
-    public int PhysicalDefense { get; set; }
-    public int MagicalDefense { get; set; }
+    public uint PhysicalAttack { get; set; } = 0;
+    public uint MagicalAttack { get; set; } = 0;
+    public int PhysicalDefense { get; set; } = 0;
+    public int MagicalDefense { get; set; } = 0;
     #endregion
 
     public int Lv { get; set; }
@@ -321,7 +322,6 @@ public class CharacterStats // 기본 캐릭터 스탯
     #endregion
 
     #region Stats -> Dictionary 메서드
-    // GetStats 메서드 완성
     public Dictionary<string, float> GetStats()
     {
         Dictionary<string, float> stats = new Dictionary<string, float>();
@@ -373,6 +373,38 @@ public class CharacterStats // 기본 캐릭터 스탯
         if (MagicalDefense != 0) stats.Add("Magical Defense", MagicalDefense);
 
         return stats;
+    }
+
+    public Dictionary<string, float> GetBasicStats()
+    {
+        Dictionary<string, float> basicStats = new Dictionary<string, float>();
+
+        if (Strength != 0) basicStats.Add("Strength", Strength);
+        if (Dexterity != 0) basicStats.Add("Dexterity", Dexterity);
+        if (Speed != 0) basicStats.Add("Speed", Speed);
+        if (Intelligence != 0) basicStats.Add("Intelligence", Intelligence);
+        if (Wisdom != 0) basicStats.Add("Wisdom", Wisdom);
+        if (Health != 0) basicStats.Add("Health", Health);
+        if (Endurance != 0) basicStats.Add("Endurance", Endurance);
+        if (Detection != 0) basicStats.Add("Detection", Detection);
+        if (Insight != 0) basicStats.Add("Insight", Insight);
+        if (AttackSpeed != 0) basicStats.Add("Attack Speed", AttackSpeed);
+        if (CastSpeed != 0) basicStats.Add("Cast Speed", CastSpeed);
+        if (WeaponAttackSpeedMultiplier != 0) basicStats.Add("Weapon Attack Speed Multiplier", WeaponAttackSpeedMultiplier);
+        if (WeaponCastSpeedMultiplier != 0) basicStats.Add("Weapon Cast Speed Multiplier", WeaponCastSpeedMultiplier);
+        if (MaxHp != 0) basicStats.Add("Max HP", MaxHp);
+        if (CurrentHp != 0) basicStats.Add("Current HP", CurrentHp);
+        if (MaxMentality != 0) basicStats.Add("Max Mentality", MaxMentality);
+        if (MaxStamina != 0) basicStats.Add("Max Stamina", MaxStamina);
+        if (StaminaRecovery != 0) basicStats.Add("Stamina Recovery", StaminaRecovery);
+        if (MentalityRecovery != 0) basicStats.Add("Mentality Recovery", MentalityRecovery);
+
+        // 공격력/방어력
+        if (PhysicalAttack != 0) basicStats.Add("Physical Attack", PhysicalAttack);
+        if (MagicalAttack != 0) basicStats.Add("Magical Attack", MagicalAttack);
+        if (PhysicalDefense != 0) basicStats.Add("Physical Defense", PhysicalDefense);
+        if (MagicalDefense != 0) basicStats.Add("Magical Defense", MagicalDefense);
+        return basicStats;
     }
     #endregion
 
@@ -717,6 +749,24 @@ public class CharacterData
                 basePhysicalAttack += (uint)stats.Strength;
             else
                 basePhysicalAttack += (uint)stats.Dexterity;
+        }
+        else if (this.Weapon == null && this.SubWeapon != null)
+        {
+            if (this.SubWeapon is Weapon hvWeapon && hvWeapon.WeaponCategory == WeaponCategory.HeavyWeapon)
+            {
+                basePhysicalAttack += (uint)stats.Strength;
+            }
+            else if (this.SubWeapon is Weapon ltWeapon && ltWeapon.WeaponCategory == WeaponCategory.LightWeapon)
+            {
+                if (stats.Strength > stats.Dexterity)
+                    basePhysicalAttack += (uint)stats.Strength;
+                else
+                    basePhysicalAttack += (uint)stats.Dexterity;
+            }
+        }
+        else if(this.Weapon == null && this.SubWeapon == null)
+        {
+            basePhysicalAttack += (uint)stats.Strength;
         }
 
         // 새로운 값으로 업데이트

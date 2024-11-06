@@ -28,6 +28,7 @@ public class GameManager : MonoBehaviour
         }
 
         EquipmentDatabase.InitializeDatabase();
+        SkillDatabase.InitializeDatabase();
         SetDefaultCursor();
         
     }

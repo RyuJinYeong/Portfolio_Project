@@ -1,18 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-/*
-public enum ReactSkill // 대응스킬
-{
-dodge, // 회피
-}
-
-public enum Skill // 일반스킬
-{
-fake_attack // 속임수 공격
-}
-*/
-
 
 // 스킬을 관리하는 클래스
 public static class SkillManager

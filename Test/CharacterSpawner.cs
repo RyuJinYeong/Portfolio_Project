@@ -87,21 +87,13 @@ public class CharacterSpawner : MonoBehaviour
                     // 먼저 장비를 스택에 추가
                     var addResult = equipmentHolder.AddItem(equipment, 1); // AddItem의 반환값을 활용하여 추가 성공 여부 확인
 
-                    // 아이템 추가가 성공했을 때만 변경 사항을 알립니다.
-                    if (addResult != null && addResult.Number > 0)
-                    {
-                        // 변경된 장비 정보를 딕셔너리에 추가하여 ItemChanged 호출
-                        Dictionary<Item, int> _changedItems = new Dictionary<Item, int>();
-                        _changedItems.Add(equipment, 1);
-                        equipmentHolder.ItemChanged(_changedItems);
+                    // 변경된 장비 정보를 딕셔너리에 추가하여 ItemChanged 호출
+                    Dictionary<Item, int> _changedItems = new Dictionary<Item, int>();
+                    _changedItems.Add(equipment, 1);
+                    equipmentHolder.ItemChanged(_changedItems);
 
-                        // 능력치에 장비 효과 적용
-                        equipment.Equip(characterManager.character);
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"Failed to add equipment: {equipment.name}");
-                    }
+                    // 능력치에 장비 효과 적용
+                    equipment.Equip(characterManager.character);                    
                 }
             }
 

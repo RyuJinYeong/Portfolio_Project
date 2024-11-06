@@ -12,9 +12,11 @@ public class Equipment : Item // 장착 가능한 장비에 대한 추상 클래스
     // 기본 생성자
     public Equipment(string name, CharacterStats statModifiers, Item baseitem)
     {
-        type = 1;
         base.name = name;
         StatModifiers = statModifiers;
+        this.actions.Add("equip");
+        this.type = 1;
+        this.maxiumStack = 1;
     }
 
     //장비 장착 위치를 받는 생성자
@@ -23,11 +25,16 @@ public class Equipment : Item // 장착 가능한 장비에 대한 추상 클래스
         base.name = name;
         EquipType = equipType;
         StatModifiers = statModifiers;
+        this.actions.Add("equip");
+        this.type = 1;
+        this.maxiumStack = 1;
     }
 
     public Equipment()
     {
-
+        this.actions.Add("equip");
+        this.type = 1;
+        this.maxiumStack = 1;
     }
 
     public virtual void Equip(CharacterData character){}

@@ -1,3 +1,4 @@
+using SoftKitty.InventoryEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,7 +11,7 @@ public class MagicSword : Weapon, IHasSkill // 스킬 달린 장비 견본 코드
     public MagicSword(WeaponCategory category, List<WeaponTag> tags, List<SkillAttribute> attributes, CharacterStats statModifiers)
         : base("스킬예시용무기", category, tags,WeaponType.LongSword, attributes, statModifiers)
     {
-        Skills[0] = new FireballSkill();
+        Skills[0] = ItemManager.itemDic[3012].Copy() as SkillBase;
     }
 
 

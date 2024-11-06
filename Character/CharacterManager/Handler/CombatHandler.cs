@@ -218,9 +218,9 @@ public class CombatHandler : MonoBehaviour
 
         int finalDamage = target.TakeDamage(damage, skill.Type, skill.Attribute);
 
-        if (skill is IEvolvableSkill evolvableSkill)
+        if (skill.IsEvolvableSkill)
         {
-            evolvableSkill.OnSkillUsed(finalDamage, characterManager.character, target.character);
+            skill.OnSkillUsed(finalDamage, characterManager.character, target.character);
         }
 
         // 상대가 사망했는지 확인 후 처리
