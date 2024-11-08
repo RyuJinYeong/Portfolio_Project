@@ -105,7 +105,7 @@ public static class CharacterOrigin
                     ItemManager.itemDic[1002] as Armor,  // Leather Gloves
                     ItemManager.itemDic[1003] as Armor,  // Leather Boots
                     ItemManager.itemDic[1006] as Weapon,  // Dagger
-                    ItemManager.itemDic[1006] as Weapon,  // Another Dagger
+                    null ,
                     new List<TraitBase> { new DeftnessTrait() },
                     new List<SkillBase>
                     {

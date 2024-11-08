@@ -28,7 +28,8 @@ public static class SkillDatabase
             SkillDamageCount = 0,
             EvolRequiredUseCount = 100,
             EvolRequiredKillCount = 10,
-            EvolRequiredDamageCount = 1000
+            EvolRequiredDamageCount = 1000,
+            QuickSlot = true
         });
 
         // 분쇄 스킬 추가 (진화 후 스킬) 3001
@@ -43,7 +44,8 @@ public static class SkillDatabase
             iconAddress: "Assets/Icons/Skills/Smash.png"
         )
         {
-            uid = uidCounter++
+            uid = uidCounter++,
+            QuickSlot = true
         });
 
         // 찌르기 스킬 추가 (진화 가능) 3002
@@ -65,7 +67,8 @@ public static class SkillDatabase
             SkillDamageCount = 0,
             EvolRequiredUseCount = 100,
             EvolRequiredKillCount = 10,
-            EvolRequiredDamageCount = 1000
+            EvolRequiredDamageCount = 1000,
+            QuickSlot = true
         });
 
         // 관통 스킬 추가 (진화 후 스킬) 3003
@@ -80,7 +83,8 @@ public static class SkillDatabase
             iconAddress: "Assets/Icons/Skills/Pierce.png"
         )
         {
-            uid = uidCounter++
+            uid = uidCounter++,
+            QuickSlot = true
         });
 
         // 사격 스킬 추가 (진화 가능) 3004
@@ -104,7 +108,8 @@ public static class SkillDatabase
             EvolRequiredKillCount = 10,
             EvolRequiredDamageCount = 1000,
             IsBowSkill = true,
-            IsRangedSkill = true
+            IsRangedSkill = true,
+            QuickSlot = true
         });
 
         // 관통시 스킬 추가 (진화 후 스킬) 3005
@@ -121,7 +126,8 @@ public static class SkillDatabase
         {
             uid = uidCounter++,
             IsBowSkill = true,
-            IsRangedSkill = true
+            IsRangedSkill = true,
+            QuickSlot = true
         });
 
         // 물리 공격 스킬 - 베기 추가 3006
@@ -143,7 +149,8 @@ public static class SkillDatabase
             SkillDamageCount = 0,
             EvolRequiredUseCount = 100,
             EvolRequiredKillCount = 10,
-            EvolRequiredDamageCount = 1000
+            EvolRequiredDamageCount = 1000,
+            QuickSlot = true
         });
 
         // 참격 스킬 추가 3007
@@ -158,7 +165,8 @@ public static class SkillDatabase
             iconAddress: "Assets/Icons/Skills/Slash.png"
         )
         {
-            uid = uidCounter++
+            uid = uidCounter++,
+            QuickSlot = true
         });
 
         // 마법 공격 스킬 - 마력탄 추가 3008
@@ -175,7 +183,8 @@ public static class SkillDatabase
         {
             uid = uidCounter++,
             IsRangedSkill = true,
-            CanUse = true
+            CanUse = true,
+            QuickSlot = true
         });
 
         // 방어 스킬 추가 3009
@@ -191,7 +200,8 @@ public static class SkillDatabase
         )
         {
             uid = uidCounter++,
-            IsCounterSkill = true
+            IsCounterSkill = true,
+            QuickSlot = true
         });
 
         // 마력 방패 스킬 추가 3010
@@ -208,7 +218,8 @@ public static class SkillDatabase
         {
             uid = uidCounter++,
             IsCounterSkill = true,
-            CanUse = true
+            CanUse = true,
+            QuickSlot = true
         });
 
         // 화염구 스킬 추가 - 3011
@@ -225,7 +236,8 @@ public static class SkillDatabase
         {
             uid = uidCounter++,
             IsRangedSkill = true,
-            CanUse = true
+            CanUse = true,
+            QuickSlot = true
         });
 
         // 모든 스킬을 아이템 매니저에 추가

@@ -14,6 +14,7 @@ public class CombatHandler : MonoBehaviour
     private SynergyManager synergyManager;
 
     private Coroutine turnTimerCoroutine;
+    private float totalDuration = 5.0f; // 턴 제한 시간
 
     public void Awake()
     {
@@ -29,20 +30,28 @@ public class CombatHandler : MonoBehaviour
     {
         characterManager.isPlayerTurn = true;
         turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd));
+        characterManager.UpdateCharacterUI();
 
         UIManager.Instance.characterTargeting.SelectCharacter(characterManager);
-            //.DisplayCharacterInfo(characterManager); // UI 정보 표시
     }
 
     // 턴 타이머
     private IEnumerator TurnTimer(System.Action onTurnEnd)
     {
-        yield return new WaitForSeconds(60.0f); // 60초 제한 시간
+        float timeRemaining = totalDuration;
+
+        while (timeRemaining > 0)
+        {
+            UIManager.Instance.UpdateTurnTimer(timeRemaining);
+
+            yield return null; // 한 프레임 기다림
+            timeRemaining -= Time.deltaTime; // 남은 시간 감소
+        }
+        //yield return new WaitForSeconds(60.0f); // 60초 제한 시간
 
         if (characterManager.isPlayerTurn)
         {
-            ExecuteSkillQueue(onTurnEnd); // 턴 종료 전 스킬 큐 실행            
-            onTurnEnd();
+            ExecuteSkillQueue(onTurnEnd); // 턴 종료 전 스킬 큐 실행     
         }
     }
 
@@ -74,7 +83,7 @@ public class CombatHandler : MonoBehaviour
         }
 
         skillQueue.Add((skill, target));
-        Debug.Log($"Skill {skill.name} added to queue. Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
+        Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
 
         // 스킬 선택 후, 적용 가능한 시너지 효과 확인
         List<SynergyEffect> newSynergyEffects = synergyManager.GetActiveSynergies(skillQueue.Select(s => s.skill).ToList());
@@ -140,7 +149,7 @@ public class CombatHandler : MonoBehaviour
     }
 
     // 스킬 큐 순차 실행
-    private void ExecuteSkillQueue(System.Action onTurnEnd)
+    public void ExecuteSkillQueue(System.Action onTurnEnd)
     {
         StopCoroutine(turnTimerCoroutine);
         if (skillQueue.Count > 0)
@@ -155,7 +164,7 @@ public class CombatHandler : MonoBehaviour
     }
 
     // 스킬, 대응 스킬 큐 객체 순차 접근 및 사용
-    private IEnumerator ExecuteSkills(System.Action onTurnEnd)
+    public IEnumerator ExecuteSkills(System.Action onTurnEnd)
     {
         foreach (var item in skillQueue)
         {
@@ -266,7 +275,7 @@ public class CombatHandler : MonoBehaviour
     public IEnumerator HandleAITurn(System.Action onTurnEnd)
     {
         // AI 로직 구현 필요
-        yield return new WaitForSeconds(1.0f); // AI 대기 시간
+        yield return new WaitForSeconds(2.0f); // AI 대기 시간
         UseSkill(AIChooseSkill(), FindTargetForAI());
         onTurnEnd();  // 턴 종료 콜백 호출
     }

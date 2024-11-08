@@ -7,10 +7,16 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    public GameObject synergyInfoPanel; // 시너지 정보가 표시되는 패널
+    public GameObject turnOrderPanel;  // 상단 턴 큐 패널
+    public GameObject characterPortraitPrefab;  // 캐릭터 초상화 프리팹
 
-    [Header("Character Info UI Elements")]
-    public Image characterPortrait;
+    public TextMeshProUGUI turnTimerText; // 남은 턴 시간을 표시하는 텍스트
+
+    public Button turnEndButton; // 턴 종료 버튼 추가
+
+    public GameObject synergyInfoPanel; // 시너지 정보가 표시되는 패널
+        
+    public RawImage characterPortrait;
     public TextMeshProUGUI characterName;
 
     public TextMeshProUGUI currentHP;
@@ -45,12 +51,53 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    // 남은 턴 시간을 업데이트하는 메서드
+    public void UpdateTurnTimer(float timeRemaining)
+    {
+        if (turnTimerText != null)
+        {
+            turnTimerText.text = Mathf.CeilToInt(timeRemaining).ToString();
+        }
+    }
+
+    // 턴 큐 이미지 업데이트 메서드
+    public void UpdateTurnOrder(List<CharacterManager> turnQueue, CharacterManager currentCharacter)
+    {
+        // 기존 턴 큐 UI 초기화
+        foreach (Transform child in turnOrderPanel.transform)
+        {
+            Destroy(child.gameObject);  // 기존 초상화 제거
+        }
+
+        // 턴 큐에 있는 모든 캐릭터의 초상화 추가
+        foreach (var characterManager in turnQueue)
+        {
+            GameObject portraitObj = Instantiate(characterPortraitPrefab, turnOrderPanel.transform);
+            RawImage portraitImage = portraitObj.GetComponent<RawImage>();
+            portraitImage.texture = characterManager.character.Portrait;
+
+            // 현재 턴인 캐릭터 강조 표시
+            if (characterManager == currentCharacter)
+            {
+                // 테두리 색상 변경 및 크기 증가
+                portraitImage.color = Color.yellow; // 테두리 색상을 노란색으로 변경
+                portraitObj.transform.localScale = Vector3.one * 1.1f; // 크기 1.1배 증가
+            }
+            else
+            {
+                // 기본 테두리 설정
+                portraitImage.color = Color.white;
+                portraitObj.transform.localScale = Vector3.one; // 기본 크기
+            }
+        }
+    }
+
     public void DisplayCharacterInfo(CharacterManager characterManager)
     {
         infoPanel.SetActive(true);
         CharacterData characterData = characterManager.character;
 
-        characterPortrait.sprite = characterData.Portrait; 
+        characterPortrait.texture = characterData.Portrait; 
         characterName.text = characterData.Name;
 
         currentHP.text = $"{characterData.FinalStats.CurrentHp}";
@@ -74,13 +121,30 @@ public class UIManager : MonoBehaviour
     }
 
     // 핫바 스킬 업데이트 메서드
-    private void UpdateHotbarSkills(CharacterData characterData)
+    public void UpdateHotbarSkills(CharacterData characterData)
     {
         // 모든 핫바 버튼과 RawImage를 비활성화
         foreach (var button in hotbarButtons)
         {
             button.GetComponent<Button>().interactable = false; // 버튼 비활성화
             button.GetComponent<RawImage>().enabled = false;    // 이미지 비활성화
+
+            // 코스트 텍스트 초기화
+            TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
+            if (costText != null)
+            {
+                costText.text = ""; // 리소스 소모량 텍스트 초기화
+            }
+
+            // 코스트 프레임 - Bind 이미지 초기화
+            Image[] images = button.GetComponentsInChildren<Image>();
+
+            Image costFrameImage = images[1];
+
+            if (costFrameImage != null)
+            {
+                costFrameImage.color = new Color(1f, 1f, 1f, 1f); // 기본 색상 (흰색, 투명도 1)
+            }
         }
 
         // 사용 가능한 스킬이 있는 경우 핫바에 표시
@@ -88,7 +152,7 @@ public class UIManager : MonoBehaviour
 
         foreach (SkillBase skill in characterData.Skills)
         {
-            if (skill.CanUse && !skill.IsCounterSkill) // 사용 가능하고 대응 스킬이 아닌 경우
+            if (skill.QuickSlot && skill.CanUse && !skill.IsCounterSkill) // 사용 가능하고 대응 스킬이 아닌 경우
             {
                 if (hotbarIndex < hotbarButtons.Length) // 핫바 슬롯이 남아있는 경우
                 {
@@ -104,6 +168,26 @@ public class UIManager : MonoBehaviour
                     {
                         characterTargeting.StartTargeting(skill); // 스킬 타겟팅 시작
                     });
+
+                    // 리소스 소모량 표시
+                    TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
+                    Image[] images = button.GetComponentsInChildren<Image>();
+                    if (costText != null)
+                    {
+                        Image costFrameImage = images[1];
+                        if (skill.Type == SkillType.Physical)
+                        {
+                            costText.text = $"{skill.StaminaCost}";
+                            costText.color = new Color(1f, 0.5f, 0f); // 주황색 (지구력)
+                            costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f); // 부모 이미지 색상 변경 (주황 계열)
+                        }
+                        else if (skill.Type == SkillType.Magical)
+                        {
+                            costText.text = $"{skill.MentalCost}";
+                            costText.color = new Color(0f, 0.5f, 1f); // 파란색 (정신력)
+                            costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f); // 부모 이미지 색상 변경 (파란 계열)
+                        }
+                    }
 
                     hotbarIndex++; // 다음 핫바 슬롯으로 이동
                 }
@@ -143,7 +227,7 @@ public class UIManager : MonoBehaviour
 
         foreach (SkillBase skill in currentCharacter.character.Skills)
         {
-            if (skill.IsCounterSkill && skill.CanUse)  // 대응 가능한 스킬만 보여줌
+            if (skill.QuickSlot && skill.IsCounterSkill && skill.CanUse)  // 사용 가능하고 퀵슬롯에 등록된 대응 스킬만 보여줌
             {
                 if (counterSkillIndex < hotbarButtons.Length)
                 {

@@ -91,10 +91,11 @@ public class CharacterCustomization : MonoBehaviour
         SetSkinTone(characterData.customizationData.SkinTone);
     }
 
-    public Sprite CapturePortrait()
+    public Texture2D CapturePortrait()
     {
         portraitCamera.gameObject.SetActive(true);
-        // RenderTexture를 활성화하여 현재 화면을 캡처
+
+        // RenderTexture에 캡처
         portraitCamera.targetTexture = portraitRenderTexture;
         portraitCamera.Render();
         portraitCamera.targetTexture = null;
@@ -106,17 +107,11 @@ public class CharacterCustomization : MonoBehaviour
         portraitTexture.Apply();
         RenderTexture.active = null;
 
-        // Texture2D를 Sprite로 변환하여 저장
-        Rect rect = new Rect(0, 0, portraitTexture.width, portraitTexture.height);
-        Vector2 pivot = new Vector2(0.5f, 0.5f);
-        characterPortrait = Sprite.Create(portraitTexture, rect, pivot);
-
-        // Texture2D 메모리 해제
-        Destroy(portraitTexture);
         portraitCamera.gameObject.SetActive(false);
 
-        return characterPortrait;
+        return portraitTexture;
     }
+
 
 
     // 눈썹 설정

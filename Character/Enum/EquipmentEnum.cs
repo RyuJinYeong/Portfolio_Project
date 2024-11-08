@@ -7,8 +7,7 @@ public enum WeaponCategory
 public enum WeaponTag
 {
     TwoHanded = 0,     // 양손 무기 - 활의 경우 보조무기 장착이 불가능하게 임의로 설정
-    MagicWeapon = 1,    // 마법 무기 - 마법 공격력 유무를 가리는 태그
-    OffhandWeapon = 2  // 보조 무기
+    MagicWeapon = 1    // 마법 무기 - 마법 공격력 유무를 가리는 태그
 }
 
 public enum WeaponType

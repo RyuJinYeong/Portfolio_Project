@@ -46,7 +46,7 @@ public static class EquipmentDatabase
         equipmentList.Add(leatherBoots);
 
         // 기본 무기들 추가
-        Weapon oldSword = new Weapon("Old Sword", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon }, WeaponType.LongSword, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 15, WeaponAttackSpeedMultiplier = 1.0f });
+        Weapon oldSword = new Weapon("Old Sword", WeaponCategory.LightWeapon, new List<WeaponTag> { }, WeaponType.LongSword, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 15, WeaponAttackSpeedMultiplier = 1.0f });
         oldSword.uid = 1004;
         oldSword.description = "An old sword with low attack power.";
         oldSword.icon = Resources.Load<Texture2D>("Icons/OldSword");
@@ -58,7 +58,7 @@ public static class EquipmentDatabase
         oldSword.maxiumStack = 1;
         equipmentList.Add(oldSword);
 
-        Weapon roundShield = new Weapon("Round Shield", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon }, WeaponType.Shield, new List<SkillAttribute> { SkillAttribute.Smash }, new CharacterStats { PhysicalAttack = 1, PhysicalDefense = 1, WeaponAttackSpeedMultiplier = 1.0f });
+        Weapon roundShield = new Weapon("Round Shield", WeaponCategory.LightWeapon, new List<WeaponTag> { }, WeaponType.Shield, new List<SkillAttribute> { SkillAttribute.Smash }, new CharacterStats { PhysicalAttack = 1, PhysicalDefense = 1, WeaponAttackSpeedMultiplier = 1.0f });
         roundShield.uid = 1005;
         roundShield.description = "A round shield for basic defense.";
         roundShield.icon = Resources.Load<Texture2D>("Icons/RoundShield");
@@ -68,9 +68,10 @@ public static class EquipmentDatabase
         roundShield.tags.Add("OffHand");
         roundShield.type = 1;
         roundShield.maxiumStack = 1;
+        roundShield.EquipType = EquipmentType.SubWeapon;
         equipmentList.Add(roundShield);
 
-        Weapon dagger = new Weapon("Dagger", WeaponCategory.LightWeapon, new List<WeaponTag> { WeaponTag.OffhandWeapon }, WeaponType.Dagger, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 5, WeaponAttackSpeedMultiplier = 1.2f });
+        Weapon dagger = new Weapon("Dagger", WeaponCategory.LightWeapon, new List<WeaponTag> { }, WeaponType.Dagger, new List<SkillAttribute> { SkillAttribute.Slash, SkillAttribute.Pierce }, new CharacterStats { PhysicalAttack = 5, WeaponAttackSpeedMultiplier = 1.2f });
         dagger.uid = 1006;
         dagger.description = "A small dagger suitable for quick attacks.";
         dagger.icon = Resources.Load<Texture2D>("Icons/Dagger");

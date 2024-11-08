@@ -8,6 +8,7 @@ using UnityEngine.UI;
 [System.Serializable]
 public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
 {
+    public bool QuickSlot { get; set; } = false; // 스킬의 퀵슬롯 등록 여부
     public double ActivationSpeed { get; set; } // 스킬 발동 속도
     public float DamageMultiplier { get; set; } // 스킬의 공격력 배수
     public int StaminaCost { get; set; }  // 지구력 소모
@@ -208,7 +209,8 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
             SkillDamageCount = this.SkillDamageCount,
             EvolRequiredUseCount = this.EvolRequiredUseCount,
             EvolRequiredKillCount = this.EvolRequiredKillCount,
-            EvolRequiredDamageCount = this.EvolRequiredDamageCount
+            EvolRequiredDamageCount = this.EvolRequiredDamageCount,
+            QuickSlot = this.QuickSlot
         };
 
         copiedSkill.LoadIcon();

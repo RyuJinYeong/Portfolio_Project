@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor.Search;
 using UnityEngine;
 
 public class TurnManager : MonoBehaviour
 {
     private Queue<CharacterManager> turnQueue = new Queue<CharacterManager>();
+    private List<CharacterManager> turnOrderList = new List<CharacterManager>(); // 턴 순서 리스트 (큐 복사본)
     private CharacterManager currentCharacter;
     private GameManager gameManager;
     private List<CharacterManager> allCharacters; // 전투에 참여한 모든 캐릭터들을 관리하는 리스트
@@ -51,11 +53,14 @@ public class TurnManager : MonoBehaviour
         }
 
         currentCharacter = turnQueue.Dequeue();
-
+        UIManager.Instance.UpdateTurnOrder(turnOrderList, currentCharacter);
         // 캐릭터가 살아있으면 턴 시작, 그렇지 않으면 턴을 넘김
         if (currentCharacter.character.IsAlive)
         {
             currentCharacter.StartTurn(OnTurnEnd);
+
+            // 턴 종료 버튼 설정
+            SetEndTurnButtonAction();
         }
         else
         {
@@ -136,11 +141,41 @@ public class TurnManager : MonoBehaviour
             .ThenByDescending(c => Mathf.Max(c.character.FinalStats.Speed, c.character.FinalStats.Wisdom))
             .ThenByDescending(c => c.character.Type)
         );
+        turnOrderList = turnQueue.ToList();
     }
 
     // 턴 종료 콜백
     private void OnTurnEnd()
     {
+        currentCharacter.isPlayerTurn = false;
+        currentCharacter.UpdateCharacterUI();
         EndTurn();
+    }
+
+    // 턴 종료 버튼 설정
+    private void SetEndTurnButtonAction()
+    {
+        if (UIManager.Instance != null && UIManager.Instance.turnEndButton != null)
+        {
+            // 버튼에 새로운 리스너 추가
+            UIManager.Instance.turnEndButton.onClick.RemoveAllListeners();
+            UIManager.Instance.turnEndButton.onClick.AddListener(() =>
+            {
+                if (currentCharacter != null)
+                {
+                    CombatHandler combatHandler = currentCharacter.GetComponent<CombatHandler>();
+                    if (combatHandler != null)
+                    {
+                        combatHandler.ExecuteSkillQueue(() =>
+                        {
+                            OnTurnEnd();
+                        });
+                    }
+                }
+            });
+
+            // 현재 턴인 캐릭터에 맞게 버튼을 활성화 또는 비활성화
+            UIManager.Instance.turnEndButton.interactable = currentCharacter.character.IsMine;
+        }
     }
 }

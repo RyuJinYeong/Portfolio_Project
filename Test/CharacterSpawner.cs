@@ -97,10 +97,11 @@ public class CharacterSpawner : MonoBehaviour
                 }
             }
 
-
-
+            characterManager.character.ApplyAllTraits(characterManager);
             characterManager.character.UpdateFinalStats();
             characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
+
+            characterManager.character.Portrait = characterObject.GetComponent<CharacterCustomization>().CapturePortrait(); // √ ªÛ»≠ √‘øµ
 
             if (isMine)
             {

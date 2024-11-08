@@ -477,7 +477,7 @@ public class CustomizationData
 public class CharacterData
 {
     [JsonIgnore] // JSON 직렬화 시 무시 - Sprite는 DB 공간 낭비가 심해서 인게임에서 처리
-    public Sprite Portrait; // 캐릭터 초상화 - 게임 실행시 게임씬에서 렌더이미지를 촬영하여 Sprite로 변환 후 할당
+    public Texture2D Portrait; // 캐릭터 초상화 - 게임 실행시 게임씬에서 렌더이미지를 촬영하여 할당
 
     public CustomizationData customizationData; // 캐릭터 커스터마이징 데이터 - 이 데이터를 기반으로 생성된 베이스 캐릭터에 커스터마이징 적용
     public CharacterType Type {  get; set; } = CharacterType.Character;

@@ -87,7 +87,7 @@ public class CharacterManager : MonoBehaviour
         characterData.UpdateFinalStats(); // 캐릭터 스탯 초기화
         characterData.InitializeSkills(); // 스킬 아이콘 초기화
         EquipmentManager.UpdateAvailableAttributes(characterData); // 캐릭터 장비 세부속성 초기화
-        EquipmentManager.UpdateSkillAvailability(characterData); // 장비 세부 속성에 따른 사용 가능 스킬 초기화
+        EquipmentManager.UpdateSkillAvailability(characterData); // 장비 세부 속성에 따른 사용 가능 스킬 초기화        
 
         InventoryHolder[] inventoryHolders = this.GetComponents<InventoryHolder>();
         foreach (var holder in inventoryHolders)
