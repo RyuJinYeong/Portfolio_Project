@@ -35,6 +35,7 @@ public class CombatHandler : MonoBehaviour
         {
             Debug.Log("AI 턴 시작");
             turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd)); // AI 턴 타이머 시작
+            characterManager.UpdateCharacterUI();
             StartCoroutine(HandleAITurn(onTurnEnd));
         }
         else
@@ -269,7 +270,7 @@ public class CombatHandler : MonoBehaviour
             synergyEffect.OnApply(characterManager); // 스킬 발동 시 버프 효과 적용
         }
 
-        Debug.Log($"{characterManager.character.Name} Using skill: {skill.name} on {target.character.Name}");
+        Debug.Log($"{characterManager.character.Name} - {skill.name} 스킬 사용 -> {target.character.Name}");
         float damageMultiplier = skill.DamageMultiplier;
         int damage = 0;
 

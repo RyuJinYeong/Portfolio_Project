@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -13,6 +14,8 @@ public class UIManager : MonoBehaviour
     public GameObject characterPortraitPrefab;  // 캐릭터 초상화 프리팹
 
     public TextMeshProUGUI turnTimerText; // 남은 턴 시간을 표시하는 텍스트
+
+    public GameObject damageTextPrefab;  // 데미지 텍스트 프리팹
 
     public Button turnEndButton; // 턴 종료 버튼 추가
 
@@ -52,6 +55,60 @@ public class UIManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
+
+    // 데미지 팝업 생성
+    public void ShowDamage(int damageAmount, Vector3 worldPosition)
+    {
+        // 월드 좌표를 스크린 좌표로 변환
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2);  // 캐릭터 위쪽에 표시되도록 위치 조정
+
+        // 데미지 텍스트 인스턴스 생성 및 캔버스의 자식으로 추가
+        GameObject damageTextInstance = Instantiate(damageTextPrefab, this.transform);
+        damageTextInstance.transform.position = screenPosition;
+
+        TextMeshProUGUI damageText = damageTextInstance.GetComponent<TextMeshProUGUI>();
+
+        // 데미지 텍스트 설정 (-n 형식, 빨간색)
+        damageText.text = $"-{damageAmount}";
+        damageText.color = Color.red;
+
+        // 텍스트를 일정 시간 동안 표시 후 사라지게 하는 코루틴 호출
+        StartCoroutine(PopDamage(damageTextInstance));
+    }
+
+    // 데미지 텍스트 표시 효과 (팝업 후 서서히 사라짐)
+    private IEnumerator PopDamage(GameObject damageTextInstance)
+    {
+        TextMeshProUGUI damageText = damageTextInstance.GetComponent<TextMeshProUGUI>();
+
+        // 텍스트 팝업 효과
+        float t = 0f;
+        Vector3 originalScale = damageText.transform.localScale;
+
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 5f;  // 빠르게 팝업하는 효과
+            damageText.transform.localScale = originalScale * (1f + t * 0.2f); // 스케일 증가
+            damageText.transform.position += Vector3.up * Time.deltaTime * 20; // 약간 위로 이동
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        // 텍스트가 서서히 사라지며 축소되는 효과
+        t = 1f;
+        while (t > 0f)
+        {
+            t -= Time.deltaTime * 3f;  // 서서히 사라지는 속도
+            damageText.color = new Color(damageText.color.r, damageText.color.g, damageText.color.b, t); // 알파 값 조정
+            damageText.transform.localScale = originalScale * (1f + t * 0.2f);
+            yield return null;
+        }
+
+        // 텍스트 오브젝트 삭제
+        Destroy(damageTextInstance);
+    }
+
 
     // 남은 턴 시간을 업데이트하는 메서드
     public void UpdateTurnTimer(float timeRemaining)

@@ -141,7 +141,9 @@ public class CharacterManager : MonoBehaviour
     // 데미지 처리
     public int TakeDamage(int damage, SkillType damageType, SkillAttribute damageAttribute)
     {
-        return damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
+        int finalDamage = damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
+        UIManager.Instance.ShowDamage(finalDamage, transform.position);
+        return finalDamage;
     }
 
     //스킬큐 Getter 구현 - 명시적 접근제어
