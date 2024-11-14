@@ -342,10 +342,12 @@ public class CombatHandler : MonoBehaviour
 
         if (selectedSkill != null && selectedTarget != null)
         {
-            UseSkill(selectedSkill, selectedTarget);
+            // 스킬을 선택하여 스킬 큐에 추가
+            SelectSkill(selectedSkill, selectedTarget);
         }
 
-        onTurnEnd();  // 턴 종료 콜백 호출
+        yield return new WaitForSeconds(2.0f);
+        ExecuteSkillQueue(onTurnEnd); // 턴 종료 전 스킬 큐 실행
     }
 
     // AI 사용스킬 지정 메서드
