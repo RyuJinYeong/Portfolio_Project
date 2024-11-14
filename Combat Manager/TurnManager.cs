@@ -7,7 +7,7 @@ public class TurnManager : MonoBehaviour
 {
     private Queue<CharacterManager> turnQueue = new Queue<CharacterManager>();
     private List<CharacterManager> turnOrderList = new List<CharacterManager>(); // 턴 순서 리스트 (큐 복사본)
-    private CharacterManager currentCharacter;
+    public CharacterManager currentCharacter;
     private GameManager gameManager;
     private List<CharacterManager> allCharacters; // 전투에 참여한 모든 캐릭터들을 관리하는 리스트
 
@@ -21,7 +21,7 @@ public class TurnManager : MonoBehaviour
     {
         allCharacters = gameManager.GetAllCharacters(); // 모든 캐릭터들을 가져와서 리스트에 저장
 
-        foreach (var character in allCharacters)
+        foreach (CharacterManager character in allCharacters)
         {
             Debug.Log("리소스 회복");
             character.RecoverResources();
@@ -38,8 +38,9 @@ public class TurnManager : MonoBehaviour
         {
             // 상태이상 처리, 리소스 회복
             ApplyStatusEffectsToAll();
-            foreach (var character in allCharacters)
+            foreach (CharacterManager character in allCharacters)
             {
+                Debug.Log("리소스 회복");
                 character.RecoverResources();
             }
 
@@ -54,6 +55,7 @@ public class TurnManager : MonoBehaviour
 
         currentCharacter = turnQueue.Dequeue();
         UIManager.Instance.UpdateTurnOrder(turnOrderList, currentCharacter);
+
         // 캐릭터가 살아있으면 턴 시작, 그렇지 않으면 턴을 넘김
         if (currentCharacter.character.IsAlive)
         {
@@ -70,6 +72,12 @@ public class TurnManager : MonoBehaviour
 
     public void EndTurn()
     {
+        currentCharacter.isPlayerTurn = false;
+        currentCharacter.isInMeleeCombat = false;
+        currentCharacter.meleeTarget = null;
+
+        currentCharacter.UpdateCharacterUI();
+
         // 턴이 끝날 때마다 승리/패배 조건 체크
         if (!CheckBattleEnd())
         {
@@ -145,10 +153,8 @@ public class TurnManager : MonoBehaviour
     }
 
     // 턴 종료 콜백
-    private void OnTurnEnd()
+    public void OnTurnEnd()
     {
-        currentCharacter.isPlayerTurn = false;
-        currentCharacter.UpdateCharacterUI();
         EndTurn();
     }
 

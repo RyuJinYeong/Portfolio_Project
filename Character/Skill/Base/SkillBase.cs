@@ -16,6 +16,8 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
 
     public bool IsCounterSkill { get; set; } // 대응 스킬 여부
 
+    public bool IsStatusEffectSkill { get; set; } = false; // 상태이상 유발 여부
+
     public bool IsRangedSkill { get; set; } // 원거리 스킬 여부
     public bool IsBowSkill { get; set; } // 활 스킬 여부
 
@@ -210,7 +212,8 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
             EvolRequiredUseCount = this.EvolRequiredUseCount,
             EvolRequiredKillCount = this.EvolRequiredKillCount,
             EvolRequiredDamageCount = this.EvolRequiredDamageCount,
-            QuickSlot = this.QuickSlot
+            QuickSlot = this.QuickSlot,
+            IsStatusEffectSkill = this.IsStatusEffectSkill
         };
 
         copiedSkill.LoadIcon();

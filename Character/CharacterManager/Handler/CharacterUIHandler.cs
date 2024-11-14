@@ -1,5 +1,6 @@
 using SoftKitty.InventoryEngine;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -16,6 +17,9 @@ public class CharacterUIHandler : MonoBehaviour
 
     public GameObject turnIcon;
     public GameObject skillQueuePanel;
+    public GameObject skillIconPrefab;
+
+    private List<GameObject> skillQueueIcons = new List<GameObject>(); // 생성된 스킬 큐 아이콘 리스트
 
     public TextMeshProUGUI characterName;
 
@@ -24,7 +28,7 @@ public class CharacterUIHandler : MonoBehaviour
     public TextMeshProUGUI mentalityText;    
 
     private CharacterManager characterManager;
-    private Camera mainCamera;
+    private Camera mainCamera; 
 
     void Awake()
     {        
@@ -58,6 +62,61 @@ public class CharacterUIHandler : MonoBehaviour
                              mainCamera.transform.rotation * Vector3.up);
         }
     }
+
+    // 스킬 큐에 스킬 추가
+    public void AddSkillToQueue(SkillBase skill, int order, CharacterManager caster)
+    {
+        // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
+        GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
+        skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
+
+        // 순서 표시 (좌상단 텍스트)
+        TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
+        if (orderText != null)
+        {
+            orderText.text = order.ToString();
+        }
+
+        // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
+        Button skillButton = skillIconInstance.GetComponent<Button>();
+        skillButton.onClick.AddListener(() =>
+        {
+            caster.combatHandler.RemoveSkillFromQueue(skill);  // 시전자의 CombatHandler에서 스킬 제거
+        });
+
+        // 생성된 아이콘을 리스트에 저장
+        skillQueueIcons.Add(skillIconInstance);
+    }
+
+
+    // 스킬 큐에서 스킬 제거
+    public void RemoveSkillFromQueue(SkillBase skill)
+    {
+        // UI에서 스킬 아이콘 제거
+        var skillIcon = skillQueueIcons.FirstOrDefault(icon => icon.GetComponent<RawImage>().texture == skill.icon);
+        if (skillIcon != null)
+        {
+            skillQueueIcons.Remove(skillIcon);
+            Destroy(skillIcon);
+        }
+
+        // 남아있는 스킬들의 순서 다시 설정
+        UpdateSkillQueueUI();
+    }
+
+    // 스킬 큐 UI 순서 업데이트
+    private void UpdateSkillQueueUI()
+    {
+        for (int i = 0; i < skillQueueIcons.Count; i++)
+        {
+            TextMeshProUGUI orderText = skillQueueIcons[i].GetComponentInChildren<TextMeshProUGUI>();
+            if (orderText != null)
+            {
+                orderText.text = (i + 1).ToString();
+            }
+        }
+    }
+
     public void UpdateResourceTexts()
     {
         hpText.text = $"{characterManager.character.FinalStats.CurrentHp} / {characterManager.character.FinalStats.MaxHp}";

@@ -124,7 +124,7 @@ public class CharacterTargeting : MonoBehaviour
     private void ChangeCursor(string cursorType)
     {
         Texture2D cursorTexture = Resources.Load<Texture2D>($"Cursor/Cursor_{cursorType}");
-        Vector2 cursorHotspot = new Vector2(0, 0);
+        Vector2 cursorHotspot = new Vector2(cursorTexture.width * 0.3f, 0);
         Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);        
     }
 
@@ -179,6 +179,7 @@ public class CharacterTargeting : MonoBehaviour
         {
             // 커서를 원거리 스킬용으로 변경
             ChangeCursor("Shoot");
+            isTargeting = true;
             // 원거리 타겟팅 로직 구현 필요
         }
         else

@@ -36,7 +36,7 @@ public class GameManager : MonoBehaviour
     private void SetDefaultCursor()
     {
         Texture2D cursorTexture = Resources.Load<Texture2D>("Cursor/Cursor_Basic");
-        Vector2 cursorHotspot = new Vector2(5,0); // 마우스 포인터 클릭 지점 좌표 설정
+        Vector2 cursorHotspot = new Vector2(cursorTexture.width * 0.3f, 0);
         Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);
     }
 

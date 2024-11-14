@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
@@ -60,6 +62,38 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public void UpdateSkillTransparency(CharacterManager characterManager)
+    {
+        foreach (GameObject button in hotbarButtons)
+        {
+            // 버튼의 RawImage 컴포넌트와 연결된 스킬의 아이콘을 비교하여 해당 스킬 찾기
+            RawImage buttonImage = button.GetComponent<RawImage>();
+            if (buttonImage != null && buttonImage.enabled)
+            {
+                SkillBase linkedSkill = characterManager.character.Skills.FirstOrDefault(skill => skill.icon == buttonImage.texture);
+                if (linkedSkill != null)
+                {
+                    // 리소스가 충분한지 체크
+                    bool canUseSkill = characterManager.character.FinalStats.CurrentStamina >= linkedSkill.StaminaCost &&
+                                       characterManager.character.FinalStats.CurrentMentality >= linkedSkill.MentalCost;
+
+                    // 현재 턴이 아니거나 리소스가 부족할 경우 스킬 사용 불가로 표시
+                    bool Inactive = !characterManager.isPlayerTurn || !canUseSkill;
+
+                    // 버튼의 CanvasGroup을 통해 투명도 설정
+                    CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
+                    if (canvasGroup == null)
+                    {
+                        canvasGroup = button.AddComponent<CanvasGroup>(); // CanvasGroup이 없을 경우 추가
+                    }
+
+                    canvasGroup.alpha = Inactive ? 0.3f : 1.0f;  // 리소스가 부족할 경우 투명도를 낮춤
+                }
+            }
+        }
+    }
+
+
     // 턴 큐 이미지 업데이트 메서드
     public void UpdateTurnOrder(List<CharacterManager> turnQueue, CharacterManager currentCharacter)
     {
@@ -79,14 +113,10 @@ public class UIManager : MonoBehaviour
             // 현재 턴인 캐릭터 강조 표시
             if (characterManager == currentCharacter)
             {
-                // 테두리 색상 변경 및 크기 증가
-                portraitImage.color = Color.yellow; // 테두리 색상을 노란색으로 변경
-                portraitObj.transform.localScale = Vector3.one * 1.1f; // 크기 1.1배 증가
+                portraitObj.transform.localScale = Vector3.one * 1.15f; // 크기 1.1배 증가
             }
             else
             {
-                // 기본 테두리 설정
-                portraitImage.color = Color.white;
                 portraitObj.transform.localScale = Vector3.one; // 기본 크기
             }
         }
@@ -117,12 +147,13 @@ public class UIManager : MonoBehaviour
         skillBar.SetActive(characterData.IsMine); // 캐릭터가 자신의 것일 경우 스킬바 활성화
 
         // 핫바 스킬 업데이트
-        UpdateHotbarSkills(characterData);        
+        UpdateHotbarSkills(characterManager);
     }
 
     // 핫바 스킬 업데이트 메서드
-    public void UpdateHotbarSkills(CharacterData characterData)
+    public void UpdateHotbarSkills(CharacterManager characterManager)
     {
+        Debug.Log(characterManager.character.Name + " " + characterManager.isPlayerTurn);
         // 모든 핫바 버튼과 RawImage를 비활성화
         foreach (var button in hotbarButtons)
         {
@@ -150,7 +181,7 @@ public class UIManager : MonoBehaviour
         // 사용 가능한 스킬이 있는 경우 핫바에 표시
         int hotbarIndex = 0;
 
-        foreach (SkillBase skill in characterData.Skills)
+        foreach (SkillBase skill in characterManager.character.Skills)
         {
             if (skill.QuickSlot && skill.CanUse && !skill.IsCounterSkill) // 사용 가능하고 대응 스킬이 아닌 경우
             {
@@ -160,14 +191,17 @@ public class UIManager : MonoBehaviour
 
                     button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
                     button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
-                    button.GetComponent<Button>().interactable = true;    // 버튼 활성화
-
-                    // 버튼 클릭 시 스킬 사용 처리
-                    button.GetComponent<Button>().onClick.RemoveAllListeners(); // 기존 리스너 제거
-                    button.GetComponent<Button>().onClick.AddListener(() =>
+                    if (characterManager.isPlayerTurn)
                     {
-                        characterTargeting.StartTargeting(skill); // 스킬 타겟팅 시작
-                    });
+                        button.GetComponent<Button>().interactable = true;    // 버튼 활성화
+
+                        // 버튼 클릭 시 스킬 사용 처리
+                        button.GetComponent<Button>().onClick.RemoveAllListeners(); // 기존 리스너 제거
+                        button.GetComponent<Button>().onClick.AddListener(() =>
+                        {
+                            characterTargeting.StartTargeting(skill); // 스킬 타겟팅 시작
+                        });
+                    }
 
                     // 리소스 소모량 표시
                     TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
@@ -193,6 +227,8 @@ public class UIManager : MonoBehaviour
                 }
             }
         }
+
+        UpdateSkillTransparency(characterManager);
     }
 
     public void ShowQueuedSkills(CharacterManager currentCharacter)

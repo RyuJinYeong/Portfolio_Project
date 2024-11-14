@@ -110,6 +110,8 @@ public class CharacterSpawner : MonoBehaviour
             else
             {
                 characterManager.character.Name = "Test_Enemy" + characterManager.character.originName;
+                characterManager.character.Type = CharacterType.Elite;
+                characterManager.character.personality = Personality.Cunning;
             }
         }
         else
@@ -128,16 +130,6 @@ public class CharacterSpawner : MonoBehaviour
                 // 아이템의 이름에서 공백을 제거하고 아이콘 다시 로드
                 string iconName = equip.name.Replace(" ", "");
                 equip.icon = Resources.Load<Texture2D>($"Icons/{iconName}");
-                /*
-                if (equip.icon != null)
-                {
-                    Debug.Log($"아이콘이 재설정되었습니다: {equip.name}");
-                }
-                else
-                {
-                    Debug.LogWarning($"아이콘 로드 실패 - 아이콘이 여전히 없습니다: {equip.name}");
-                }
-                */
             }
         }
     }

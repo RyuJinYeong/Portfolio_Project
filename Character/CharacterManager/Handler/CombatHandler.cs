@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Unity;
+using UnityEngine.TextCore.Text;
 
 public class CombatHandler : MonoBehaviour
 {
@@ -14,7 +15,7 @@ public class CombatHandler : MonoBehaviour
     private SynergyManager synergyManager;
 
     private Coroutine turnTimerCoroutine;
-    private float totalDuration = 5.0f; // 턴 제한 시간
+    private float totalDuration = 60.0f; // 턴 제한 시간
 
     public void Awake()
     {
@@ -29,11 +30,24 @@ public class CombatHandler : MonoBehaviour
     public void StartTurn(System.Action onTurnEnd)
     {
         characterManager.isPlayerTurn = true;
-        turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd));
-        characterManager.UpdateCharacterUI();
+        // 캐릭터 타입에 따라 AI 여부 판단
+        if (characterManager.character.Type != CharacterType.Character) // 플레이어가 조종하는 캐릭터가 아닐 경우
+        {
+            Debug.Log("AI 턴 시작");
+            turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd)); // AI 턴 타이머 시작
+            StartCoroutine(HandleAITurn(onTurnEnd));
+        }
+        else
+        {
+            Debug.Log("플레이어 턴 시작");
+            turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd)); // 플레이어 턴 타이머 시작
+            characterManager.UpdateCharacterUI();
 
-        UIManager.Instance.characterTargeting.SelectCharacter(characterManager);
+            UIManager.Instance.characterTargeting.SelectCharacter(characterManager);
+        }
     }
+
+
 
     // 턴 타이머
     private IEnumerator TurnTimer(System.Action onTurnEnd)
@@ -47,7 +61,6 @@ public class CombatHandler : MonoBehaviour
             yield return null; // 한 프레임 기다림
             timeRemaining -= Time.deltaTime; // 남은 시간 감소
         }
-        //yield return new WaitForSeconds(60.0f); // 60초 제한 시간
 
         if (characterManager.isPlayerTurn)
         {
@@ -64,16 +77,8 @@ public class CombatHandler : MonoBehaviour
             return;
         }
 
-        // 스킬 사용 시 리소스 체크 및 차감
-        if (characterManager.character.FinalStats.CurrentStamina < skill.StaminaCost || characterManager.character.FinalStats.CurrentMentality < skill.MentalCost)
-        {
-            Debug.Log("리소스가 부족하여 스킬을 사용할 수 없습니다.");
-            return;
-        }
-
         // 리소스 차감
-        characterManager.character.FinalStats.CurrentStamina -= skill.StaminaCost;
-        characterManager.character.FinalStats.CurrentMentality -= skill.MentalCost;
+        if (!ConsumeResources(skill)) return;
 
         // 근거리 스킬 사용 시 경합 상태로 전환
         if (!skill.IsRangedSkill)
@@ -83,22 +88,73 @@ public class CombatHandler : MonoBehaviour
         }
 
         skillQueue.Add((skill, target));
+        int order = skillQueue.Count;
         Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
 
-        // 스킬 선택 후, 적용 가능한 시너지 효과 확인
-        List<SynergyEffect> newSynergyEffects = synergyManager.GetActiveSynergies(skillQueue.Select(s => s.skill).ToList());
+        // 스킬 큐 UI에 추가 (캐릭터 UI 핸들러 사용)
+        target.characterUIHandler.AddSkillToQueue(skill, skillQueue.Count, characterManager); // 시전자 전달
 
-        // 선택된 스킬이 추가된 후 시너지 조건 체크
-        foreach (var effect in newSynergyEffects)
-        {
-            if (!activeSynergyEffects.Contains(effect))
-            {
-                activeSynergyEffects.Add(effect); // 시너지 효과 리스트에 추가
-            }
-        }
+        //시전자 UI 갱신        
+        characterManager.UpdateCharacterUI();
+
+        // 스킬 사용 가능 여부 업데이트
+        UIManager.Instance.UpdateSkillTransparency(characterManager);
+
+        UpdateSynergies();
 
         // UI 업데이트: 활성화된 시너지 표시
         //UIManager.Instance.UpdateSynergyUI(newSynergyEffects.ToList(), synergyManager.synergyRules);
+    }
+
+
+    // 스킬 큐에서 스킬 제거 및 리소스 반환
+    public void RemoveSkillFromQueue(SkillBase skill)
+    {
+        // 스킬 큐에서 해당 스킬을 찾기
+        var skillEntry = skillQueue.FirstOrDefault(s => s.skill == skill);
+        if (skillEntry.skill != null)
+        {
+            skillQueue.Remove(skillEntry);
+            characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost);
+            characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost);
+
+            // UI 갱신
+            characterManager.UpdateCharacterUI();
+            // 스킬 사용 가능 여부 업데이트
+            UIManager.Instance.UpdateSkillTransparency(characterManager);
+
+            // 타겟의 상단 패널 UI에서 해당 스킬 제거
+            skillEntry.target.characterUIHandler.RemoveSkillFromQueue(skill);     
+            Debug.Log($"Skill {skill.name} removed from queue. Resources refunded: Stamina: {(int)(skill.StaminaCost)}, Mentality: {(int)(skill.MentalCost)}");            
+        }
+
+        // 경합 상태 해제 로직 추가
+        // 남은 스킬 큐를 확인하여 근거리 스킬이 있는지 검사
+        bool hasMeleeSkill = skillQueue.Any(s => !s.skill.IsRangedSkill);
+
+        // 근거리 스킬이 더 이상 없다면 경합 상태를 해제
+        if (!hasMeleeSkill && characterManager.isInMeleeCombat)
+        {
+            characterManager.isInMeleeCombat = false;
+            characterManager.meleeTarget = null;
+            Debug.Log("경합 상태 해제");
+        }
+    }
+
+
+    // 리소스 소비 로직
+    private bool ConsumeResources(SkillBase skill)
+    {
+        if (characterManager.character.FinalStats.CurrentStamina < skill.StaminaCost || characterManager.character.FinalStats.CurrentMentality < skill.MentalCost)
+        {
+            Debug.Log("리소스가 부족하여 스킬을 사용할 수 없습니다.");
+            return false;
+        }
+
+        characterManager.character.FinalStats.CurrentStamina -= skill.StaminaCost;
+        characterManager.character.FinalStats.CurrentMentality -= skill.MentalCost;
+        characterManager.UpdateCharacterUI();
+        return true;
     }
 
     // 플레이어가 대응 스킬 선택 후 큐에 추가
@@ -111,17 +167,21 @@ public class CombatHandler : MonoBehaviour
     #region 경합 상태에서 적 처치 시 스킬 취소 및 리소스 반환
 
     // 경합 중 적 처치 시 스킬 큐 취소 및 리소스 반환
-    public void HandleEnemyDefeated()
+    public bool HandleEnemyDefeated()
     {
         if (characterManager.isInMeleeCombat && characterManager.meleeTarget != null && !characterManager.meleeTarget.character.IsAlive)
         {
             Debug.Log($"{characterManager.meleeTarget.character.Name} 처치 성공. 스킬 큐 취소 및 리소스 반환.");
             CancelRemainingSkills();
+            // 경합 상태 해제
+            characterManager.isInMeleeCombat = false;
+            characterManager.meleeTarget = null;
+            return true;
         }
-
-        // 경합 상태 해제
-        characterManager.isInMeleeCombat = false;
-        characterManager.meleeTarget = null;
+        else
+        {
+            return false;
+        }
     }
 
     // 남은 스킬 취소 및 리소스 반환
@@ -133,19 +193,14 @@ public class CombatHandler : MonoBehaviour
             // 리소스 일부 반환 (예: 50%) - 해당 필드도 변수화시켜서 관리 시 반환 값에 변주를 줄 수 있으니 필요시 추후 개선필요
             characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost * 0.5f);
             characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost * 0.5f);
+
+            // 타겟의 상단 패널 UI에서 해당 스킬 제거
+            item.target.characterUIHandler.RemoveSkillFromQueue(skill);
         }
 
         skillQueue.Clear();
+        characterManager.UpdateCharacterUI();
         Debug.Log($"Remaining skills canceled. Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
-    }
-
-    // 적 사망 체크
-    private void CheckForEnemyDefeated(CharacterManager target)
-    {
-        if (!target.character.IsAlive)
-        {
-            HandleEnemyDefeated();
-        }
     }
 
     // 스킬 큐 순차 실행
@@ -171,14 +226,22 @@ public class CombatHandler : MonoBehaviour
             SkillBase skill = item.skill;
             CharacterManager target = item.target;
 
-            // 경합 상태에서 원거리 스킬 사용 불가
-            if (characterManager.isInMeleeCombat && skill.IsRangedSkill)
+            UseSkill(skill, target);
+
+            // 타겟의 상단 패널에서 스킬 큐 UI 제거
+            target.characterUIHandler.RemoveSkillFromQueue(skill);
+            target.UpdateCharacterUI();
+
+            // 상대가 사망했는지 확인 후 처리
+            if (!target.character.IsAlive && !skill.IsRangedSkill)
             {
-                Debug.Log("경합 상태에서는 원거리 스킬을 사용할 수 없습니다.");
-                continue;
+                if (HandleEnemyDefeated()) // 경합 상태에서 타겟 사망 시 반복문 종료
+                {
+                    StartTurn(onTurnEnd);
+                    yield break;
+                }
             }
 
-            UseSkill(skill, target);
             yield return new WaitForSeconds(1.0f); // 스킬 간 대기 시간
         }
 
@@ -206,7 +269,7 @@ public class CombatHandler : MonoBehaviour
             synergyEffect.OnApply(characterManager); // 스킬 발동 시 버프 효과 적용
         }
 
-        Debug.Log($"Using skill: {skill.name} on {target.character.Name}");
+        Debug.Log($"{characterManager.character.Name} Using skill: {skill.name} on {target.character.Name}");
         float damageMultiplier = skill.DamageMultiplier;
         int damage = 0;
 
@@ -232,18 +295,12 @@ public class CombatHandler : MonoBehaviour
             skill.OnSkillUsed(finalDamage, characterManager.character, target.character);
         }
 
-        // 상대가 사망했는지 확인 후 처리
-        if (!target.character.IsAlive)
-        {
-            HandleEnemyDefeated();
-        }
-
         // 시너지 효과 해제
         EndSynergyEffects();
     }
 
-    // 시너지 체크
-    private void CheckSynergies()
+    // 시너지 체크 로직
+    private void UpdateSynergies()
     {
         List<SynergyEffect> newSynergyEffects = synergyManager.GetActiveSynergies(skillQueue.Select(s => s.skill).ToList());
 
@@ -274,54 +331,168 @@ public class CombatHandler : MonoBehaviour
     // AI 턴 처리
     public IEnumerator HandleAITurn(System.Action onTurnEnd)
     {
-        // AI 로직 구현 필요
-        yield return new WaitForSeconds(2.0f); // AI 대기 시간
-        UseSkill(AIChooseSkill(), FindTargetForAI());
+        Debug.Log("AI 턴 시작");
+
+        yield return new WaitForSeconds(2.0f); // AI 대기 시간 (AI 턴 대기시간 연출)
+
+        // 스킬 및 타겟 선택
+        SkillBase selectedSkill = AIChooseSkill();
+        CharacterManager selectedTarget = FindTargetForAI();
+
+        if (selectedSkill != null && selectedTarget != null)
+        {
+            UseSkill(selectedSkill, selectedTarget);
+        }
+
         onTurnEnd();  // 턴 종료 콜백 호출
     }
 
     // AI 사용스킬 지정 메서드
     private SkillBase AIChooseSkill()
     {
-        switch (characterManager.character.personality) // AI 행동양식 제어
+        SkillBase selectedSkill = null;
+        List<SkillBase> availableSkills = characterManager.character.Skills
+            .Where(skill => characterManager.character.FinalStats.CurrentStamina >= skill.StaminaCost &&
+                            characterManager.character.FinalStats.CurrentMentality >= skill.MentalCost)
+            .ToList();
+
+        if (availableSkills.Count == 0)
+        {
+            Debug.Log("사용 가능한 스킬이 없습니다.");
+            return null;
+        }
+
+        // 랜덤성 부여 (성향에 반하는 행동을 할 확률)
+        float personalityDeviationChance = 0.15f; // 15% 확률로 성향과 반대 행동
+        bool deviateFromPersonality = UnityEngine.Random.value < personalityDeviationChance;
+
+        switch (characterManager.character.personality)
         {
             case Personality.Simple:
+                selectedSkill = availableSkills.OrderBy(skill => skill.StaminaCost + skill.MentalCost).FirstOrDefault();
+                if (deviateFromPersonality)
+                {
+                    selectedSkill = availableSkills.OrderByDescending(skill => skill.DamageMultiplier).FirstOrDefault();
+                }
                 break;
+
             case Personality.Aggressive:
+                selectedSkill = availableSkills.OrderByDescending(skill => skill.DamageMultiplier).FirstOrDefault();
+                if (deviateFromPersonality)
+                {
+                    selectedSkill = availableSkills.OrderBy(skill => skill.StaminaCost + skill.MentalCost).FirstOrDefault();
+                }
                 break;
+
             case Personality.Cunning:
+                selectedSkill = availableSkills.FirstOrDefault(skill => skill.IsStatusEffectSkill);
+                if (selectedSkill == null)
+                {
+                    selectedSkill = availableSkills.OrderByDescending(skill => skill.DamageMultiplier).FirstOrDefault();
+                }
+                if (deviateFromPersonality)
+                {
+                    selectedSkill = availableSkills.OrderBy(skill => skill.StaminaCost).FirstOrDefault();
+                }
                 break;
+
             case Personality.Cautious:
+                selectedSkill = availableSkills.OrderBy(skill => skill.StaminaCost + skill.MentalCost).FirstOrDefault();
+                if (deviateFromPersonality)
+                {
+                    selectedSkill = availableSkills.OrderByDescending(skill => skill.DamageMultiplier).FirstOrDefault();
+                }
+                break;
+
+            default:
+                selectedSkill = availableSkills[0];
                 break;
         }
 
-        // 간단한 로직으로 AI가 사용할 스킬 선택
-        return characterManager.character.Skills[0];
+        return selectedSkill;
     }
 
     // AI 공격대상 지정
     private CharacterManager FindTargetForAI()
     {
-        // 로직으로 AI가 공격할 대상 선택
-        switch (characterManager.character.personality) // 성향 별 AI 행동양식 제어
+        CharacterManager selectedTarget = null;
+
+        // 전체 캐릭터 리스트에서 적 캐릭터 찾기
+        List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
+        List<CharacterManager> enemies = allCharacters
+            .Where(character => character.character.IsMine != characterManager.character.IsMine && character.character.IsAlive)
+            .ToList();
+
+
+        if (enemies.Count == 0)
+        {
+            Debug.Log("공격할 대상이 없습니다.");
+            return null;
+        }
+
+        // 성향에 따른 타겟 선택
+        float personalityDeviationChance = 0.15f; // 성향과 반대되는 행동을 할 확률
+        bool deviateFromPersonality = UnityEngine.Random.value < personalityDeviationChance;
+
+        switch (characterManager.character.personality)
         {
             case Personality.Simple:
+                selectedTarget = enemies.FirstOrDefault();
+                if (deviateFromPersonality)
+                {
+                    selectedTarget = enemies.OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                }
                 break;
+
             case Personality.Aggressive:
+                selectedTarget = enemies.OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                if (deviateFromPersonality)
+                {
+                    selectedTarget = enemies.FirstOrDefault();
+                }
                 break;
+
             case Personality.Cunning:
+                selectedTarget = enemies.OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                if (deviateFromPersonality)
+                {
+                    selectedTarget = enemies.OrderByDescending(enemy => enemy.character.FinalStats.PhysicalDefense).FirstOrDefault();
+                }
                 break;
+
             case Personality.Cautious:
+                selectedTarget = enemies.Where(enemy => enemy.character.StatusEffects.Count > 0)
+                    .OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                if (selectedTarget == null || deviateFromPersonality)
+                {
+                    selectedTarget = enemies.OrderByDescending(enemy => enemy.character.FinalStats.CurrentHp).LastOrDefault();
+                }
+                break;
+
+            default:
+                selectedTarget = enemies[0];
                 break;
         }
 
-        return characterManager; // 기본적으로 자신을 반환하거나, GameManager에서 적을 가져오도록 구현 가능
+        return selectedTarget;
     }
+
+    // 대응 스킬 지정 메서드
+    private SkillBase AIChooseCounterSkill(SkillBase incomingSkill)
+    {
+        // 대응 스킬 로직 구현 (AI가 특정 스킬에 대응하는 방법)
+        SkillBase counterSkill = characterManager.character.Skills
+            .FirstOrDefault(skill => skill.IsCounterSkill && characterManager.character.FinalStats.CurrentStamina >= skill.StaminaCost);
+
+        return counterSkill;
+    }
+
+    #endregion
+
+
 
     public List<(SkillBase skill, CharacterManager target)> GetSkillQueue()
     {
         return skillQueue;
     }
-
-    #endregion
 }
