@@ -29,4 +29,16 @@ public static class SkillManager
             Debug.Log("존재하지 않는 스킬 삭제 시도");
         }
     }
+
+    public static void SetDefaultCounterSkill(CharacterManager manager, SkillBase skill)
+    {
+        if(skill.StaminaCost + skill.MentalCost == 1)
+        {
+            manager.character.DefaultCounterSkill = skill;
+        }
+        else
+        {
+            Debug.Log("기본 대응 스킬로 설정할 수 없습니다. (코스트 초과)");
+        }
+    }
 }

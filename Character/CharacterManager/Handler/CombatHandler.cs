@@ -260,6 +260,25 @@ public class CombatHandler : MonoBehaviour
         counterSkillQueue.Clear();
         onTurnEnd();
     }
+    public void AutoCounterAllies(System.Action onTurnEnd)
+    {
+        // 전체 캐릭터 리스트에서 아군 캐릭터 찾기
+        List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
+        List<CharacterManager> allyCharacters = allCharacters.Where(character => character.character.IsMine == true && character.character.IsAlive).ToList();
+
+        foreach (var ally in allyCharacters)
+        {
+            if (ally.character.DefaultCounterSkill != null && ally.character.IsAlive)
+            {
+                Debug.Log($"{ally.character.Name} 자동 대응 스킬 사용 : {ally.character.DefaultCounterSkill.name}");
+                UseSkill(ally.character.DefaultCounterSkill, ally); // 본인을 타겟으로 기본 대응
+            }
+        }
+
+        // 대응 스킬 실행 이후 턴 종료 처리
+        onTurnEnd();
+    }
+
 
     // 스킬 사용 메서드
     public void UseSkill(SkillBase skill, CharacterManager target)
@@ -366,7 +385,7 @@ public class CombatHandler : MonoBehaviour
         }
 
         // 랜덤성 부여 (성향에 반하는 행동을 할 확률)
-        float personalityDeviationChance = 0.15f; // 15% 확률로 성향과 반대 행동
+        float personalityDeviationChance = 0.15f; // 15% 확률로 성향과 상관없는 랜덤한 행동
         bool deviateFromPersonality = UnityEngine.Random.value < personalityDeviationChance;
 
         switch (characterManager.character.personality)

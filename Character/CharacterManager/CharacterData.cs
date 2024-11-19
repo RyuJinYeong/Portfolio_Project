@@ -507,6 +507,7 @@ public class CharacterData
     // 캐릭터가 보유하고 있는 스킬과 특성 리스트
     public List<TraitBase> Traits { get; set; }// 캐릭터의 특성 목록
     public List<SkillBase> Skills { get; set; }// 습득한 스킬 목록
+    public SkillBase DefaultCounterSkill { get; set; }// 기본 대응 스킬
 
     // 캐릭터에 적용되어있는 상태이상
     public List<StatusEffect> StatusEffects { get; set; } // 적용중인 상태이상 목록
