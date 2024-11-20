@@ -288,15 +288,6 @@ public class CombatHandler : MonoBehaviour
             yield return new WaitForSeconds(1.0f); // 스킬 간 대기 시간
         }
 
-        // 대응 스킬 실행
-        foreach (var item in counterSkillQueue)
-        {
-            SkillBase counterSkill = item.skill;
-            CharacterManager counterTarget = item.target;
-            UseSkill(counterSkill, counterTarget);
-            yield return new WaitForSeconds(1.0f); // 대응 스킬 간 대기 시간
-        }
-
         // 스킬 큐 및 대응 스킬 큐 비우기
         skillQueue.Clear();
         counterSkillQueue.Clear();
@@ -338,24 +329,26 @@ public class CombatHandler : MonoBehaviour
             {
                 SkillBase counterSkill = defenseCharacter.combatHandler.counterSkillQueue[0].skill;
                 defenseSuccess = UseCounterSkill(counterSkill, skill, defenseCharacter, characterManager);
-                defenseCharacter.combatHandler.RemoveCounterSkillFromQueue(counterSkill);
 
                 if (defenseSuccess)
                 {
                     Debug.Log($"{defenseCharacter.character.Name} successfully countered the attack on {target.character.Name}");
-
-                    // 기존 타겟 캐릭터의 대응 스킬 큐 초기화
-                    target.combatHandler.counterSkillQueue.Clear();
-
-                    // 경합 상태를 방어 캐릭터로 전환
+                                      
+                    // 경합 상태를 방어 캐릭터로 전환 + 기존 타겟의 대응 스킬 큐 초기화
                     if (!skill.IsRangedSkill) // 근접 공격일 경우에만 경합 상태 전환
                     {
+                        target.combatHandler.counterSkillQueue.Clear();
                         defenseCharacter.isInMeleeCombat = true;
                         defenseCharacter.meleeTarget = characterManager; // 경합 상태에서 공격자(스킬 시전자)를 타겟으로 설정
                         target.isInMeleeCombat = false; // 기존 타겟의 경합 상태 해제
                         target.meleeTarget = null;
 
                         Debug.Log($"{defenseCharacter.character.Name} takes over melee combat from {target.character.Name}");
+                    }
+                    else
+                    {
+                        // 기존 타겟 캐릭터의 대응 스킬 큐 하나 제거
+                        target.combatHandler.counterSkillQueue.Remove(target.combatHandler.counterSkillQueue[0]);
                     }
                 }
             }
@@ -366,8 +359,7 @@ public class CombatHandler : MonoBehaviour
         {
             SkillBase counterSkill = target.combatHandler.counterSkillQueue[0].skill; // 첫 번째 대응 스킬 가져오기
 
-            bool success = UseCounterSkill(counterSkill, skill, target, characterManager);
-            target.combatHandler.RemoveCounterSkillFromQueue(counterSkill);
+            bool success = UseCounterSkill(counterSkill, skill, target, characterManager);           
 
             if (success)
             {
@@ -413,6 +405,11 @@ public class CombatHandler : MonoBehaviour
 
     public bool UseCounterSkill(SkillBase counterSkill, SkillBase attackSkill, CharacterManager counterUser, CharacterManager attacker)
     {
+        //counterUser의 대응스킬 큐에서 객체 하나 제거 + UI 갱신
+        counterUser.combatHandler.counterSkillQueue.Remove(counterUser.combatHandler.counterSkillQueue[0]);
+        counterUser.characterUIHandler.RemoveCounterSkillFromQueue(counterSkill);
+        counterUser.UpdateCharacterUI();
+
         // 스킬 속도와 공격력 비교하여 대응 판정
         float attackSpeed;
         if (attackSkill.Type == SkillType.Physical)
