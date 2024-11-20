@@ -355,39 +355,6 @@ public class UIManager : MonoBehaviour
     {
         // 상대방에게 스킬 목록을 전달하는 로직 (멀티플레이어 게임일 경우 네트워크 메시지 전송 등)
     }
-    public void ShowCounterSkillUI(CharacterManager currentCharacter)
-    {
-        // 대응 스킬 UI 업데이트 - 방어 캐릭터로 지정됐을때만 출력
-        if (currentCharacter.combatHandler.isDefenseCharacter)
-        {
-            skillBar.SetActive(true);
-
-            int counterSkillIndex = 0;
-
-            foreach (SkillBase skill in currentCharacter.character.Skills)
-            {
-                if (skill.QuickSlot && skill.IsCounterSkill && skill.CanUse)  // 사용 가능하고 퀵슬롯에 등록된 대응 스킬만 보여줌
-                {
-                    if (counterSkillIndex < hotbarButtons.Length)
-                    {
-                        GameObject button = hotbarButtons[counterSkillIndex];
-
-                        button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
-                        button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
-                        button.GetComponent<Button>().interactable = true;    // 버튼 활성화
-
-                        button.GetComponent<Button>().onClick.RemoveAllListeners();
-                        button.GetComponent<Button>().onClick.AddListener(() =>
-                        {
-                            currentCharacter.SelectCounterSkill(skill, currentCharacter);  // 대응 스킬 선택
-                        });
-
-                        counterSkillIndex++; // 다음 핫바 슬롯으로 이동
-                    }
-                }
-            }
-        }
-    }
 
     // 시너지 정보를 UI에 표시하는 메서드
     public void UpdateSynergyUI(List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)
