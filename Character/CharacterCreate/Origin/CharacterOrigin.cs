@@ -26,7 +26,8 @@ public static class CharacterOrigin
                         ItemManager.itemDic[3004] as SkillBase,  // 사격
                         ItemManager.itemDic[3006] as SkillBase,  // 베기
                         ItemManager.itemDic[3009] as SkillBase  // 방어
-                    }
+                    },
+                    ItemManager.itemDic[3009] as SkillBase
                 )
             },
             {
@@ -48,7 +49,8 @@ public static class CharacterOrigin
                         ItemManager.itemDic[3004] as SkillBase,  // 사격
                         ItemManager.itemDic[3006] as SkillBase,  // 베기
                         ItemManager.itemDic[3009] as SkillBase  // 방어
-                    }
+                    },
+                    ItemManager.itemDic[3009] as SkillBase
                 )
             },
             {
@@ -70,7 +72,8 @@ public static class CharacterOrigin
                         ItemManager.itemDic[3004] as SkillBase,  // 사격
                         ItemManager.itemDic[3006] as SkillBase,  // 베기
                         ItemManager.itemDic[3009] as SkillBase  // 방어
-                    }
+                    },
+                    ItemManager.itemDic[3009] as SkillBase
                 )
             },
             {
@@ -92,7 +95,8 @@ public static class CharacterOrigin
                         ItemManager.itemDic[3004] as SkillBase,  // 사격
                         ItemManager.itemDic[3006] as SkillBase,  // 베기
                         ItemManager.itemDic[3009] as SkillBase  // 방어
-                    }
+                    },
+                    ItemManager.itemDic[3009] as SkillBase
                 )
             },
             {
@@ -114,7 +118,8 @@ public static class CharacterOrigin
                         ItemManager.itemDic[3004] as SkillBase,  // 사격
                         ItemManager.itemDic[3006] as SkillBase,  // 베기
                         ItemManager.itemDic[3009] as SkillBase  // 방어
-                    }
+                    },
+                    ItemManager.itemDic[3009] as SkillBase
                 )
             },
             {
@@ -138,7 +143,8 @@ public static class CharacterOrigin
                         ItemManager.itemDic[3008] as SkillBase,  // 마력탄
                         ItemManager.itemDic[3009] as SkillBase,  // 방어
                         ItemManager.itemDic[3010] as SkillBase   // 마력방패
-                    }
+                    },
+                    ItemManager.itemDic[3010] as SkillBase   // 마력방패
                 )
             },
             {
@@ -162,7 +168,8 @@ public static class CharacterOrigin
                         ItemManager.itemDic[3008] as SkillBase,  // 마력탄
                         ItemManager.itemDic[3009] as SkillBase,  // 방어
                         ItemManager.itemDic[3010] as SkillBase   // 마력방패
-                    }
+                    },
+                    ItemManager.itemDic[3009] as SkillBase  // 방어
                 )
             }
         };

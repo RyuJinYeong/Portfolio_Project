@@ -86,7 +86,7 @@ public class CharacterCreation : MonoBehaviour
         traitSelectionUI.ResetTraitSelection();
         traitSelectionUI.SetTraitPoints(traitPoint);
 
-        // 출신지 변경에 따른 외형 업데이트 - 직렬화를 이용한 깊은 복사 진행
+        // 출신지 변경에 따른 캐릭터 모델 업데이트 + 직렬화를 이용한 깊은 복사 진행
         characterManager.character = DeepCopy.DeepCopyCharacter(originDataDictionary.GetValueOrDefault(selectedOrigin));
         characterManager.GetComponent<CharacterCustomization>().UpdateWeaponAppearance(characterManager.character);
     }

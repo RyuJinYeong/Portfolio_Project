@@ -18,6 +18,7 @@ public class UIManager : MonoBehaviour
     public GameObject damageTextPrefab;  // 데미지 텍스트 프리팹
 
     public Button turnEndButton; // 턴 종료 버튼 추가
+    public Button counterTurnEndButton; // 자동 대응 버튼 추가
 
     public GameObject synergyInfoPanel; // 시너지 정보가 표시되는 패널
         

@@ -670,7 +670,7 @@ public class CharacterData
     }
 
     //출신지별 캐릭터 생성을 위한 생성자
-    public CharacterData(Origin origin, string originName, CharacterStats baseStats, Equipment helmet, Equipment armor, Equipment gloves, Equipment shoes, Equipment weapon, Equipment subWeapon, List<TraitBase> traits, List<SkillBase> skills)
+    public CharacterData(Origin origin, string originName, CharacterStats baseStats, Equipment helmet, Equipment armor, Equipment gloves, Equipment shoes, Equipment weapon, Equipment subWeapon, List<TraitBase> traits, List<SkillBase> skills, SkillBase defaultCounterSkill)
     {
         this.origin = origin;
         this.originName = originName;
@@ -683,6 +683,7 @@ public class CharacterData
         Shoes = shoes;
         Weapon = weapon;
         SubWeapon = subWeapon;
+        DefaultCounterSkill = defaultCounterSkill;
     }
     #endregion    
 

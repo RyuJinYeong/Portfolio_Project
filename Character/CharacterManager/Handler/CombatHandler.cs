@@ -260,24 +260,35 @@ public class CombatHandler : MonoBehaviour
         counterSkillQueue.Clear();
         onTurnEnd();
     }
-    public void AutoCounterAllies(System.Action onTurnEnd)
+
+    public void SetDefenseCharacter(CharacterManager defenseCharacter)
     {
-        // 전체 캐릭터 리스트에서 아군 캐릭터 찾기
-        List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
-        List<CharacterManager> allyCharacters = allCharacters.Where(character => character.character.IsMine == true && character.character.IsAlive).ToList();
+        Debug.Log($"{defenseCharacter.character.Name} - Set Defense Character");
 
-        foreach (var ally in allyCharacters)
-        {
-            if (ally.character.DefaultCounterSkill != null && ally.character.IsAlive)
-            {
-                Debug.Log($"{ally.character.Name} 자동 대응 스킬 사용 : {ally.character.DefaultCounterSkill.name}");
-                UseSkill(ally.character.DefaultCounterSkill, ally); // 본인을 타겟으로 기본 대응
-            }
-        }
+        // 방어 캐릭터로 지정
+        //defenseCharacter.IsDefenseCharacter = true;
 
-        // 대응 스킬 실행 이후 턴 종료 처리
-        onTurnEnd();
+        // 방어 캐릭터가 아군에게 가해지는 스킬에 대응
+        // 여기서 방어 캐릭터가 지정되면, 지정된 타겟의 스킬 큐를 통해 대응할 수 있는 스킬을 지정하는 UI를 표시
+        UIManager.Instance.ShowCounterSkillUI(defenseCharacter);
     }
+
+    /*
+    public void StartCounterTurn(System.Action onTurnEnd)
+    {
+        // 자동 대응 버튼을 눌렀다면
+        if (automaticCounter)
+        {
+            ExecuteAutoCounterActions(onTurnEnd);
+        }
+        else
+        {
+            // 방어 캐릭터 선택 및 대응 스킬 사용
+            UIManager.Instance.ShowCounterTurnOptions();
+        }
+    }*/
+
+
 
 
     // 스킬 사용 메서드

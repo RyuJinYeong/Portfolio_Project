@@ -70,8 +70,22 @@ public class TurnManager : MonoBehaviour
         }
     }
 
-    public void EndTurn()
+    public void StartCounterTurn()
     {
+        if (currentCharacter.GetSkillQueue().Count > 0)
+        {
+            Debug.Log("CounterTurn Start");
+            SetCounterTurnButtonAction(); 
+            UIManager.Instance.ShowCounterSkillUI(currentCharacter);
+        }
+        else
+        {
+            EndTurn(); // 현재 턴이 온 캐릭터가 선택한 스킬이 없을 경우 EndTurn() 호출
+        }
+    }
+
+    private void EndTurn()
+    {        
         currentCharacter.isPlayerTurn = false;
         currentCharacter.isInMeleeCombat = false;
         currentCharacter.meleeTarget = null;
@@ -83,7 +97,7 @@ public class TurnManager : MonoBehaviour
         {
             turnQueue.Enqueue(currentCharacter);
             StartNextTurn();
-        }
+        }        
     }
 
     private void ApplyStatusEffectsToAll() // 모든 캐릭터에게 상태이상 일괄적용
@@ -152,10 +166,10 @@ public class TurnManager : MonoBehaviour
         turnOrderList = turnQueue.ToList();
     }
 
-    // 턴 종료 콜백
+    // 턴 종료 콜백 - StartCounterTurn을 콜백으로 호출해서 현재 턴인 캐릭터의 스킬 큐 카운트 후 0일경우 EndTurn 호출
     public void OnTurnEnd()
     {
-        EndTurn();
+        StartCounterTurn();
     }
 
     // 턴 종료 버튼 설정
@@ -174,14 +188,41 @@ public class TurnManager : MonoBehaviour
                     {
                         combatHandler.ExecuteSkillQueue(() =>
                         {
-                            OnTurnEnd();
+                            OnTurnEnd(); // 턴종료 버튼 리스너 추가 - 대응턴으로 턴 넘기기.
                         });
                     }
                 }
             });
 
             // 현재 턴인 캐릭터에 맞게 버튼을 활성화 또는 비활성화
-            UIManager.Instance.turnEndButton.interactable = currentCharacter.character.IsMine;
+            UIManager.Instance.counterTurnEndButton.gameObject.SetActive(currentCharacter.character.IsMine);
+        }
+    }
+
+    // 대응턴 종료 버튼 설정
+    private void SetCounterTurnButtonAction()
+    {
+        if (UIManager.Instance != null && UIManager.Instance.counterTurnEndButton != null)
+        {
+            // 버튼에 새로운 리스너 추가
+            UIManager.Instance.counterTurnEndButton.onClick.RemoveAllListeners();
+            UIManager.Instance.counterTurnEndButton.onClick.AddListener(() =>
+            {
+                if (currentCharacter != null)
+                {
+                    CombatHandler combatHandler = currentCharacter.GetComponent<CombatHandler>();
+                    if (combatHandler != null)
+                    {
+                        combatHandler.ExecuteSkillQueue(() => // 대응 스킬큐 순차 실행 메서드 구현 필요
+                        {
+                            EndTurn(); // 턴 종료
+                        });
+                    }
+                }
+            });
+
+            // 현재 턴인 캐릭터에 맞게 버튼을 활성화 또는 비활성화
+            UIManager.Instance.turnEndButton.gameObject.SetActive(currentCharacter.character.IsMine);
         }
     }
 }

@@ -12,6 +12,8 @@ public class CharacterManager : MonoBehaviour
     public CombatHandler combatHandler;
     public CharacterUIHandler characterUIHandler;
 
+    public bool isDefenseCharacter;
+
     public Transform characterPool;
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
     public bool isPlayerTurn; // 플레이어 턴 여부 확인
@@ -103,6 +105,17 @@ public class CharacterManager : MonoBehaviour
         }
 
         UpdateCharacterUI();
+    }
+    public void SetDefaultCounterSkill(SkillBase skill)
+    {
+        if (skill.StaminaCost + skill.MentalCost == 1)
+        {
+            character.DefaultCounterSkill = skill;
+        }
+        else
+        {
+            Debug.Log("기본 대응 스킬로 설정할 수 없습니다. (코스트 초과)");
+        }
     }
 
     #endregion

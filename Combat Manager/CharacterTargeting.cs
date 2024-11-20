@@ -64,7 +64,6 @@ public class CharacterTargeting : MonoBehaviour
     }
 
     //인벤토리 열람
-
     public void OpenPlayerInventory()
     {
         if (selectedCharacter.character.IsMine)
