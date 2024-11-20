@@ -284,7 +284,7 @@ public class UIManager : MonoBehaviour
                     hotbarIndex++; // 다음 핫바 슬롯으로 이동
                 }
             }
-            else if(skill.QuickSlot && skill.CanUse && skill.IsCounterSkill && characterManager.isDefenseCharacter)
+            else if(skill.QuickSlot && skill.CanUse && skill.IsCounterSkill && characterManager.combatHandler.isDefenseCharacter)
             {
                 if (hotbarIndex < hotbarButtons.Length) // 핫바 슬롯이 남아있는 경우
                 {
@@ -357,30 +357,33 @@ public class UIManager : MonoBehaviour
     }
     public void ShowCounterSkillUI(CharacterManager currentCharacter)
     {
-        // 대응 스킬 UI 업데이트
-        skillBar.SetActive(true);
-
-        int counterSkillIndex = 0;
-
-        foreach (SkillBase skill in currentCharacter.character.Skills)
+        // 대응 스킬 UI 업데이트 - 방어 캐릭터로 지정됐을때만 출력
+        if (currentCharacter.combatHandler.isDefenseCharacter)
         {
-            if (skill.QuickSlot && skill.IsCounterSkill && skill.CanUse)  // 사용 가능하고 퀵슬롯에 등록된 대응 스킬만 보여줌
+            skillBar.SetActive(true);
+
+            int counterSkillIndex = 0;
+
+            foreach (SkillBase skill in currentCharacter.character.Skills)
             {
-                if (counterSkillIndex < hotbarButtons.Length)
+                if (skill.QuickSlot && skill.IsCounterSkill && skill.CanUse)  // 사용 가능하고 퀵슬롯에 등록된 대응 스킬만 보여줌
                 {
-                    GameObject button = hotbarButtons[counterSkillIndex];
-
-                    button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
-                    button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
-                    button.GetComponent<Button>().interactable = true;    // 버튼 활성화
-
-                    button.GetComponent<Button>().onClick.RemoveAllListeners();
-                    button.GetComponent<Button>().onClick.AddListener(() =>
+                    if (counterSkillIndex < hotbarButtons.Length)
                     {
-                        currentCharacter.SelectCounterSkill(skill, currentCharacter);  // 대응 스킬 선택
-                    });
+                        GameObject button = hotbarButtons[counterSkillIndex];
 
-                    counterSkillIndex++; // 다음 핫바 슬롯으로 이동
+                        button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
+                        button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
+                        button.GetComponent<Button>().interactable = true;    // 버튼 활성화
+
+                        button.GetComponent<Button>().onClick.RemoveAllListeners();
+                        button.GetComponent<Button>().onClick.AddListener(() =>
+                        {
+                            currentCharacter.SelectCounterSkill(skill, currentCharacter);  // 대응 스킬 선택
+                        });
+
+                        counterSkillIndex++; // 다음 핫바 슬롯으로 이동
+                    }
                 }
             }
         }

@@ -239,7 +239,10 @@ public class CharacterTargeting : MonoBehaviour
         }
 
         // 스킬 실행 큐에 추가
-        selectedCharacter.SelectSkill(selectedSkill, target);
+        if(selectedSkill.IsCounterSkill)
+            selectedCharacter.SelectCounterSkill(selectedSkill, target);
+        else
+            selectedCharacter.SelectSkill(selectedSkill, target);
         ChangeCursor("Basic");
     }
 

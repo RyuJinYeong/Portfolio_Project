@@ -12,8 +12,6 @@ public class CharacterManager : MonoBehaviour
     public CombatHandler combatHandler;
     public CharacterUIHandler characterUIHandler;
 
-    public bool isDefenseCharacter;
-
     public Transform characterPool;
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
     public bool isPlayerTurn; // 플레이어 턴 여부 확인

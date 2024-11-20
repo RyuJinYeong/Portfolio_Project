@@ -9,7 +9,7 @@ public class TurnManager : MonoBehaviour
     private Queue<CharacterManager> turnQueue = new Queue<CharacterManager>();
     private List<CharacterManager> turnOrderList = new List<CharacterManager>(); // 턴 순서 리스트 (큐 복사본)
     public CharacterManager currentCharacter;
-    public CharacterManager defenceCharacter;
+    public CharacterManager defenseCharacter;
     private GameManager gameManager;
     private List<CharacterManager> allCharacters; // 전투에 참여한 모든 캐릭터들을 관리하는 리스트
 
@@ -95,18 +95,14 @@ public class TurnManager : MonoBehaviour
                     enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.RemoveAllListeners();
                     enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.AddListener(() =>
                     {
-                        enemy.isDefenseCharacter = true; // 방어 캐릭터로 선택
+                        enemy.combatHandler.SetDefenseCharacter(enemy); // 방어 캐릭터로 선택
                         DisableDefenseButtons(enemies); // 다른 캐릭터들의 방어 버튼 비활성화
-
                         enemy.UpdateCharacterUI();
-                        UIManager.Instance.characterTargeting.SelectCharacter(enemy);
-                        defenceCharacter = enemy;
+                        
+                        defenseCharacter = enemy;
                     });
                 }
             }
-
-            // 대응 스킬 선택 UI 출력
-            UIManager.Instance.ShowCounterSkillUI(defenceCharacter);
         }
         else
         {
@@ -118,7 +114,7 @@ public class TurnManager : MonoBehaviour
     {
         foreach (CharacterManager enemy in manager)
         {
-            if (!enemy.isDefenseCharacter)
+            if (!enemy.combatHandler.isDefenseCharacter)
             {
                 enemy.characterUIHandler.CounterButton.SetActive(false);
             }
