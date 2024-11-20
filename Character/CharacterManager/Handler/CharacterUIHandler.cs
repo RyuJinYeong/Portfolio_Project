@@ -15,6 +15,7 @@ public class CharacterUIHandler : MonoBehaviour
     public GameObject mentalityBar;
     public GameObject statusEffectPanel;
 
+    public GameObject CounterButton;
     public GameObject turnIcon;
     public GameObject skillQueuePanel;
     public GameObject skillIconPrefab;

@@ -185,17 +185,17 @@ public class UIManager : MonoBehaviour
         infoPanel.SetActive(true);
         CharacterData characterData = characterManager.character;
 
-        characterPortrait.texture = characterData.Portrait; 
+        characterPortrait.texture = characterData.Portrait;
         characterName.text = characterData.Name;
 
         currentHP.text = $"{characterData.FinalStats.CurrentHp}";
         characterHP.text = $"{characterData.FinalStats.MaxHp}";
 
         currentStamina.text = $"{characterData.FinalStats.CurrentStamina}";
-        characterStamina.text  = $"{ characterData.FinalStats.MaxStamina}";
+        characterStamina.text = $"{characterData.FinalStats.MaxStamina}";
 
         currentMental.text = $"{characterData.FinalStats.CurrentMentality}";
-        characterMental.text  = $"{ characterData.FinalStats.MaxMentality}";
+        characterMental.text = $"{characterData.FinalStats.MaxMentality}";
 
         characterPhysicalAttack.text = $"{characterData.FinalStats.PhysicalAttack}";
         characterMagicAttack.text = $"{characterData.FinalStats.MagicalAttack}";
@@ -242,6 +242,49 @@ public class UIManager : MonoBehaviour
         foreach (SkillBase skill in characterManager.character.Skills)
         {
             if (skill.QuickSlot && skill.CanUse && !skill.IsCounterSkill) // 사용 가능하고 대응 스킬이 아닌 경우
+            {
+                if (hotbarIndex < hotbarButtons.Length) // 핫바 슬롯이 남아있는 경우
+                {
+                    GameObject button = hotbarButtons[hotbarIndex];
+
+                    button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
+                    button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
+                    if (characterManager.isPlayerTurn)
+                    {
+                        button.GetComponent<Button>().interactable = true;    // 버튼 활성화
+
+                        // 버튼 클릭 시 스킬 사용 처리
+                        button.GetComponent<Button>().onClick.RemoveAllListeners(); // 기존 리스너 제거
+                        button.GetComponent<Button>().onClick.AddListener(() =>
+                        {
+                            characterTargeting.StartTargeting(skill); // 스킬 타겟팅 시작
+                        });
+                    }
+
+                    // 리소스 소모량 표시
+                    TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
+                    Image[] images = button.GetComponentsInChildren<Image>();
+                    if (costText != null)
+                    {
+                        Image costFrameImage = images[1];
+                        if (skill.Type == SkillType.Physical)
+                        {
+                            costText.text = $"{skill.StaminaCost}";
+                            costText.color = new Color(1f, 0.5f, 0f); // 주황색 (지구력)
+                            costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f); // 부모 이미지 색상 변경 (주황 계열)
+                        }
+                        else if (skill.Type == SkillType.Magical)
+                        {
+                            costText.text = $"{skill.MentalCost}";
+                            costText.color = new Color(0f, 0.5f, 1f); // 파란색 (정신력)
+                            costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f); // 부모 이미지 색상 변경 (파란 계열)
+                        }
+                    }
+
+                    hotbarIndex++; // 다음 핫바 슬롯으로 이동
+                }
+            }
+            else if(skill.QuickSlot && skill.CanUse && skill.IsCounterSkill && characterManager.isDefenseCharacter)
             {
                 if (hotbarIndex < hotbarButtons.Length) // 핫바 슬롯이 남아있는 경우
                 {
@@ -334,7 +377,7 @@ public class UIManager : MonoBehaviour
                     button.GetComponent<Button>().onClick.RemoveAllListeners();
                     button.GetComponent<Button>().onClick.AddListener(() =>
                     {
-                        currentCharacter.SelectSkill(skill, currentCharacter);  // 대응 스킬 선택
+                        currentCharacter.SelectCounterSkill(skill, currentCharacter);  // 대응 스킬 선택
                     });
 
                     counterSkillIndex++; // 다음 핫바 슬롯으로 이동

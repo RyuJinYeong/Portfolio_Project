@@ -160,8 +160,23 @@ public class CombatHandler : MonoBehaviour
 
     // 플레이어가 대응 스킬 선택 후 큐에 추가
     public void SelectCounterSkill(SkillBase skill, CharacterManager target)
-    {
+    {        
+        // 리소스 차감
+        if (!ConsumeResources(skill)) return;
+        
         counterSkillQueue.Add((skill, target));
+        int order = counterSkillQueue.Count;
+        Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
+
+        // 스킬 큐 UI에 추가 (캐릭터 UI 핸들러 사용)
+        target.characterUIHandler.AddSkillToQueue(skill, counterSkillQueue.Count, characterManager); // 시전자 전달
+
+        //시전자 UI 갱신        
+        characterManager.UpdateCharacterUI();
+
+        // 스킬 사용 가능 여부 업데이트
+        UIManager.Instance.UpdateSkillTransparency(characterManager);
+
         Debug.Log($"Counter Skill {skill.name} added to queue.");
     }
 
@@ -272,24 +287,6 @@ public class CombatHandler : MonoBehaviour
         // 여기서 방어 캐릭터가 지정되면, 지정된 타겟의 스킬 큐를 통해 대응할 수 있는 스킬을 지정하는 UI를 표시
         UIManager.Instance.ShowCounterSkillUI(defenseCharacter);
     }
-
-    /*
-    public void StartCounterTurn(System.Action onTurnEnd)
-    {
-        // 자동 대응 버튼을 눌렀다면
-        if (automaticCounter)
-        {
-            ExecuteAutoCounterActions(onTurnEnd);
-        }
-        else
-        {
-            // 방어 캐릭터 선택 및 대응 스킬 사용
-            UIManager.Instance.ShowCounterTurnOptions();
-        }
-    }*/
-
-
-
 
     // 스킬 사용 메서드
     public void UseSkill(SkillBase skill, CharacterManager target)

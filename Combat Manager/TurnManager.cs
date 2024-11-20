@@ -2,12 +2,14 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Search;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class TurnManager : MonoBehaviour
 {
     private Queue<CharacterManager> turnQueue = new Queue<CharacterManager>();
     private List<CharacterManager> turnOrderList = new List<CharacterManager>(); // 턴 순서 리스트 (큐 복사본)
     public CharacterManager currentCharacter;
+    public CharacterManager defenceCharacter;
     private GameManager gameManager;
     private List<CharacterManager> allCharacters; // 전투에 참여한 모든 캐릭터들을 관리하는 리스트
 
@@ -75,12 +77,51 @@ public class TurnManager : MonoBehaviour
         if (currentCharacter.GetSkillQueue().Count > 0)
         {
             Debug.Log("CounterTurn Start");
-            SetCounterTurnButtonAction(); 
-            UIManager.Instance.ShowCounterSkillUI(currentCharacter);
+
+            SetCounterTurnButtonAction(); // 대응 턴 버튼 설정
+
+            // 현재 턴인 캐릭터와 반대 진영에 있는 캐릭터를 찾아 방어 버튼을 활성화
+            List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
+            List<CharacterManager> enemies = allCharacters
+                .Where(character => character.character.IsMine != currentCharacter.character.IsMine && character.character.IsAlive)
+                .ToList();
+
+            // 방어 캐릭터 선택 UI 활성화
+            foreach (CharacterManager enemy in enemies)
+            {
+                if (enemy.characterUIHandler.CounterButton != null) 
+                {
+                    enemy.characterUIHandler.CounterButton.SetActive(true);
+                    enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.RemoveAllListeners();
+                    enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.AddListener(() =>
+                    {
+                        enemy.isDefenseCharacter = true; // 방어 캐릭터로 선택
+                        DisableDefenseButtons(enemies); // 다른 캐릭터들의 방어 버튼 비활성화
+
+                        enemy.UpdateCharacterUI();
+                        UIManager.Instance.characterTargeting.SelectCharacter(enemy);
+                        defenceCharacter = enemy;
+                    });
+                }
+            }
+
+            // 대응 스킬 선택 UI 출력
+            UIManager.Instance.ShowCounterSkillUI(defenceCharacter);
         }
         else
         {
             EndTurn(); // 현재 턴이 온 캐릭터가 선택한 스킬이 없을 경우 EndTurn() 호출
+        }
+    }
+
+    private void DisableDefenseButtons(List<CharacterManager> manager)
+    {
+        foreach (CharacterManager enemy in manager)
+        {
+            if (!enemy.isDefenseCharacter)
+            {
+                enemy.characterUIHandler.CounterButton.SetActive(false);
+            }
         }
     }
 

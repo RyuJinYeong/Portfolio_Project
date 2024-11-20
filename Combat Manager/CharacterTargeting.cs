@@ -181,6 +181,12 @@ public class CharacterTargeting : MonoBehaviour
             isTargeting = true;
             // 원거리 타겟팅 로직 구현 필요
         }
+        else if (selectedSkill.IsCounterSkill)
+        {
+            ChangeCursor("Deff");
+            isTargeting = true;
+            lineRenderer.enabled = true;
+        }
         else
         {
             ChangeCursor("Attack");
