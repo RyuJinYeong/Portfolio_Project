@@ -15,6 +15,7 @@ public class CharacterManager : MonoBehaviour
     public Transform characterPool;
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
     public bool isPlayerTurn; // 플레이어 턴 여부 확인
+    public bool hasExtraTurn;
 
     public bool isInMeleeCombat = false;  // 경합 상태 여부
     public CharacterManager meleeTarget = null;  // 경합 중 타겟

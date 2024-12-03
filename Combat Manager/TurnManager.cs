@@ -55,10 +55,20 @@ public class TurnManager : MonoBehaviour
             }
 
             UpdateTurnQueue(); // 큐 갱신
-        }               
-        
-        currentCharacter = turnQueue.Dequeue();
-        
+        }
+
+
+        // 기존의 턴을 가지고 있는 캐릭터가 추가 턴이 있는 경우, 다시 턴을 부여
+        if (currentCharacter != null && currentCharacter.hasExtraTurn)
+        {
+            currentCharacter.hasExtraTurn = false; // 추가 턴 사용 완료
+            Debug.Log($"{currentCharacter.character.Name}이 추가 턴을 획득했습니다.");
+        }
+        else
+        {
+            currentCharacter = turnQueue.Dequeue(); // 추가 턴이 없으면 다음 캐릭터로 넘어감
+        }
+
         Debug.Log("현재 Turn Queue.Count : " + turnQueue.Count + " 현재 턴 캐릭터 :" + currentCharacter.character.Name);
         UIManager.Instance.UpdateTurnOrder(turnOrderList, currentCharacter);
 
@@ -79,7 +89,7 @@ public class TurnManager : MonoBehaviour
         }
         else
         {
-            EndTurn(); // 사망한 캐릭터는 바로 턴을 넘김
+            StartNextTurn(); // 사망한 캐릭터는 바로 턴을 넘김
         }
     }
 

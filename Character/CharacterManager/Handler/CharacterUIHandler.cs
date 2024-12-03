@@ -80,12 +80,15 @@ public class CharacterUIHandler : MonoBehaviour
             orderText.text = order.ToString();
         }
 
-        // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-        Button skillButton = skillIconInstance.GetComponent<Button>();
-        skillButton.onClick.AddListener(() =>
+        if (caster.character.IsMine)
         {
-            caster.combatHandler.RemoveSkillFromQueue(skill);  // 시전자의 CombatHandler에서 스킬 제거
-        });
+            // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
+            Button skillButton = skillIconInstance.GetComponent<Button>();
+            skillButton.onClick.AddListener(() =>
+            {
+                caster.combatHandler.RemoveSkillFromQueue(skill);  // 시전자의 CombatHandler에서 스킬 제거
+            });
+        }
 
         // 생성된 아이콘을 리스트에 저장
         skillQueueIcons.Add(skillIconInstance);
@@ -136,12 +139,15 @@ public class CharacterUIHandler : MonoBehaviour
             orderText.text = order.ToString();
         }
 
-        // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-        Button skillButton = skillIconInstance.GetComponent<Button>();
-        skillButton.onClick.AddListener(() =>
+        if (caster.character.IsMine)
         {
-            caster.combatHandler.RemoveCounterSkillFromQueue(skill);  // 시전자의 CombatHandler에서 스킬 제거
-        });
+            // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
+            Button skillButton = skillIconInstance.GetComponent<Button>();
+            skillButton.onClick.AddListener(() =>
+            {
+                caster.combatHandler.RemoveCounterSkillFromQueue(skill);  // 시전자의 CombatHandler에서 스킬 제거
+            });
+        }
 
         // 생성된 아이콘을 리스트에 저장
         counterSkillQueueIcons.Add(skillIconInstance);

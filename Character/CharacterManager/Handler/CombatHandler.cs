@@ -142,10 +142,6 @@ public class CombatHandler : MonoBehaviour
         }
     }
 
-
-
-
-
     // 리소스 소비 로직
     private bool ConsumeResources(SkillBase skill)
     {
@@ -214,10 +210,15 @@ public class CombatHandler : MonoBehaviour
         {
             Debug.Log($"{characterManager.meleeTarget.character.Name} 처치 성공. 스킬 큐 취소 및 리소스 반환.");
             CancelRemainingSkills();
+
             // 경합 상태 해제
             characterManager.isInMeleeCombat = false;
             characterManager.meleeTarget = null;
-            return true;
+
+            // 추가 턴 부여
+            characterManager.hasExtraTurn = true;
+
+            return true; // 경합 상태에서 처치 성공
         }
         else
         {
