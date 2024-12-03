@@ -201,6 +201,7 @@ public static class SkillDatabase
         {
             uid = uidCounter++,
             IsCounterSkill = true,
+            CanUse = true,
             QuickSlot = true
         });
 

@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Search;
@@ -53,9 +55,11 @@ public class TurnManager : MonoBehaviour
             }
 
             UpdateTurnQueue(); // 큐 갱신
-        }
-
+        }               
+        
         currentCharacter = turnQueue.Dequeue();
+        
+        Debug.Log("현재 Turn Queue.Count : " + turnQueue.Count + " 현재 턴 캐릭터 :" + currentCharacter.character.Name);
         UIManager.Instance.UpdateTurnOrder(turnOrderList, currentCharacter);
 
         // 캐릭터가 살아있으면 턴 시작, 그렇지 않으면 턴을 넘김
@@ -63,8 +67,15 @@ public class TurnManager : MonoBehaviour
         {
             currentCharacter.StartTurn(OnTurnEnd);
 
-            // 턴 종료 버튼 설정
-            SetEndTurnButtonAction();
+            if (currentCharacter.character.IsMine)
+            {
+                // 턴 종료 버튼 설정
+                SetEndTurnButtonAction();
+            }
+            else
+            {
+                UIManager.Instance.turnEndButton.gameObject.SetActive(false);
+            }
         }
         else
         {
@@ -74,34 +85,55 @@ public class TurnManager : MonoBehaviour
 
     public void StartCounterTurn()
     {
+        if (currentCharacter.combatHandler.turnTimerCoroutine != null)
+        {
+            StopCoroutine(currentCharacter.combatHandler.turnTimerCoroutine);
+        }
+
         if (currentCharacter.GetSkillQueue().Count > 0)
         {
+            currentCharacter.combatHandler.AutoAssignDefaultCounterSkills();
             Debug.Log("CounterTurn Start");
+            //대응턴 시작 30초 제한
+            currentCharacter.combatHandler.turnTimerCoroutine = StartCoroutine(currentCharacter.combatHandler.TurnTimer(30f, EndTurn));
 
-            SetCounterTurnButtonAction(); // 대응 턴 버튼 설정
-
-            // 현재 턴인 캐릭터와 반대 진영에 있는 캐릭터를 찾아 방어 버튼을 활성화
-            List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
-            List<CharacterManager> enemies = allCharacters
-                .Where(character => character.character.IsMine != currentCharacter.character.IsMine && character.character.IsAlive)
-                .ToList();
-
-            // 방어 캐릭터 선택 UI 활성화
-            foreach (CharacterManager enemy in enemies)
+            if (!currentCharacter.character.IsMine)
             {
-                if (enemy.characterUIHandler.CounterButton != null) 
+                SetCounterTurnButtonAction(); // 대응 턴 버튼 설정
+
+                // 현재 턴인 캐릭터와 반대 진영에 있는 캐릭터를 찾아 방어 버튼을 활성화
+                List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
+                List<CharacterManager> enemies = allCharacters
+                    .Where(character => character.character.IsMine != currentCharacter.character.IsMine && character.character.IsAlive)
+                    .ToList();
+
+                // 방어 캐릭터 선택 UI 활성화
+                foreach (CharacterManager enemy in enemies)
                 {
-                    enemy.characterUIHandler.CounterButton.SetActive(true);
-                    enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.RemoveAllListeners();
-                    enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.AddListener(() =>
+                    if (enemy.characterUIHandler.CounterButton != null)
                     {
-                        enemy.combatHandler.SetDefenseCharacter(enemy); // 방어 캐릭터로 선택
-                        DisableDefenseButtons(enemies); // 다른 캐릭터들의 방어 버튼 비활성화
-                        enemy.UpdateCharacterUI();
-                        
-                        defenseCharacter = enemy;
-                    });
-                }
+                        enemy.characterUIHandler.CounterButton.SetActive(true);
+                        enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.RemoveAllListeners();
+                        enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.AddListener(() =>
+                        {
+                            defenseCharacter = enemy;
+                            enemy.combatHandler.SetDefenseCharacter(enemy); // 캐릭터 매니저 필드값 변경 - 방어 캐릭터로 선택
+                            DisableDefenseButtons(enemies); // 방어 버튼 비활성화
+                            enemy.UpdateCharacterUI();
+
+                            // 방어 대상 타겟팅 시작
+                            UIManager.Instance.characterTargeting.StartDefenseTargeting(defenseCharacter);
+                        });
+                    }
+                }            
+            }
+            else
+            {
+                UIManager.Instance.turnEndButton.gameObject.SetActive(false);
+                UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
+
+                EndTurn();
+                return;
             }
         }
         else
@@ -114,15 +146,43 @@ public class TurnManager : MonoBehaviour
     {
         foreach (CharacterManager enemy in manager)
         {
-            if (!enemy.combatHandler.isDefenseCharacter)
-            {
-                enemy.characterUIHandler.CounterButton.SetActive(false);
-            }
+            enemy.characterUIHandler.CounterButton.SetActive(false);
         }
     }
 
     private void EndTurn()
-    {        
+    {
+        UIManager.Instance.characterTargeting.lineRenderer.enabled = false;
+        if (currentCharacter != null)
+        {
+            if (currentCharacter.combatHandler.turnTimerCoroutine != null)
+            {
+                StopCoroutine(currentCharacter.combatHandler.turnTimerCoroutine);
+            }
+
+            CombatHandler combatHandler = currentCharacter.GetComponent<CombatHandler>();
+            if (combatHandler != null)
+            {
+                // 대응 스킬큐 순차 실행 메서드 구현 필요
+                combatHandler.ExecuteSkillQueue(() =>{});
+            }
+        }
+
+        // 방어자와 방어 대상 필드 초기화
+        if (defenseCharacter != null)
+        {
+            defenseCharacter.combatHandler.isDefenseCharacter = false;
+            defenseCharacter = null;
+        }
+
+        foreach (var character in allCharacters)
+        {
+            if (character.combatHandler.isDefenseTarget.ContainsKey(true))
+            {
+                character.combatHandler.isDefenseTarget[true] = null;
+            }
+        }
+
         currentCharacter.isPlayerTurn = false;
         currentCharacter.isInMeleeCombat = false;
         currentCharacter.meleeTarget = null;
@@ -132,7 +192,6 @@ public class TurnManager : MonoBehaviour
         // 턴이 끝날 때마다 승리/패배 조건 체크
         if (!CheckBattleEnd())
         {
-            turnQueue.Enqueue(currentCharacter);
             StartNextTurn();
         }        
     }
@@ -211,36 +270,32 @@ public class TurnManager : MonoBehaviour
 
     // 턴 종료 버튼 설정
     private void SetEndTurnButtonAction()
-    {
+    {        
         if (UIManager.Instance != null && UIManager.Instance.turnEndButton != null)
         {
+            UIManager.Instance.turnEndButton.gameObject.SetActive(true);
             // 버튼에 새로운 리스너 추가
             UIManager.Instance.turnEndButton.onClick.RemoveAllListeners();
             UIManager.Instance.turnEndButton.onClick.AddListener(() =>
             {
                 if (currentCharacter != null)
                 {
-                    CombatHandler combatHandler = currentCharacter.GetComponent<CombatHandler>();
-                    if (combatHandler != null)
+                    if (currentCharacter != null)
                     {
-                        combatHandler.ExecuteSkillQueue(() =>
-                        {
-                            OnTurnEnd(); // 턴종료 버튼 리스너 추가 - 대응턴으로 턴 넘기기.
-                        });
+                        StartCounterTurn(); // 대응 턴 시작 (이후 대응턴 종료 버튼에서 스킬 큐 실행)
                     }
                 }
             });
-
-            // 현재 턴인 캐릭터에 맞게 버튼을 활성화 또는 비활성화
-            UIManager.Instance.counterTurnEndButton.gameObject.SetActive(currentCharacter.character.IsMine);
         }
     }
 
-    // 대응턴 종료 버튼 설정
+    // 자동대응 버튼 설정
     private void SetCounterTurnButtonAction()
     {
         if (UIManager.Instance != null && UIManager.Instance.counterTurnEndButton != null)
         {
+            UIManager.Instance.counterTurnEndButton.gameObject.SetActive(true);
+            UIManager.Instance.turnEndButton.gameObject.SetActive(false);
             // 버튼에 새로운 리스너 추가
             UIManager.Instance.counterTurnEndButton.onClick.RemoveAllListeners();
             UIManager.Instance.counterTurnEndButton.onClick.AddListener(() =>
@@ -250,16 +305,15 @@ public class TurnManager : MonoBehaviour
                     CombatHandler combatHandler = currentCharacter.GetComponent<CombatHandler>();
                     if (combatHandler != null)
                     {
-                        combatHandler.ExecuteSkillQueue(() => // 대응 스킬큐 순차 실행 메서드 구현 필요
+                        // 대응 스킬 큐 실행
+                        combatHandler.ExecuteSkillQueue(() =>
                         {
                             EndTurn(); // 턴 종료
+                            UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
                         });
                     }
                 }
             });
-
-            // 현재 턴인 캐릭터에 맞게 버튼을 활성화 또는 비활성화
-            UIManager.Instance.turnEndButton.gameObject.SetActive(currentCharacter.character.IsMine);
         }
     }
 }

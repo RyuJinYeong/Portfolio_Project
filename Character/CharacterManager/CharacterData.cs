@@ -497,7 +497,7 @@ public class CharacterData
     public float AttackSpeedMultiplier { get; set; } = 1.0f; // 공격 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
     public float CastSpeedMultiplier { get; set; } = 1.0f; // 시전 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
 
-    public int BonusStatpoint { get; set; } // 투자 가능 스탯
+    //public int BonusStatpoint { get; set; } // 투자 가능 스탯
     public bool IsAlive { get; set; } // 캐릭터의 생존유무
     public bool IsMine { get; set; } // 캐릭터 아군여부
 

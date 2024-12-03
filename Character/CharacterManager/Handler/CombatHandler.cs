@@ -1,11 +1,7 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Unity;
-using UnityEngine.TextCore.Text;
-using static UnityEngine.EventSystems.EventTrigger;
 
 public class CombatHandler : MonoBehaviour
 {
@@ -15,10 +11,10 @@ public class CombatHandler : MonoBehaviour
     private List<SynergyEffect> activeSynergyEffects; // 시너지 효과 리스트
     private SynergyManager synergyManager;
 
-    public Dictionary<bool, CharacterManager>isDefenseTarget = new Dictionary<bool, CharacterManager>();
-    public bool isDefenseCharacter;
+    public Dictionary<bool, CharacterManager>isDefenseTarget = new Dictionary<bool, CharacterManager>(); // 방어대상일때  true, 방어자 매니저
+    public bool isDefenseCharacter; // 방어캐릭터 여부
 
-    private Coroutine turnTimerCoroutine;
+    public Coroutine turnTimerCoroutine;
     private float totalDuration = 60.0f; // 턴 제한 시간
 
     public void Awake()
@@ -38,14 +34,14 @@ public class CombatHandler : MonoBehaviour
         if (characterManager.character.Type != CharacterType.Character) // 플레이어가 조종하는 캐릭터가 아닐 경우
         {
             Debug.Log("AI 턴 시작");
-            turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd)); // AI 턴 타이머 시작
+            turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd)); // AI 턴 타이머 시작
             characterManager.UpdateCharacterUI();
             StartCoroutine(HandleAITurn(onTurnEnd));
         }
         else
         {
             Debug.Log("플레이어 턴 시작");
-            turnTimerCoroutine = StartCoroutine(TurnTimer(onTurnEnd)); // 플레이어 턴 타이머 시작
+            turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd)); // 플레이어 턴 타이머 시작
             characterManager.UpdateCharacterUI();
 
             UIManager.Instance.characterTargeting.SelectCharacter(characterManager);
@@ -53,9 +49,9 @@ public class CombatHandler : MonoBehaviour
     }
 
     // 턴 타이머
-    private IEnumerator TurnTimer(System.Action onTurnEnd)
+    public IEnumerator TurnTimer(float duration, System.Action onTurnEnd) // 공격턴 종료, 대응턴 종료 콜백 전달
     {
-        float timeRemaining = totalDuration;
+        float timeRemaining = duration;
 
         while (timeRemaining > 0)
         {
@@ -67,9 +63,10 @@ public class CombatHandler : MonoBehaviour
 
         if (characterManager.isPlayerTurn)
         {
-            ExecuteSkillQueue(onTurnEnd); // 턴 종료 전 스킬 큐 실행     
+            onTurnEnd(); // 콜백 함수 실행
         }
     }
+
 
     // 스킬 선택 및 큐에 추가 (리소스 소모 적용 및 경합 상태 처리)
     public void SelectSkill(SkillBase skill, CharacterManager target)
@@ -141,6 +138,7 @@ public class CombatHandler : MonoBehaviour
             characterManager.isInMeleeCombat = false;
             characterManager.meleeTarget = null;
             Debug.Log("경합 상태 해제");
+            UIManager.Instance.characterTargeting.lineRenderer.enabled = false;
         }
     }
 
@@ -166,7 +164,7 @@ public class CombatHandler : MonoBehaviour
     // 플레이어가 대응 스킬 선택 후 큐에 추가
     public void SelectCounterSkill(SkillBase skill, CharacterManager target)
     {        
-        // 리소스 차감
+        // 리소스 차감        
         if (!ConsumeResources(skill)) return;
         
         counterSkillQueue.Add((skill, target));
@@ -312,7 +310,7 @@ public class CombatHandler : MonoBehaviour
         if (isDefenseCharacter)
         {
             target.combatHandler.isDefenseTarget[true] = this.characterManager;
-            Debug.Log($"{target.character.Name} is being defended by {characterManager.character.Name}");
+            Debug.Log($"방어자 : {characterManager.character.Name} - 방어대상 : {target.character.Name}");
         }
     }
 
@@ -327,8 +325,7 @@ public class CombatHandler : MonoBehaviour
             CharacterManager defenseCharacter = target.combatHandler.isDefenseTarget[true];
             if (defenseCharacter != null && defenseCharacter.combatHandler.counterSkillQueue.Count > 0)
             {
-                SkillBase counterSkill = defenseCharacter.combatHandler.counterSkillQueue[0].skill;
-                defenseSuccess = UseCounterSkill(counterSkill, skill, defenseCharacter, characterManager);
+                defenseSuccess = UseCounterSkill(skill, defenseCharacter, characterManager);
 
                 if (defenseSuccess)
                 {
@@ -337,13 +334,30 @@ public class CombatHandler : MonoBehaviour
                     // 경합 상태를 방어 캐릭터로 전환 + 기존 타겟의 대응 스킬 큐 초기화
                     if (!skill.IsRangedSkill) // 근접 공격일 경우에만 경합 상태 전환
                     {
+                        //기존 타겟의 전투 정보 초기화
                         target.combatHandler.counterSkillQueue.Clear();
-                        defenseCharacter.isInMeleeCombat = true;
-                        defenseCharacter.meleeTarget = characterManager; // 경합 상태에서 공격자(스킬 시전자)를 타겟으로 설정
+                        target.combatHandler.isDefenseTarget = null;
                         target.isInMeleeCombat = false; // 기존 타겟의 경합 상태 해제
                         target.meleeTarget = null;
 
-                        Debug.Log($"{defenseCharacter.character.Name} takes over melee combat from {target.character.Name}");
+                        defenseCharacter.isInMeleeCombat = true;
+                        defenseCharacter.meleeTarget = characterManager; // 경합 상태에서 공격자(스킬 시전자)를 타겟으로 설정
+
+                        Debug.Log($"공격자 {characterManager.character.Name} -> {target.character.Name}에서 {defenseCharacter.character.Name}로 경합 대상 변경 ");
+
+                        // 공격자의 남은 스킬 큐의 타겟을 방어 캐릭터로 변경
+                        for (int i = 0; i < characterManager.combatHandler.skillQueue.Count; i++)
+                        {
+                            var skillEntry = characterManager.combatHandler.skillQueue[i];
+                            if (skillEntry.target == target)
+                            {
+                                characterManager.combatHandler.skillQueue[i] = (skillEntry.skill, defenseCharacter);
+                                Debug.Log($"{skillEntry.skill.name} 타겟 변경 {target.character.Name} -> {defenseCharacter.character.Name}");
+                            }
+                        }
+
+                        // 공격자의 meleeTarget을 방어 캐릭터로 설정
+                        characterManager.meleeTarget = defenseCharacter;
                     }
                     else
                     {
@@ -355,15 +369,13 @@ public class CombatHandler : MonoBehaviour
         }
 
         // 먼저 대응 스킬이 있는지 확인 (방어 캐릭터 대응 실패 시)
-        if (!defenseSuccess && target.combatHandler.isDefenseTarget.ContainsKey(true) && target.combatHandler.counterSkillQueue.Count > 0)
+        if (!defenseSuccess && target.combatHandler.counterSkillQueue.Count > 0)
         {
-            SkillBase counterSkill = target.combatHandler.counterSkillQueue[0].skill; // 첫 번째 대응 스킬 가져오기
-
-            bool success = UseCounterSkill(counterSkill, skill, target, characterManager);           
+            bool success = UseCounterSkill(skill, target, characterManager);           
 
             if (success)
             {
-                Debug.Log($"{target.character.Name} successfully countered the attack");
+                Debug.Log($"{target.character.Name} 대응 성공");
             }
         }
 
@@ -403,8 +415,17 @@ public class CombatHandler : MonoBehaviour
         EndSynergyEffects();
     }
 
-    public bool UseCounterSkill(SkillBase counterSkill, SkillBase attackSkill, CharacterManager counterUser, CharacterManager attacker)
+    public bool UseCounterSkill(SkillBase attackSkill, CharacterManager counterUser, CharacterManager attacker)
     {
+        // 대응 스킬이 있는지 확인 후 사용
+        if (counterUser.combatHandler.counterSkillQueue.Count == 0)
+        {
+            Debug.Log($"{counterUser.character.Name} has no counter skill available.");
+            return false; // 대응 스킬 없음
+        }
+
+        SkillBase counterSkill = counterUser.combatHandler.counterSkillQueue[0].skill;
+
         //counterUser의 대응스킬 큐에서 객체 하나 제거 + UI 갱신
         counterUser.combatHandler.counterSkillQueue.Remove(counterUser.combatHandler.counterSkillQueue[0]);
         counterUser.characterUIHandler.RemoveCounterSkillFromQueue(counterSkill);
@@ -427,19 +448,43 @@ public class CombatHandler : MonoBehaviour
         // 성공 확률 기반으로 대응 성공 판정
         if (counterSpeed > attackSpeed)
         {
+            // 기본 대응 스킬인지 확인
+            float counterEffectMultiplier = counterSkill == counterUser.character.DefaultCounterSkill? 0.5f : 1.0f;
+
             // 대응 스킬 성공 시 방어 효과 부여
             Debug.Log($"{counterUser.character.Name} {counterSkill.name} 대응 성공 - {attacker.character.Name} {attackSkill.name}");
 
             if (counterSkill.Type == SkillType.Physical)
-                counterUser.character.PhysicalArmor += (int)(counterSkill.DamageMultiplier * counterUser.character.FinalStats.PhysicalAttack);
+                counterUser.character.PhysicalArmor += (int)(counterSkill.DamageMultiplier * counterUser.character.FinalStats.PhysicalAttack * counterEffectMultiplier);
             else
-                counterUser.character.MagicalArmor += (int)(counterSkill.DamageMultiplier * counterUser.character.FinalStats.MagicalAttack);
+                counterUser.character.MagicalArmor += (int)(counterSkill.DamageMultiplier * counterUser.character.FinalStats.MagicalAttack* counterEffectMultiplier);
 
             return true; // 대응 성공
         }
 
         Debug.Log($"{counterUser.character.Name} {counterSkill.name} 대응 실패 - {attacker.character.Name} {attackSkill.name}");
         return false; // 대응 실패
+    }
+
+    // 전투 핸들러에 추가할 자동 대응 스킬 등록 메서드 (타겟 캐릭터들만 대응 스킬 등록)
+    public void AutoAssignDefaultCounterSkills()
+    {
+        // 스킬 큐의 각 타겟 캐릭터에 대해 자동 대응 스킬 등록
+        foreach (var skillTargetPair in skillQueue)
+        {            
+            CharacterManager target = skillTargetPair.target;
+
+            // 타겟이 되는 캐릭터의 기본 대응 스킬 가져오기
+            SkillBase defaultCounterSkill = target.character.DefaultCounterSkill;
+
+            if (defaultCounterSkill != null)
+            {
+                target.combatHandler.counterSkillQueue.Add((defaultCounterSkill, target));
+                target.characterUIHandler.AddCounterSkillToQueue(defaultCounterSkill, target.combatHandler.counterSkillQueue.Count, target);
+
+                Debug.Log($"{target.character.Name} - {defaultCounterSkill.name} 자동 대응 스킬 등록");
+            }
+        }
     }
 
 
@@ -475,8 +520,6 @@ public class CombatHandler : MonoBehaviour
     // AI 턴 처리
     public IEnumerator HandleAITurn(System.Action onTurnEnd)
     {
-        Debug.Log("AI 턴 시작");
-
         yield return new WaitForSeconds(2.0f); // AI 대기 시간 (AI 턴 대기시간 연출)
 
         // 스킬 및 타겟 선택
@@ -490,7 +533,7 @@ public class CombatHandler : MonoBehaviour
         }
 
         yield return new WaitForSeconds(2.0f);
-        ExecuteSkillQueue(onTurnEnd); // 턴 종료 전 스킬 큐 실행
+        onTurnEnd(); // 턴 종료 전 카운터 턴으로 넘김
     }
 
     // AI 사용스킬 지정 메서드

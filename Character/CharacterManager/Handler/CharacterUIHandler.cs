@@ -125,6 +125,7 @@ public class CharacterUIHandler : MonoBehaviour
     public void AddCounterSkillToQueue(SkillBase skill, int order, CharacterManager caster)
     {
         // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
+        skill.LoadIcon();
         GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
         skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
 
