@@ -8,12 +8,27 @@ using UnityEngine.UI;
 
 public class TurnManager : MonoBehaviour
 {
+    public static TurnManager Instance { get; private set; }
+
     private Queue<CharacterManager> turnQueue = new Queue<CharacterManager>();
     private List<CharacterManager> turnOrderList = new List<CharacterManager>(); // 턴 순서 리스트 (큐 복사본)
-    public CharacterManager currentCharacter;
-    public CharacterManager defenseCharacter;
+    public CharacterManager currentCharacter; // 공격자
+    public CharacterManager defenseCharacter; // 방어자
+    public CharacterManager defenseTarget;    // 방어대상
     private GameManager gameManager;
     private List<CharacterManager> allCharacters; // 전투에 참여한 모든 캐릭터들을 관리하는 리스트
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
+    }
 
     private void Start()
     {
@@ -161,8 +176,9 @@ public class TurnManager : MonoBehaviour
     }
 
     private void EndTurn()
-    {
+    {        
         UIManager.Instance.characterTargeting.lineRenderer.enabled = false;
+        UIManager.Instance.ClearCounterSkillPanel(); // 카운터 스킬 패널 초기화
         if (currentCharacter != null)
         {
             if (currentCharacter.combatHandler.turnTimerCoroutine != null)
@@ -187,9 +203,9 @@ public class TurnManager : MonoBehaviour
 
         foreach (var character in allCharacters)
         {
-            if (character.combatHandler.isDefenseTarget.ContainsKey(true))
+            if (character.combatHandler.isDefenseTarget)
             {
-                character.combatHandler.isDefenseTarget[true] = null;
+                character.combatHandler.isDefenseTarget = false;
             }
         }
 
@@ -283,6 +299,7 @@ public class TurnManager : MonoBehaviour
     {        
         if (UIManager.Instance != null && UIManager.Instance.turnEndButton != null)
         {
+            UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
             UIManager.Instance.turnEndButton.gameObject.SetActive(true);
             // 버튼에 새로운 리스너 추가
             UIManager.Instance.turnEndButton.onClick.RemoveAllListeners();
@@ -310,17 +327,13 @@ public class TurnManager : MonoBehaviour
             UIManager.Instance.counterTurnEndButton.onClick.RemoveAllListeners();
             UIManager.Instance.counterTurnEndButton.onClick.AddListener(() =>
             {
+                UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
                 if (currentCharacter != null)
                 {
                     CombatHandler combatHandler = currentCharacter.GetComponent<CombatHandler>();
                     if (combatHandler != null)
                     {
-                        // 대응 스킬 큐 실행
-                        combatHandler.ExecuteSkillQueue(() =>
-                        {
-                            EndTurn(); // 턴 종료
-                            UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
-                        });
+                        EndTurn();                        
                     }
                 }
             });

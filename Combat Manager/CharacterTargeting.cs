@@ -206,7 +206,13 @@ public class CharacterTargeting : MonoBehaviour
 
         selectedSkill = skill;
 
-        if (selectedSkill.IsRangedSkill)
+        if (selectedSkill.IsCounterSkill)
+        {
+            // 커서를 방어 스킬용으로 변경
+            ChangeCursor("Deff");
+            // 방어타겟팅 로직 구현 필요. - 0225 구현중
+        }
+        else if (selectedSkill.IsRangedSkill)
         {
             // 커서를 원거리 스킬용으로 변경
             ChangeCursor("Shoot");
@@ -218,7 +224,7 @@ public class CharacterTargeting : MonoBehaviour
             ChangeCursor("Attack");
             isTargeting = true;
             lineRenderer.enabled = true;
-        }
+        }        
     }
 
     void UpdateBezierCurve()
@@ -277,7 +283,7 @@ public class CharacterTargeting : MonoBehaviour
     {
         if (defenseCharacter == null) return;
 
-isDefenseTargeting = true;
+        isDefenseTargeting = true;
         lineRenderer.enabled = true;
 
         selectedCharacter = defenseCharacter;  // 방어 캐릭터 지정

@@ -11,7 +11,7 @@ public class CombatHandler : MonoBehaviour
     private List<SynergyEffect> activeSynergyEffects; // 시너지 효과 리스트
     private SynergyManager synergyManager;
 
-    public Dictionary<bool, CharacterManager>isDefenseTarget = new Dictionary<bool, CharacterManager>(); // 방어대상일때  true, 방어자 매니저
+    public bool isDefenseTarget; // 방어대상 여부
     public bool isDefenseCharacter; // 방어캐릭터 여부
 
     public Coroutine turnTimerCoroutine;
@@ -310,8 +310,13 @@ public class CombatHandler : MonoBehaviour
     {
         if (isDefenseCharacter)
         {
-            target.combatHandler.isDefenseTarget[true] = this.characterManager;
+            target.combatHandler.isDefenseTarget = true;
+            TurnManager.Instance.defenseTarget = target;
             Debug.Log($"방어자 : {characterManager.character.Name} - 방어대상 : {target.character.Name}");
+
+            // 카운터 스킬 패널 출력
+            if (TurnManager.Instance.defenseCharacter != null && TurnManager.Instance.defenseTarget != null)
+                UIManager.Instance.UpdateCounterSkillPanel(TurnManager.Instance.defenseCharacter, TurnManager.Instance.defenseTarget);
         }
     }
 
@@ -321,9 +326,9 @@ public class CombatHandler : MonoBehaviour
         bool defenseSuccess = false;
 
         // 방어 대상인지 확인
-        if (target.combatHandler.isDefenseTarget.ContainsKey(true))
+        if (target.combatHandler.isDefenseTarget)
         {
-            CharacterManager defenseCharacter = target.combatHandler.isDefenseTarget[true];
+            CharacterManager defenseCharacter = TurnManager.Instance.defenseCharacter;
             if (defenseCharacter != null && defenseCharacter.combatHandler.counterSkillQueue.Count > 0)
             {
                 defenseSuccess = UseCounterSkill(skill, defenseCharacter, characterManager);
@@ -337,7 +342,7 @@ public class CombatHandler : MonoBehaviour
                     {
                         //기존 타겟의 전투 정보 초기화
                         target.combatHandler.counterSkillQueue.Clear();
-                        target.combatHandler.isDefenseTarget = null;
+                        target.combatHandler.isDefenseTarget = false;
                         target.isInMeleeCombat = false; // 기존 타겟의 경합 상태 해제
                         target.meleeTarget = null;
 
@@ -446,7 +451,7 @@ public class CombatHandler : MonoBehaviour
         else
             counterSpeed = (float)counterSkill.ActivationSpeed * counterUser.character.FinalStats.CastSpeed;
 
-        // 성공 확률 기반으로 대응 성공 판정
+        // 성공 확률 기반으로 카운터 성공 판정
         if (counterSpeed > attackSpeed)
         {
             // 기본 대응 스킬인지 확인

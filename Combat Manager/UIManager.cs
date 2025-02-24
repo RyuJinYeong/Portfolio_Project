@@ -21,7 +21,11 @@ public class UIManager : MonoBehaviour
     public Button counterTurnEndButton; // 자동 대응 버튼 추가
 
     public GameObject synergyInfoPanel; // 시너지 정보가 표시되는 패널
-        
+
+    public GameObject skillQueueFramePrefab; // 스킬 큐를 표시할 프레임 Prefab
+    public GameObject skillIconPrefab; // 스킬 아이콘 Prefab
+    public Transform counterSkillPanel; // 하단부의 방어자, 방어 대상 스킬 정보 패널    
+
     public RawImage characterPortrait;
     public TextMeshProUGUI characterName;
 
@@ -215,7 +219,7 @@ public class UIManager : MonoBehaviour
         foreach (var button in hotbarButtons)
         {
             button.GetComponent<Button>().interactable = false; // 버튼 비활성화
-            button.GetComponent<RawImage>().enabled = false;    // 이미지 비활성화
+            button.GetComponent<RawImage>().enabled = false;    // 이미지 비활성화            
 
             // 코스트 텍스트 초기화
             TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
@@ -250,7 +254,8 @@ public class UIManager : MonoBehaviour
 
                         button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
                         button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
-                        if (characterManager.isPlayerTurn)
+                        button.GetComponent<SkillButton>().skill = skill;
+                        if (characterManager.combatHandler.isDefenseCharacter)
                         {
                             button.GetComponent<Button>().interactable = true;    // 버튼 활성화
 
@@ -294,6 +299,8 @@ public class UIManager : MonoBehaviour
 
                     button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
                     button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
+                    button.GetComponent<SkillButton>().skill = skill;
+
                     if (characterManager.isPlayerTurn)
                     {
                         button.GetComponent<Button>().interactable = true;    // 버튼 활성화
@@ -335,29 +342,131 @@ public class UIManager : MonoBehaviour
         UpdateSkillTransparency(characterManager);
     }
 
-    public void ShowQueuedSkills(CharacterManager currentCharacter)
-    {
-        // 기존 UI를 업데이트하고, 큐에 있는 스킬 목록을 시각적으로 표시
-        DisplayQueuedSkills(currentCharacter.GetSkillQueue());
+    #region 카운터 스킬 패널 조작
 
-        // 상대방에게도 큐에 쌓인 스킬 목록을 보여줌
-        NotifyOpponentOfQueuedSkills(currentCharacter.GetSkillQueue());
-    }
-
-    private void DisplayQueuedSkills(List<(SkillBase skill, CharacterManager target)> skillQueue)
+    // 방어 대상과 방어자를 기반으로 패널을 초기화 - 방어대상 선택 시 호출
+    public void UpdateCounterSkillPanel(CharacterManager defender, CharacterManager target)
     {
-        // 큐에 있는 스킬들을 화면에 표시
-        foreach (var skill in skillQueue)
+        // 기존 자식들 초기화
+        ClearCounterSkillPanel();
+
+        // 현재 공격자의 스킬 큐를 가져옴
+        CharacterManager attacker = TurnManager.Instance.currentCharacter;
+        List<(SkillBase skill, CharacterManager target)> atkSkillQueue = attacker.combatHandler.GetSkillQueue();
+        
+        // 방어자와 방어대상을 타겟으로 하는 스킬들만 추출하여 새로운 큐 구성
+        List<(SkillBase skill, CharacterManager target)> filteredSkillQueue = atkSkillQueue.Where(item => item.target == defender || item.target == target).ToList(); // 리스트로 변환하여 순서를 유지
+        
+        // 자기 자신을 방어하는 경우
+        if (defender == target)
         {
-            // UI에 스킬 아이콘, 이름, 타겟 정보를 표시하는 로직 추가
-            // 예: skillBar에 스킬 아이콘 추가
+            // 하나의 프레임으로 표시
+            AddSkillFrame(defender, filteredSkillQueue);
+        }
+        else
+        {   
+            // **각 캐릭터를 향한 공격이 있는지 개별적으로 체크
+            bool hasDefenderAttack = filteredSkillQueue.Any(item => item.target == defender);
+            bool hasTargetAttack = filteredSkillQueue.Any(item => item.target == target);
+
+            // 방어자에게 향하는 공격이 있다면 패널 생성
+            if (hasDefenderAttack)
+            {
+                AddSkillFrame(defender, filteredSkillQueue);
+            }
+
+            // 방어 대상에게 향하는 공격이 있다면 패널 생성
+            if (hasTargetAttack)
+            {
+                AddSkillFrame(target, filteredSkillQueue);
+            }
+        }
+    }
+    // 패널 초기화 (기존 자식 오브젝트 삭제)
+    public void ClearCounterSkillPanel()
+    {
+        foreach (Transform child in counterSkillPanel)
+        {
+            Destroy(child.gameObject);
         }
     }
 
-    private void NotifyOpponentOfQueuedSkills(List<(SkillBase skill, CharacterManager target)> skillQueue)
+    // 스킬 큐 프레임 추가
+    private void AddSkillFrame(CharacterManager owner, List<(SkillBase skill, CharacterManager target)> skillQueue)
     {
-        // 상대방에게 스킬 목록을 전달하는 로직 (멀티플레이어 게임일 경우 네트워크 메시지 전송 등)
+        // 프레임 생성
+        GameObject frame = Instantiate(skillQueueFramePrefab, counterSkillPanel);
+
+        // 프레임의 제목 설정
+        TextMeshProUGUI titleText = frame.GetComponentInChildren<TextMeshProUGUI>();
+        if (titleText != null)
+        {
+            titleText.text = owner.character.Name;
+        }
+
+        // 실제 스킬 아이콘을 배치할 Panel 객체 찾기
+        Transform skillPanel = frame.transform.Find("SkillPanel");
+        if (skillPanel == null)
+        {
+            Debug.LogWarning($"SkillPanel을 찾을 수 없습니다. Prefab 구조 확인 필요.");
+            return;
+        }
+
+        // 순번을 재매기면서 스킬 아이콘 추가
+        for (int i = 0; i < skillQueue.Count; i++)
+        {
+            // 현재 공격자의 스킬 큐에서 owner를 타겟으로 하는 것만 필터링
+            if (skillQueue[i].target == owner)
+                AddSkillIcon(skillPanel, skillQueue[i].skill, owner, i + 1); // 순번 부여하여 추가
+        }
     }
+
+    // 스킬 아이콘 추가 (공격스킬)
+    private void AddSkillIcon(Transform parent, SkillBase skill, CharacterManager owner, int orderNumber)
+    {
+        // 아이콘 프리팹 생성
+        GameObject skillQueueIcon = Instantiate(skillIconPrefab, parent);
+        
+        GameObject atkSkillIcon = skillQueueIcon.transform.GetChild(0).gameObject;
+        GameObject defSkillIcon = skillQueueIcon.transform.GetChild(2).gameObject;
+
+        // 이미지 설정
+        skill.LoadIcon();
+        RawImage atkIconImage = atkSkillIcon.GetComponent<RawImage>();
+        if (atkIconImage != null && skill.icon != null)
+        {            
+            atkIconImage.texture = skill.icon;
+        }
+
+        // 이미지 설정
+        TurnManager.Instance.defenseCharacter.character.DefaultCounterSkill.LoadIcon();
+        RawImage defIconImage = defSkillIcon.GetComponent<RawImage>();
+        if (TurnManager.Instance.defenseCharacter.character.DefaultCounterSkill.icon != null)
+        {
+            defIconImage.texture = TurnManager.Instance.defenseCharacter.character.DefaultCounterSkill.icon;
+        }
+
+        // 순번 표시 (TextMeshProUGUI가 있다면)
+        TextMeshProUGUI orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
+        if (orderText != null)
+        {
+            orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
+        }
+
+        // 클릭 이벤트 추가 (필요에 따라 확장)
+        Button button = skillQueueIcon.GetComponent<Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() =>
+            {
+                Debug.Log($"{owner.character.Name}의 스킬 [{skill.name}] 아이콘 클릭!");
+                // 필요하다면 대응 스킬 교체, 상세 정보 표시, 툴팁 등 구현
+            });
+        }
+    }
+
+    #endregion 
 
     // 시너지 정보를 UI에 표시하는 메서드
     public void UpdateSynergyUI(List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)

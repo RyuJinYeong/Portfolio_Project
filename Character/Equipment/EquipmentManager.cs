@@ -14,22 +14,32 @@ public static class EquipmentManager
         switch (equipment.EquipType)
         {
             case EquipmentType.Helmet:
-                character.Helmet = equipment;
+                if (character.Helmet != null)
+                    character.Helmet.Unequip(character);
+                character.Helmet = equipment;                
                 break;
 
             case EquipmentType.Armor:
+                if (character.Armor != null)
+                    character.Armor.Unequip(character);
                 character.Armor = equipment;
                 break;
 
             case EquipmentType.Gloves:
+                if (character.Gloves != null)
+                    character.Gloves.Unequip(character);
                 character.Gloves = equipment;
                 break;
 
             case EquipmentType.Shoes:
+                if (character.Shoes != null)
+                    character.Shoes.Unequip(character);
                 character.Shoes = equipment;
                 break;
 
             case EquipmentType.Cape:
+                if (character.Cape != null)
+                    character.Cape.Unequip(character);
                 character.Cape = equipment;
                 break;
 
@@ -38,19 +48,26 @@ public static class EquipmentManager
                 {
                     character.Ring1 = equipment;
                 }
-                else 
+                else if (character.Ring2 == null)
                 {
+                    character.Ring2 = equipment;
+                }
+                else
+                {
+                    character.Ring2.Unequip(character);
                     character.Ring2 = equipment;
                 }
                 break;
 
             case EquipmentType.Necklace:
+                if (character.Necklace != null)
+                    character.Necklace.Unequip(character);
                 character.Necklace = equipment;
                 break;
 
             case EquipmentType.Weapon:
                 if(equipment is Weapon weapon) // Equipment타입으로 전달 받은 장비 객체를 임의로 Weapon 형식으로 캐스팅
-                {
+                {                    
                     if (!character.CanEquipMainWeapon(weapon)) // 장착 불가능한 무기일 경우
                     {
                         Debug.Log("장착 불가능한 주무기입니다.");
@@ -58,6 +75,9 @@ public static class EquipmentManager
                         return;
                     }
                 }
+
+                if (character.Weapon != null)
+                    character.Weapon.Unequip(character);
                 character.Weapon = equipment;
                 break;
 
@@ -68,6 +88,9 @@ public static class EquipmentManager
                     character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
                     return;
                 }
+
+                if (character.SubWeapon != null)
+                    character.SubWeapon.Unequip(character);
                 character.SubWeapon = equipment;
                 break;
         }

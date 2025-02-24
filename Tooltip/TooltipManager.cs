@@ -1,12 +1,23 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class TooltipManager : MonoBehaviour
 {
     public static TooltipManager Instance;
-    public TextMeshProUGUI tooltipText;
+
+
+    [Header("Tooltip UI Components")]
+    public RawImage skillIcon;
+    public Text skillNameText;
+    public Text skillTypeText;
+    public Text skillSpeedText;
+    public Text costText;
+    public Text descriptionText;
     public GameObject tooltipObject;
+
+    public TextMeshProUGUI tooltipText;    
 
     public Vector3 tooltipOffset = new Vector3(40, -25, 0); // 마우스 커서로부터의 오프셋
     private bool isTooltipActive = false;
@@ -57,6 +68,31 @@ public class TooltipManager : MonoBehaviour
         {
             UpdateTooltipPosition(Input.mousePosition);
         }
+    }
+
+    // SkillBase 객체를 이용한 툴팁
+    public void ShowTooltip(SkillBase skill, Vector3 position)
+    {
+        skillIcon.texture = skill.icon;
+        skillNameText.text = skill.name;
+        skillTypeText.text = $"{(skill.Type == SkillType.Physical ? "물리 스킬" : "마법 스킬")} - {(skill.IsRangedSkill ? "원거리" : "근접")}";
+        skillSpeedText.text = $"발동속도: {skill.ActivationSpeed}";
+        costText.text = "";
+        if (skill.StaminaCost != 0)
+        {
+            costText.text = $"지구력 : {skill.StaminaCost} 소모";
+        }
+        
+        if(skill.MentalCost != 0)
+        {
+            costText.text += $" 정신력 : {skill.MentalCost} 소모";
+        }
+        descriptionText.text = skill.description;
+
+        UpdateTooltipPosition(position);
+        if(skill.uid != 0)
+            tooltipObject.SetActive(true);
+        isTooltipActive = true;
     }
 
     public void ShowTooltip(string text, Vector3 position)

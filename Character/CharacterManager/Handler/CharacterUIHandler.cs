@@ -72,6 +72,7 @@ public class CharacterUIHandler : MonoBehaviour
         // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
         GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
         skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
+        skillIconInstance.GetComponent<SkillButton>().skill = skill; // 툴팁용 스킬 객체 참조
 
         // 순서 표시 (좌상단 텍스트)
         TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
@@ -131,6 +132,7 @@ public class CharacterUIHandler : MonoBehaviour
         skill.LoadIcon();
         GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
         skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
+        skillIconInstance.GetComponent<SkillButton>().skill = skill; // 툴팁용 스킬 객체 참조
 
         // 순서 표시 (좌상단 텍스트)
         TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
