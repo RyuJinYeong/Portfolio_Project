@@ -171,6 +171,31 @@ public static class CharacterOrigin
                     },
                     ItemManager.itemDic[3009] as SkillBase  // 방어
                 )
+            },
+            {
+                "TestOrigin",
+                new CharacterData(
+                    Origin.wandering_knight, "TestOrigin",
+                    new CharacterStats(10, 10, 10, 10, 10, 10, 10),
+                    null,
+                    ItemManager.itemDic[1001] as Armor,  // Leather Armor
+                    ItemManager.itemDic[1002] as Armor,  // Leather Gloves
+                    ItemManager.itemDic[1003] as Armor,  // Leather Boots
+                    ItemManager.itemDic[1004] as Weapon,  // Old Sword
+                    ItemManager.itemDic[1005] as Weapon,  // Round Shield                    
+                    new List<TraitBase> { new DurableTrait() },
+                    new List<SkillBase>
+                    {
+                        ItemManager.itemDic[3000] as SkillBase,  // 휘두르기
+                        ItemManager.itemDic[3002] as SkillBase,  // 찌르기
+                        ItemManager.itemDic[3004] as SkillBase,  // 사격
+                        ItemManager.itemDic[3006] as SkillBase,  // 베기
+                        ItemManager.itemDic[3008] as SkillBase,  // 마력탄
+                        ItemManager.itemDic[3009] as SkillBase,  // 방어
+                        ItemManager.itemDic[3010] as SkillBase   // 마력방패
+                    },
+                    ItemManager.itemDic[3009] as SkillBase  // 방어
+                )
             }
         };
     }

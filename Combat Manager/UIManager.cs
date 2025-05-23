@@ -141,6 +141,10 @@ public class UIManager : MonoBehaviour
 
                     // 현재 턴이 아니거나 리소스가 부족할 경우 스킬 사용 불가로 표시
                     bool Inactive = !characterManager.isPlayerTurn || !canUseSkill;
+                    if(characterManager == TurnManager.Instance.defenseCharacter) // 방어캐릭터일 경우 턴 관련 부분 스킵 후 리소스 소모량만 계산
+                    {
+                        Inactive = !canUseSkill;
+                    }
 
                     // 버튼의 CanvasGroup을 통해 투명도 설정
                     CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
@@ -218,6 +222,7 @@ public class UIManager : MonoBehaviour
         // 모든 핫바 버튼과 RawImage를 비활성화
         foreach (var button in hotbarButtons)
         {
+            button.GetComponent<SkillButton>().skill = null;
             button.GetComponent<Button>().interactable = false; // 버튼 비활성화
             button.GetComponent<RawImage>().enabled = false;    // 이미지 비활성화            
 
@@ -401,7 +406,7 @@ public class UIManager : MonoBehaviour
         TextMeshProUGUI titleText = frame.GetComponentInChildren<TextMeshProUGUI>();
         if (titleText != null)
         {
-            titleText.text = owner.character.Name;
+            titleText.text = "=> " + owner.character.Name;
         }
 
         // 실제 스킬 아이콘을 배치할 Panel 객체 찾기
@@ -424,6 +429,8 @@ public class UIManager : MonoBehaviour
     // 스킬 아이콘 추가 (공격스킬)
     private void AddSkillIcon(Transform parent, SkillBase skill, CharacterManager owner, int orderNumber)
     {
+        CharacterManager defenseCharacter = TurnManager.Instance.defenseCharacter;
+
         // 아이콘 프리팹 생성
         GameObject skillQueueIcon = Instantiate(skillIconPrefab, parent);
         
@@ -453,15 +460,27 @@ public class UIManager : MonoBehaviour
             orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
         }
 
-        // 클릭 이벤트 추가 (필요에 따라 확장)
-        Button button = skillQueueIcon.GetComponent<Button>();
+        Button button = defSkillIcon.GetComponent<Button>();
         if (button != null)
         {
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() =>
             {
-                Debug.Log($"{owner.character.Name}의 스킬 [{skill.name}] 아이콘 클릭!");
-                // 필요하다면 대응 스킬 교체, 상세 정보 표시, 툴팁 등 구현
+                CharacterTargeting targeting = UIManager.Instance.characterTargeting;
+
+                if (targeting.isDefenseSkillTargeting)
+                {
+                    // 카운터 스킬 등록 모드
+                    defenseCharacter.SelectCounterSkill(targeting.selectedSkill, defenseCharacter);                    
+                    Debug.Log($"{defenseCharacter.name} - {orderNumber}에 방어 스킬 등록: {targeting.selectedSkill.name}");
+                    targeting.StopTargeting();
+                }
+                else
+                {
+                    // 기존 스킬 제거 모드
+                    //defenseCharacter;
+                    Debug.Log($"[UIManager] 슬롯 {orderNumber}에서 방어 스킬 제거");
+                }
             });
         }
     }

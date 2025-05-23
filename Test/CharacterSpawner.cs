@@ -8,7 +8,7 @@ using System.Collections;
 
 public class CharacterSpawner : MonoBehaviour
 {
-    public GameObject frontCharacterObject; // 전열에 배치할 캐릭터 오브젝트 (방랑기사)
+    public GameObject frontCharacterObject; // 전열에 배치할 캐릭터 오브젝트 (TestOrigin)
     public GameObject backCharacterObject1; // 후열에 배치할 첫 번째 캐릭터 오브젝트 (사냥꾼)
     public GameObject backCharacterObject2; // 후열에 배치할 두 번째 캐릭터 오브젝트 (마법사)
 
@@ -18,16 +18,23 @@ public class CharacterSpawner : MonoBehaviour
 
     private void Start()
     {
-        //for (int i = 0; i < 9; i++) { Debug.Log(ItemManager.itemDic[1001+i].name + " uid = " + ItemManager.itemDic[1001 + i].uid); }
         // 아군 캐릭터 데이터 초기화
-        InitializeCharacter(frontCharacterObject, CharacterOrigin.GetOriginData()["방랑기사"], true);
+        InitializeCharacter(frontCharacterObject, CharacterOrigin.GetOriginData()["TestOrigin"], true);
         InitializeCharacter(backCharacterObject1, CharacterOrigin.GetOriginData()["사냥꾼"], true);
         InitializeCharacter(backCharacterObject2, CharacterOrigin.GetOriginData()["마법사"], true);
 
         // 적군 캐릭터 데이터 초기화
         InitializeCharacter(enemyFrontCharacterObject, CharacterOrigin.GetOriginData()["방랑기사"], false);
         InitializeCharacter(enemyBackCharacterObject1, CharacterOrigin.GetOriginData()["사냥꾼"], false);
-        InitializeCharacter(enemyBackCharacterObject2, CharacterOrigin.GetOriginData()["마법사"], false);
+        InitializeCharacter(enemyBackCharacterObject2, CharacterOrigin.GetOriginData()["마법사"], false);        
+    }
+
+    IEnumerator Delay(CharacterManager characterManager, GameObject characterObject)
+    {
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForSeconds(0.1f); // 애니메이션 반영을 위한 짧은 딜레이
+
+        characterManager.character.Portrait = characterObject.GetComponent<CharacterCustomization>().CapturePortrait(); // 초상화 촬영        
     }
 
     private void InitializeCharacter(GameObject characterObject, CharacterData characterData, bool isMine)
@@ -101,7 +108,7 @@ public class CharacterSpawner : MonoBehaviour
             characterManager.character.UpdateFinalStats();
             characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
 
-            characterManager.character.Portrait = characterObject.GetComponent<CharacterCustomization>().CapturePortrait(); // 초상화 촬영
+            StartCoroutine(Delay(characterManager, characterObject)); // 애니메이션 렌더링을 위한 딜레이 적용
 
             if (isMine)
             {

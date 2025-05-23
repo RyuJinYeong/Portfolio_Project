@@ -6,8 +6,9 @@ using UnityEngine;
 public class CombatHandler : MonoBehaviour
 {
     public CharacterManager characterManager;
-    private List<(SkillBase skill, CharacterManager target)> skillQueue;
-    private List<(SkillBase skill, CharacterManager target)> counterSkillQueue;
+    private List<(SkillBase skill, CharacterManager target)> skillQueue = new();
+    private List<(SkillBase skill, CharacterManager target)> counterSkillQueue = new();
+
     private List<SynergyEffect> activeSynergyEffects; // 시너지 효과 리스트
     private SynergyManager synergyManager;
 
@@ -91,6 +92,7 @@ public class CombatHandler : MonoBehaviour
         int order = skillQueue.Count;
         Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
 
+
         // 스킬 큐 UI에 추가 (캐릭터 UI 핸들러 사용)
         target.characterUIHandler.AddSkillToQueue(skill, skillQueue.Count, characterManager); // 시전자 전달
 
@@ -108,13 +110,12 @@ public class CombatHandler : MonoBehaviour
 
 
     // 스킬 큐에서 스킬 제거 및 리소스 반환
-    public void RemoveSkillFromQueue(SkillBase skill)
-    {
-        // 스킬 큐에서 해당 스킬을 찾기
-        var skillEntry = skillQueue.FirstOrDefault(s => s.skill == skill);
-        if (skillEntry.skill != null)
+    public void RemoveSkillFromQueue(SkillBase skill, int index)
+    {        
+        if (index >= 0 && index < skillQueue.Count)
         {
-            skillQueue.Remove(skillEntry);
+            var skillEntry = skillQueue[index];
+
             characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost);
             characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost);
 
@@ -123,12 +124,11 @@ public class CombatHandler : MonoBehaviour
             // 스킬 사용 가능 여부 업데이트
             UIManager.Instance.UpdateSkillTransparency(characterManager);
 
-            // 타겟의 상단 패널 UI에서 해당 스킬 제거
-            skillEntry.target.characterUIHandler.RemoveSkillFromQueue(skill);     
-            Debug.Log($"Skill {skill.name} removed from queue. Resources refunded: Stamina: {(int)(skill.StaminaCost)}, Mentality: {(int)(skill.MentalCost)}");            
+            Debug.Log($"Skill {skill.name} removed from queue. Resources refunded: Stamina: {(int)(skill.StaminaCost)}, Mentality: {(int)(skill.MentalCost)}");
+
+            skillQueue.RemoveAt(index);
         }
 
-        // 경합 상태 해제 로직 추가
         // 남은 스킬 큐를 확인하여 근거리 스킬이 있는지 검사
         bool hasMeleeSkill = skillQueue.Any(s => !s.skill.IsRangedSkill);
 
@@ -180,13 +180,12 @@ public class CombatHandler : MonoBehaviour
     }
 
     // 스킬 큐에서 스킬 제거 및 리소스 반환
-    public void RemoveCounterSkillFromQueue(SkillBase skill)
+    public void RemoveCounterSkillFromQueue(SkillBase skill, int index) 
     {
-        // 스킬 큐에서 해당 스킬을 찾기
-        var skillEntry = counterSkillQueue.FirstOrDefault(s => s.skill == skill);
-        if (skillEntry.skill != null)
+        if (index >= 0 && index < counterSkillQueue.Count)
         {
-            counterSkillQueue.Remove(skillEntry);
+            var skillEntry = counterSkillQueue[index];
+            
             characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost);
             characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost);
 
@@ -195,8 +194,8 @@ public class CombatHandler : MonoBehaviour
             // 스킬 사용 가능 여부 업데이트
             UIManager.Instance.UpdateSkillTransparency(characterManager);
 
-            // 타겟의 상단 패널 UI에서 해당 스킬 제거
-            skillEntry.target.characterUIHandler.RemoveCounterSkillFromQueue(skill);
+            counterSkillQueue.RemoveAt(index);
+
             Debug.Log($"Skill {skill.name} removed from queue. Resources refunded: Stamina: {(int)(skill.StaminaCost)}, Mentality: {(int)(skill.MentalCost)}");
         }
     }
@@ -237,7 +236,7 @@ public class CombatHandler : MonoBehaviour
             characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost * 0.5f);
 
             // 타겟의 상단 패널 UI에서 해당 스킬 제거
-            item.target.characterUIHandler.RemoveSkillFromQueue(skill);
+            item.target.characterUIHandler.RemoveSkillFromQueue(skill,0);
         }
 
         skillQueue.Clear();
@@ -271,7 +270,7 @@ public class CombatHandler : MonoBehaviour
             UseSkill(skill, target);
 
             // 타겟의 상단 패널에서 스킬 큐 UI 제거
-            target.characterUIHandler.RemoveSkillFromQueue(skill);
+            target.characterUIHandler.RemoveSkillFromQueue(skill, 0);
             target.UpdateCharacterUI();
 
             // 상대가 사망했는지 확인 후 처리
@@ -434,7 +433,7 @@ public class CombatHandler : MonoBehaviour
 
         //counterUser의 대응스킬 큐에서 객체 하나 제거 + UI 갱신
         counterUser.combatHandler.counterSkillQueue.Remove(counterUser.combatHandler.counterSkillQueue[0]);
-        counterUser.characterUIHandler.RemoveCounterSkillFromQueue(counterSkill);
+        counterUser.characterUIHandler.RemoveCounterSkillFromQueue(counterSkill,0);
         counterUser.UpdateCharacterUI();
 
         // 스킬 속도와 공격력 비교하여 대응 판정

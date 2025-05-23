@@ -147,7 +147,7 @@ public class TurnManager : MonoBehaviour
                             enemy.UpdateCharacterUI();
 
                             // 방어 대상 타겟팅 시작
-                            UIManager.Instance.characterTargeting.StartDefenseTargeting(defenseCharacter);
+                            UIManager.Instance.characterTargeting.StartDefenseCharacterTargeting(defenseCharacter);
                         });
                     }
                 }            

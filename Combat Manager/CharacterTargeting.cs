@@ -9,9 +9,10 @@ public class CharacterTargeting : MonoBehaviour
     private Camera mainCamera;
     private CharacterManager selectedCharacter;
     private CharacterManager selectedTarget;
-    private SkillBase selectedSkill;
+    public SkillBase selectedSkill;
     private bool isTargeting = false;
-    private bool isDefenseTargeting = false;  // 방어 타겟팅 상태 플래그
+    public bool isDefenseSkillTargeting = false;
+    private bool isDefenseCharacterTargeting = false;  // 방어 타겟팅 상태 플래그
 
     public int curveResolution = 50;  // 곡선의 변곡점 수
 
@@ -32,7 +33,7 @@ public class CharacterTargeting : MonoBehaviour
         // 마우스 커서가 올라간 캐릭터에 외곽선 적용
         HandleHoverOutline();
 
-        if (!isTargeting && !isDefenseTargeting && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        if (!isTargeting && !isDefenseCharacterTargeting && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit))
@@ -46,16 +47,19 @@ public class CharacterTargeting : MonoBehaviour
 
         if (isTargeting)
         {
-            HandleSkillTargeting();
+            if (isDefenseSkillTargeting)
+                HandleDefenseSkillTargeting();
+            else
+                HandleSkillTargeting();
         }
 
-        if (isDefenseTargeting)
+        if (isDefenseCharacterTargeting)
         {
             HandleDefenseTargeting();
         }
     }
 
-    // 기존 타겟팅 로직
+    // 기존 타겟팅 로직 - 공격 스킬
     private void HandleSkillTargeting()
     {
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
@@ -74,8 +78,27 @@ public class CharacterTargeting : MonoBehaviour
             UpdateBezierCurve();
         }
     }
+    // 방어스킬 타겟팅
+    private void HandleDefenseSkillTargeting()
+    {
+        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        {
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hit))
+            {
+                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
+                {
+                    SelectTarget(targetCharacter);
+                }
+            }
+        }
+        else
+        {
+            UpdateBezierCurve();
+        }
+    }
 
-    // 방어 타겟팅 로직
+    // 방어캐릭터 타겟팅 로직
     private void HandleDefenseTargeting()
     {
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
@@ -162,7 +185,7 @@ public class CharacterTargeting : MonoBehaviour
     public void SelectCharacter(CharacterManager characterManager)
     {
         // 타겟팅 상태에서는 선택된 캐릭터를 변경하지 않음
-        if (isTargeting || isDefenseTargeting)
+        if (isTargeting || isDefenseCharacterTargeting)
         {
             ChangeCursor("Basic");
             return;
@@ -210,6 +233,8 @@ public class CharacterTargeting : MonoBehaviour
         {
             // 커서를 방어 스킬용으로 변경
             ChangeCursor("Deff");
+            isTargeting = true;
+            isDefenseSkillTargeting = true;
             // 방어타겟팅 로직 구현 필요. - 0225 구현중
         }
         else if (selectedSkill.IsRangedSkill)
@@ -249,13 +274,10 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
-    void SelectTarget(CharacterManager target)
+    public void SelectTarget(CharacterManager target)
     {
         selectedTarget = target;
         isTargeting = false;
-
-        // 스킬 아이콘 표시
-        //targetUIManager.DisplaySkillIcon(selectedSkill, target);
 
         // 베지어 곡선 업데이트
         Vector3 startPosition = selectedCharacter.transform.position + Vector3.up * 1;
@@ -279,11 +301,11 @@ public class CharacterTargeting : MonoBehaviour
         ChangeCursor("Basic");
     }
 
-    public void StartDefenseTargeting(CharacterManager defenseCharacter)
+    public void StartDefenseCharacterTargeting(CharacterManager defenseCharacter)
     {
         if (defenseCharacter == null) return;
 
-        isDefenseTargeting = true;
+        isDefenseCharacterTargeting = true;
         lineRenderer.enabled = true;
 
         selectedCharacter = defenseCharacter;  // 방어 캐릭터 지정
@@ -296,11 +318,11 @@ public class CharacterTargeting : MonoBehaviour
 
     private void SelectDefenseTarget(CharacterManager target)
     {
-        // 방어 캐릭터와 방어 대상은 같은 진영이어야 하며, 방어 캐릭터 자신을 방어 대상으로 선택할 수 없음
-        if (target.character.IsMine == selectedCharacter.character.IsMine && target != selectedCharacter)
+        // 방어 캐릭터와 방어 대상은 같은 진영이어야 함
+        if (target.character.IsMine == selectedCharacter.character.IsMine)
         {
             selectedTarget = target;
-            isDefenseTargeting = false;
+            isDefenseCharacterTargeting = false;
 
             // 베지어 곡선으로 방어 관계 표시
             UpdateBezierCurve();
@@ -320,7 +342,7 @@ public class CharacterTargeting : MonoBehaviour
     public void StopTargeting()
     {
         isTargeting = false;
-        isDefenseTargeting = false;  // 방어 타겟팅도 종료
+        isDefenseCharacterTargeting = false;  // 방어캐릭터 타겟팅도 종료
         lineRenderer.enabled = false;
         ChangeCursor("Basic");
     }

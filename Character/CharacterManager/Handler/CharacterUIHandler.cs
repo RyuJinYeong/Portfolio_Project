@@ -1,4 +1,5 @@
 using SoftKitty.InventoryEngine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -72,7 +73,13 @@ public class CharacterUIHandler : MonoBehaviour
         // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
         GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
         skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
-        skillIconInstance.GetComponent<SkillButton>().skill = skill; // 툴팁용 스킬 객체 참조
+
+        var sb = skillIconInstance.GetComponent<SkillButton>();
+        if (sb != null)
+        {
+            sb.skill = skill;
+            sb.queueIndex = order - 1; // 0부터 시작
+        }
 
         // 순서 표시 (좌상단 텍스트)
         TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
@@ -84,11 +91,23 @@ public class CharacterUIHandler : MonoBehaviour
         if (caster.character.IsMine)
         {
             // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-            Button skillButton = skillIconInstance.GetComponent<Button>();
-            skillButton.onClick.AddListener(() =>
+            var button = skillIconInstance.GetComponent<Button>();
+            if (button != null)
             {
-                caster.combatHandler.RemoveSkillFromQueue(skill);  // 시전자의 CombatHandler에서 스킬 제거
-            });
+                button.onClick.AddListener(() =>
+                {
+                    if (sb != null)
+                    {
+                        caster.combatHandler.RemoveSkillFromQueue(sb.skill, sb.queueIndex);
+                        skillQueueIcons.Remove(skillIconInstance);
+
+                        // 남아있는 스킬들의 순서 다시 설정
+                        UpdateSkillQueueUI();
+
+                        Destroy(skillIconInstance);
+                    }
+                });
+            }
         }
 
         // 생성된 아이콘을 리스트에 저장
@@ -97,15 +116,14 @@ public class CharacterUIHandler : MonoBehaviour
 
 
     // 스킬 큐에서 스킬 제거
-    public void RemoveSkillFromQueue(SkillBase skill)
-    {
+    public void RemoveSkillFromQueue(SkillBase skill, int index)
+    {        
         // UI에서 스킬 아이콘 제거
-        var skillIcon = skillQueueIcons.FirstOrDefault(icon => icon.GetComponent<RawImage>().texture == skill.icon);
-        if (skillIcon != null)
-        {
-            skillQueueIcons.Remove(skillIcon);
-            Destroy(skillIcon);
-        }
+        if (index < 0 || index >= skillQueueIcons.Count) return;
+
+        GameObject icon = skillQueueIcons[index];
+        skillQueueIcons.RemoveAt(index);
+        Destroy(icon);
 
         // 남아있는 스킬들의 순서 다시 설정
         UpdateSkillQueueUI();
@@ -114,12 +132,20 @@ public class CharacterUIHandler : MonoBehaviour
     // 스킬 큐 UI 순서 업데이트
     private void UpdateSkillQueueUI()
     {
+        Debug.Log("UpdateSkillQueueUI 호출 skillQueueIcons.Count = " + skillQueueIcons.Count);
         for (int i = 0; i < skillQueueIcons.Count; i++)
         {
+            Debug.Log("i = " + i + " skillQueueIcons[i] = " + skillQueueIcons[i].GetComponent<SkillButton>().skill.name);
             TextMeshProUGUI orderText = skillQueueIcons[i].GetComponentInChildren<TextMeshProUGUI>();
             if (orderText != null)
             {
                 orderText.text = (i + 1).ToString();
+            }
+
+            // SkillButton 인덱스 갱신
+            if (skillQueueIcons[i].TryGetComponent<SkillButton>(out var sb))
+            {
+                sb.queueIndex = i;
             }
         }
     }
@@ -134,6 +160,13 @@ public class CharacterUIHandler : MonoBehaviour
         skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
         skillIconInstance.GetComponent<SkillButton>().skill = skill; // 툴팁용 스킬 객체 참조
 
+        var sb = skillIconInstance.GetComponent<SkillButton>();
+        if (sb != null)
+        {
+            sb.skill = skill;
+            sb.queueIndex = order - 1;
+        }
+
         // 순서 표시 (좌상단 텍스트)
         TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
         if (orderText != null)
@@ -144,11 +177,22 @@ public class CharacterUIHandler : MonoBehaviour
         if (caster.character.IsMine)
         {
             // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-            Button skillButton = skillIconInstance.GetComponent<Button>();
-            skillButton.onClick.AddListener(() =>
+            var button = skillIconInstance.GetComponent<Button>();
+            if (button != null)
             {
-                caster.combatHandler.RemoveCounterSkillFromQueue(skill);  // 시전자의 CombatHandler에서 스킬 제거
-            });
+                button.onClick.AddListener(() =>
+                {
+                    var bInfo = button.GetComponent<SkillButton>();
+                    if (bInfo != null)
+                    {
+                        caster.combatHandler.RemoveCounterSkillFromQueue(bInfo.skill, bInfo.queueIndex);
+
+                        counterSkillQueueIcons.Remove(skillIconInstance);
+                        Destroy(skillIconInstance);
+                        UpdateCounterSkillQueueUI();
+                    }
+                });
+            }
         }
 
         // 생성된 아이콘을 리스트에 저장
@@ -157,15 +201,14 @@ public class CharacterUIHandler : MonoBehaviour
 
 
     // 대응 스킬 큐에서 스킬 제거
-    public void RemoveCounterSkillFromQueue(SkillBase skill)
+    public void RemoveCounterSkillFromQueue(SkillBase skill, int index)
     {
         // UI에서 스킬 아이콘 제거
-        var skillIcon = counterSkillQueueIcons.FirstOrDefault(icon => icon.GetComponent<RawImage>().texture == skill.icon);
-        if (skillIcon != null)
-        {
-            counterSkillQueueIcons.Remove(skillIcon);
-            Destroy(skillIcon);
-        }
+        if (index < 0 || index >= counterSkillQueueIcons.Count) return;
+
+        GameObject icon = counterSkillQueueIcons[index];
+        counterSkillQueueIcons.RemoveAt(index);
+        Destroy(icon);
 
         // 남아있는 스킬들의 순서 다시 설정
         UpdateCounterSkillQueueUI();
@@ -180,6 +223,12 @@ public class CharacterUIHandler : MonoBehaviour
             if (orderText != null)
             {
                 orderText.text = (i + 1).ToString();
+            }
+
+            SkillButton sb = counterSkillQueueIcons[i].GetComponent<SkillButton>();
+            if (sb != null)
+            {
+                sb.queueIndex = i;
             }
         }
     }
