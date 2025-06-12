@@ -93,12 +93,12 @@ public class CombatHandler : MonoBehaviour
         Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
 
 
+
         // 스킬 큐 UI에 추가 (캐릭터 UI 핸들러 사용)
-        target.characterUIHandler.AddSkillToQueue(skill, skillQueue.Count, characterManager); // 시전자 전달
+        target.characterUIHandler.UpdateSkillQueueUI(skillQueue, this.characterManager); // 타겟 UI 갱신
 
-        //시전자 UI 갱신        
+        //시전자 상태 UI 갱신        
         characterManager.UpdateCharacterUI();
-
         // 스킬 사용 가능 여부 업데이트
         UIManager.Instance.UpdateSkillTransparency(characterManager);
 
@@ -112,6 +112,8 @@ public class CombatHandler : MonoBehaviour
     // 스킬 큐에서 스킬 제거 및 리소스 반환
     public void RemoveSkillFromQueue(SkillBase skill, int index)
     {        
+        CharacterManager target = null;
+
         if (index >= 0 && index < skillQueue.Count)
         {
             var skillEntry = skillQueue[index];
@@ -126,7 +128,10 @@ public class CombatHandler : MonoBehaviour
 
             Debug.Log($"Skill {skill.name} removed from queue. Resources refunded: Stamina: {(int)(skill.StaminaCost)}, Mentality: {(int)(skill.MentalCost)}");
 
+            target = skillEntry.target;
             skillQueue.RemoveAt(index);
+
+            target.characterUIHandler.UpdateSkillQueueUI(skillQueue, this.characterManager); // 타겟 UI 갱신
         }
 
         // 남은 스킬 큐를 확인하여 근거리 스킬이 있는지 검사
@@ -168,7 +173,7 @@ public class CombatHandler : MonoBehaviour
         Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
 
         // 스킬 큐 UI에 추가 (캐릭터 UI 핸들러 사용)
-        target.characterUIHandler.AddCounterSkillToQueue(skill, counterSkillQueue.Count, characterManager); // 시전자 전달
+        target.characterUIHandler.UpdateCounterSkillQueueUI(counterSkillQueue, target); // 타겟 카운터 UI 갱신
 
         //시전자 UI 갱신        
         characterManager.UpdateCharacterUI();
@@ -196,6 +201,8 @@ public class CombatHandler : MonoBehaviour
 
             counterSkillQueue.RemoveAt(index);
 
+            this.characterManager.characterUIHandler.UpdateCounterSkillQueueUI(this.counterSkillQueue, this.characterManager); // 타겟 UI 갱신
+            
             Debug.Log($"Skill {skill.name} removed from queue. Resources refunded: Stamina: {(int)(skill.StaminaCost)}, Mentality: {(int)(skill.MentalCost)}");
         }
     }
@@ -225,23 +232,30 @@ public class CombatHandler : MonoBehaviour
         }
     }
 
-    // 남은 스킬 취소 및 리소스 반환
+    // 경합상태중 적 처치 시 남은 스킬 취소 및 리소스 반환
     private void CancelRemainingSkills()
     {
+        CharacterManager target = null;
         foreach (var item in skillQueue)
         {
             SkillBase skill = item.skill;
             // 리소스 일부 반환 (예: 50%) - 해당 필드도 변수화시켜서 관리 시 반환 값에 변주를 줄 수 있으니 필요시 추후 개선필요
             characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost * 0.5f);
             characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost * 0.5f);
-
-            // 타겟의 상단 패널 UI에서 해당 스킬 제거
-            item.target.characterUIHandler.RemoveSkillFromQueue(skill,0);
+                        
+            target = item.target;
         }
 
         skillQueue.Clear();
+
+        // 타겟의 상단 패널 UI에서 스킬 제거
+        target.characterUIHandler.UpdateSkillQueueUI(skillQueue, this.characterManager); // 타겟 UI 갱신
+
+        target.combatHandler.counterSkillQueue.Clear(); // 타겟 대응 스킬 큐 초기화
+        target.characterUIHandler.UpdateCounterSkillQueueUI(target.combatHandler.counterSkillQueue, target); // 타겟 대응 스킬 UI 갱신
+
         characterManager.UpdateCharacterUI();
-        Debug.Log($"Remaining skills canceled. Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
+        Debug.Log($"스킬 시전 예약 취소 지구력: {characterManager.character.FinalStats.CurrentStamina}, 정신력: {characterManager.character.FinalStats.CurrentMentality}");
     }
 
     // 스킬 큐 순차 실행
@@ -270,7 +284,9 @@ public class CombatHandler : MonoBehaviour
             UseSkill(skill, target);
 
             // 타겟의 상단 패널에서 스킬 큐 UI 제거
-            target.characterUIHandler.RemoveSkillFromQueue(skill, 0);
+            target.characterUIHandler.UpdateSkillQueueUI(skillQueue, this.characterManager); // 타겟 UI 갱신
+            target.characterUIHandler.UpdateCounterSkillQueueUI(target.combatHandler.counterSkillQueue,target); // 타겟 UI 갱신
+
             target.UpdateCharacterUI();
 
             // 상대가 사망했는지 확인 후 처리
@@ -289,6 +305,7 @@ public class CombatHandler : MonoBehaviour
         // 스킬 큐 및 대응 스킬 큐 비우기
         skillQueue.Clear();
         counterSkillQueue.Clear();
+
         onTurnEnd();
     }
 
@@ -324,6 +341,9 @@ public class CombatHandler : MonoBehaviour
     {
         bool defenseSuccess = false;
 
+        // 기존 공격 캐릭터의 스킬 큐 하나 제거
+        skillQueue.RemoveAt(0);
+
         // 방어 대상인지 확인
         if (target.combatHandler.isDefenseTarget)
         {
@@ -341,6 +361,7 @@ public class CombatHandler : MonoBehaviour
                     {
                         //기존 타겟의 전투 정보 초기화
                         target.combatHandler.counterSkillQueue.Clear();
+                        target.characterUIHandler.UpdateCounterSkillQueueUI(target.combatHandler.counterSkillQueue, target);
                         target.combatHandler.isDefenseTarget = false;
                         target.isInMeleeCombat = false; // 기존 타겟의 경합 상태 해제
                         target.meleeTarget = null;
@@ -364,11 +385,6 @@ public class CombatHandler : MonoBehaviour
                         // 공격자의 meleeTarget을 방어 캐릭터로 설정
                         characterManager.meleeTarget = defenseCharacter;
                     }
-                    else
-                    {
-                        // 기존 타겟 캐릭터의 대응 스킬 큐 하나 제거
-                        target.combatHandler.counterSkillQueue.Remove(target.combatHandler.counterSkillQueue[0]);
-                    }
                 }
             }
         }
@@ -376,7 +392,7 @@ public class CombatHandler : MonoBehaviour
         // 먼저 대응 스킬이 있는지 확인 (방어 캐릭터 대응 실패 시)
         if (!defenseSuccess && target.combatHandler.counterSkillQueue.Count > 0)
         {
-            bool success = UseCounterSkill(skill, target, characterManager);           
+            bool success = UseCounterSkill(skill, target, characterManager);
 
             if (success)
             {
@@ -430,11 +446,7 @@ public class CombatHandler : MonoBehaviour
         }
 
         SkillBase counterSkill = counterUser.combatHandler.counterSkillQueue[0].skill;
-
-        //counterUser의 대응스킬 큐에서 객체 하나 제거 + UI 갱신
-        counterUser.combatHandler.counterSkillQueue.Remove(counterUser.combatHandler.counterSkillQueue[0]);
-        counterUser.characterUIHandler.RemoveCounterSkillFromQueue(counterSkill,0);
-        counterUser.UpdateCharacterUI();
+        counterUser.combatHandler.counterSkillQueue.RemoveAt(0);
 
         // 스킬 속도와 공격력 비교하여 대응 판정
         float attackSpeed;
@@ -485,7 +497,7 @@ public class CombatHandler : MonoBehaviour
             if (defaultCounterSkill != null)
             {
                 target.combatHandler.counterSkillQueue.Add((defaultCounterSkill, target));
-                target.characterUIHandler.AddCounterSkillToQueue(defaultCounterSkill, target.combatHandler.counterSkillQueue.Count, target);
+                target.characterUIHandler.UpdateCounterSkillQueueUI(target.combatHandler.counterSkillQueue, target); // 타겟 카운터 UI 갱신
 
                 Debug.Log($"{target.character.Name} - {defaultCounterSkill.name} 자동 대응 스킬 등록");
             }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,10 +22,7 @@ public class CharacterUIHandler : MonoBehaviour
     public GameObject skillQueuePanel;
     public GameObject counterSkillQueuePanel;
     public GameObject skillIconPrefab;
-
-    private List<GameObject> skillQueueIcons = new List<GameObject>(); // 생성된 스킬 큐 아이콘 리스트
-    private List<GameObject> counterSkillQueueIcons = new List<GameObject>(); // 생성된 스킬 큐 아이콘 리스트
-
+    
     public TextMeshProUGUI characterName;
 
     public TextMeshProUGUI hpText;
@@ -67,168 +65,107 @@ public class CharacterUIHandler : MonoBehaviour
         }
     }
 
-    // 스킬 큐에 스킬 추가
-    public void AddSkillToQueue(SkillBase skill, int order, CharacterManager caster)
+    // 스킬 큐 UI 업데이트
+    public void UpdateSkillQueueUI(List<(SkillBase skill, CharacterManager target)> queue, CharacterManager caster)
     {
-        // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
-        GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
-        skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
+        Debug.Log(caster.character.Name +"의 Skillqueue를 기준으로 " + this.characterManager.character.Name + " UI 갱신");
+        // 기존 UI 전부 제거
+        foreach (Transform child in skillQueuePanel.transform)
+            Destroy(child.gameObject);
 
-        var sb = skillIconInstance.GetComponent<SkillButton>();
-        if (sb != null)
+        for (int i = 0; i < queue.Count; i++)
         {
-            sb.skill = skill;
-            sb.queueIndex = order - 1; // 0부터 시작
-        }
-
-        // 순서 표시 (좌상단 텍스트)
-        TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
-        if (orderText != null)
-        {
-            orderText.text = order.ToString();
-        }
-
-        if (caster.character.IsMine)
-        {
-            // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-            var button = skillIconInstance.GetComponent<Button>();
-            if (button != null)
+            if (queue[i].target == this.characterManager)
             {
-                button.onClick.AddListener(() =>
+                // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
+                GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
+                queue[i].skill.LoadIcon(); // 스킬 아이콘 로드
+                skillIconInstance.GetComponent<RawImage>().texture = queue[i].skill.icon;  // 스킬 아이콘 설정                
+
+                var sb = skillIconInstance.GetComponent<SkillButton>();
+                if (sb != null)
                 {
-                    if (sb != null)
-                    {
-                        caster.combatHandler.RemoveSkillFromQueue(sb.skill, sb.queueIndex);
-                        skillQueueIcons.Remove(skillIconInstance);
+                    sb.skill = queue[i].skill;
+                    sb.queueIndex = i; // 0부터 시작
+                }
 
-                        // 남아있는 스킬들의 순서 다시 설정
-                        UpdateSkillQueueUI();
-
-                        Destroy(skillIconInstance);
-                    }
-                });
-            }
-        }
-
-        // 생성된 아이콘을 리스트에 저장
-        skillQueueIcons.Add(skillIconInstance);
-    }
-
-
-    // 스킬 큐에서 스킬 제거
-    public void RemoveSkillFromQueue(SkillBase skill, int index)
-    {        
-        // UI에서 스킬 아이콘 제거
-        if (index < 0 || index >= skillQueueIcons.Count) return;
-
-        GameObject icon = skillQueueIcons[index];
-        skillQueueIcons.RemoveAt(index);
-        Destroy(icon);
-
-        // 남아있는 스킬들의 순서 다시 설정
-        UpdateSkillQueueUI();
-    }
-
-    // 스킬 큐 UI 순서 업데이트
-    private void UpdateSkillQueueUI()
-    {
-        Debug.Log("UpdateSkillQueueUI 호출 skillQueueIcons.Count = " + skillQueueIcons.Count);
-        for (int i = 0; i < skillQueueIcons.Count; i++)
-        {
-            Debug.Log("i = " + i + " skillQueueIcons[i] = " + skillQueueIcons[i].GetComponent<SkillButton>().skill.name);
-            TextMeshProUGUI orderText = skillQueueIcons[i].GetComponentInChildren<TextMeshProUGUI>();
-            if (orderText != null)
-            {
-                orderText.text = (i + 1).ToString();
-            }
-
-            // SkillButton 인덱스 갱신
-            if (skillQueueIcons[i].TryGetComponent<SkillButton>(out var sb))
-            {
-                sb.queueIndex = i;
-            }
-        }
-    }
-
-
-    // 대응 스킬 큐에 스킬 추가
-    public void AddCounterSkillToQueue(SkillBase skill, int order, CharacterManager caster)
-    {
-        // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
-        skill.LoadIcon();
-        GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
-        skillIconInstance.GetComponent<RawImage>().texture = skill.icon;  // 스킬 아이콘 설정
-        skillIconInstance.GetComponent<SkillButton>().skill = skill; // 툴팁용 스킬 객체 참조
-
-        var sb = skillIconInstance.GetComponent<SkillButton>();
-        if (sb != null)
-        {
-            sb.skill = skill;
-            sb.queueIndex = order - 1;
-        }
-
-        // 순서 표시 (좌상단 텍스트)
-        TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
-        if (orderText != null)
-        {
-            orderText.text = order.ToString();
-        }
-
-        if (caster.character.IsMine)
-        {
-            // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-            var button = skillIconInstance.GetComponent<Button>();
-            if (button != null)
-            {
-                button.onClick.AddListener(() =>
+                // 순서 표시 (좌상단 텍스트)
+                TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
+                if (orderText != null)
                 {
-                    var bInfo = button.GetComponent<SkillButton>();
-                    if (bInfo != null)
-                    {
-                        caster.combatHandler.RemoveCounterSkillFromQueue(bInfo.skill, bInfo.queueIndex);
+                    orderText.text = (i + 1).ToString();
+                }
 
-                        counterSkillQueueIcons.Remove(skillIconInstance);
-                        Destroy(skillIconInstance);
-                        UpdateCounterSkillQueueUI();
+                if (caster.character.IsMine)
+                {
+                    // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
+                    var button = skillIconInstance.GetComponent<Button>();
+                    if (button != null)
+                    {
+                        button.onClick.AddListener(() =>
+                        {
+                            if (sb != null)
+                            {
+                                caster.combatHandler.RemoveSkillFromQueue(sb.skill, sb.queueIndex);
+                            }
+                        });
                     }
-                });
+                }
             }
         }
-
-        // 생성된 아이콘을 리스트에 저장
-        counterSkillQueueIcons.Add(skillIconInstance);
     }
 
-
-    // 대응 스킬 큐에서 스킬 제거
-    public void RemoveCounterSkillFromQueue(SkillBase skill, int index)
+    public void UpdateCounterSkillQueueUI(List<(SkillBase skill, CharacterManager target)> queue, CharacterManager caster)
     {
-        // UI에서 스킬 아이콘 제거
-        if (index < 0 || index >= counterSkillQueueIcons.Count) return;
+        Debug.Log(caster.character.Name + "의 CounterSkillqueue를 기준으로 " + this.characterManager.character.Name + " UI 갱신");
+        // 기존 UI 전부 제거
+        foreach (Transform child in counterSkillQueuePanel.transform)
+            Destroy(child.gameObject);
 
-        GameObject icon = counterSkillQueueIcons[index];
-        counterSkillQueueIcons.RemoveAt(index);
-        Destroy(icon);
+        // 대응 스킬 큐 업데이트
 
-        // 남아있는 스킬들의 순서 다시 설정
-        UpdateCounterSkillQueueUI();
-    }
-
-    // 대응 스킬 큐 UI 순서 업데이트
-    private void UpdateCounterSkillQueueUI()
-    {
-        for (int i = 0; i < counterSkillQueueIcons.Count; i++)
+        for (int i = 0; i < queue.Count; i++)
         {
-            TextMeshProUGUI orderText = counterSkillQueueIcons[i].GetComponentInChildren<TextMeshProUGUI>();
-            if (orderText != null)
+            if (queue[i].target == this.characterManager)
             {
-                orderText.text = (i + 1).ToString();
-            }
+                // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
+                GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
+                queue[i].skill.LoadIcon(); // 스킬 아이콘 로드
+                skillIconInstance.GetComponent<RawImage>().texture = queue[i].skill.icon;  // 스킬 아이콘 설정                
 
-            SkillButton sb = counterSkillQueueIcons[i].GetComponent<SkillButton>();
-            if (sb != null)
-            {
-                sb.queueIndex = i;
+                var sb = skillIconInstance.GetComponent<SkillButton>();
+                if (sb != null)
+                {
+                    sb.skill = queue[i].skill;
+                    sb.queueIndex = i; // 0부터 시작
+                }
+
+                // 순서 표시 (좌상단 텍스트)
+                TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
+                if (orderText != null)
+                {
+                    orderText.text = (i + 1).ToString();
+                }
+
+                if (caster.character.IsMine)
+                {
+                    // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
+                    var button = skillIconInstance.GetComponent<Button>();
+                    if (button != null)
+                    {
+                        button.onClick.AddListener(() =>
+                        {
+                            if (sb != null && sb.skill != caster.character.DefaultCounterSkill)
+                            {
+                                caster.combatHandler.RemoveCounterSkillFromQueue(sb.skill, sb.queueIndex);
+                            }
+                            else
+                            {
+                                Debug.Log("기본 대응 스킬은 제거할 수 없습니다: " + sb.skill.name);
+                            }
+                        });
+                    }
+                }
             }
         }
     }
