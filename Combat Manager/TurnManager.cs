@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,12 +11,14 @@ public class TurnManager : MonoBehaviour
     public static TurnManager Instance { get; private set; }
 
     private Queue<CharacterManager> turnQueue = new Queue<CharacterManager>();
-    private List<CharacterManager> turnOrderList = new List<CharacterManager>(); // ÅÏ ¼ø¼­ ¸®½ºÆ® (Å¥ º¹»çº»)
-    public CharacterManager currentCharacter; // °ø°İÀÚ
-    public CharacterManager defenseCharacter; // ¹æ¾îÀÚ
-    public CharacterManager defenseTarget;    // ¹æ¾î´ë»ó
+    private List<CharacterManager> turnOrderList = new List<CharacterManager>(); // í„´ ìˆœì„œ ë¦¬ìŠ¤íŠ¸ (í ë³µì‚¬ë³¸)
+    public CharacterManager currentCharacter; // ê³µê²©ì
+    public CharacterManager defenseCharacter; // ë°©ì–´ì
+    public CharacterManager defenseTarget;    // ë°©ì–´ëŒ€ìƒ
     private GameManager gameManager;
-    private List<CharacterManager> allCharacters; // ÀüÅõ¿¡ Âü¿©ÇÑ ¸ğµç Ä³¸¯ÅÍµéÀ» °ü¸®ÇÏ´Â ¸®½ºÆ®
+    private List<CharacterManager> allCharacters; // ì „íˆ¬ì— ì°¸ì—¬í•œ ëª¨ë“  ìºë¦­í„°ë“¤ì„ ê´€ë¦¬í•˜ëŠ” ë¦¬ìŠ¤íŠ¸
+
+    private bool _stageStarted; // ì¤‘ë³µ ì‹œì‘ ë°©ì§€ í”Œë˜ê·¸
 
     private void Awake()
     {
@@ -30,19 +32,60 @@ public class TurnManager : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        // GameManager ì´ë²¤íŠ¸ êµ¬ë…
+        if (GameManager.Instance != null)
+            GameManager.Instance.RosterReady += OnRosterReady;
+    }
+
+    private void OnDisable()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.RosterReady -= OnRosterReady;
+    }
+
     private void Start()
     {
         gameManager = GameManager.Instance;
+
+        // í˜¹ì‹œ ì´ë¯¸ ì°¸ê°€ì ë“±ë¡ì´ ëë‚˜ ìˆì—ˆë‹¤ë©´ í•œ ë²ˆ ë” ì²´í¬
+        StartCoroutine(WaitAndMaybeStart());
+    }
+
+    private IEnumerator WaitAndMaybeStart()
+    {
+        yield return null; // í•œ í”„ë ˆì„ ìœ ì˜ˆ
+        if (_stageStarted) yield break;
+
+        var list = gameManager?.GetAllCharacters();
+        if (list != null && list.Count > 0)
+            OnRosterReady();
+    }
+
+    // GameManagerì˜ ë¡œìŠ¤í„° ì¤€ë¹„ ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬
+    private void OnRosterReady()
+    {
+        if (_stageStarted) return;
+        var count = GameManager.Instance?.GetAllCharacters()?.Count ?? 0;
+        Debug.Log($"[TurnManager] RosterReady ìˆ˜ì‹ , ì°¸ê°€ì {count}ëª…");
+        _stageStarted = true;
+        InitializeTurnOrder();
+    }
+
+    public void ForceRebuildAndRestart() // ìˆ˜ë™ ê°•ì œ ì‹œì‘ ê¸°ëŠ¥ (ë””ë²„ê¹…/í…ŒìŠ¤íŠ¸ìš©)
+    {
+        _stageStarted = true;
         InitializeTurnOrder();
     }
 
     public void InitializeTurnOrder()
     {
-        allCharacters = gameManager.GetAllCharacters(); // ¸ğµç Ä³¸¯ÅÍµéÀ» °¡Á®¿Í¼­ ¸®½ºÆ®¿¡ ÀúÀå
+        allCharacters = gameManager.GetAllCharacters(); // ëª¨ë“  ìºë¦­í„°ë“¤ì„ ê°€ì ¸ì™€ì„œ ë¦¬ìŠ¤íŠ¸ì— ì €ì¥
 
         foreach (CharacterManager character in allCharacters)
         {
-            Debug.Log("¸®¼Ò½º È¸º¹");
+            Debug.Log("ë¦¬ì†ŒìŠ¤ íšŒë³µ");
             character.RecoverResources();
         }
 
@@ -55,46 +98,48 @@ public class TurnManager : MonoBehaviour
     {
         if (turnQueue.Count == 0)
         {
-            // »óÅÂÀÌ»ó Ã³¸®, ¸®¼Ò½º È¸º¹
+            // ìƒíƒœì´ìƒ ì²˜ë¦¬, ë¦¬ì†ŒìŠ¤ íšŒë³µ
             ApplyStatusEffectsToAll();
             foreach (CharacterManager character in allCharacters)
             {
-                Debug.Log("¸®¼Ò½º È¸º¹");
+                Debug.Log("ë¦¬ì†ŒìŠ¤ íšŒë³µ");
                 character.RecoverResources();
             }
 
-            // ½Â¸® È¤Àº ÆĞ¹è Á¶°Ç Ã¼Å©
+            // ìŠ¹ë¦¬ í˜¹ì€ íŒ¨ë°° ì¡°ê±´ ì²´í¬
             if (CheckBattleEnd())
             {
                 return;
             }
 
-            UpdateTurnQueue(); // Å¥ °»½Å
+            UpdateTurnQueue(); // í ê°±ì‹ 
         }
 
 
-        // ±âÁ¸ÀÇ ÅÏÀ» °¡Áö°í ÀÖ´Â Ä³¸¯ÅÍ°¡ Ãß°¡ ÅÏÀÌ ÀÖ´Â °æ¿ì, ´Ù½Ã ÅÏÀ» ºÎ¿©
+        // ê¸°ì¡´ì˜ í„´ì„ ê°€ì§€ê³  ìˆëŠ” ìºë¦­í„°ê°€ ì¶”ê°€ í„´ì´ ìˆëŠ” ê²½ìš°, ë‹¤ì‹œ í„´ì„ ë¶€ì—¬
         if (currentCharacter != null && currentCharacter.hasExtraTurn)
         {
-            currentCharacter.hasExtraTurn = false; // Ãß°¡ ÅÏ »ç¿ë ¿Ï·á
-            Debug.Log($"{currentCharacter.character.Name}ÀÌ Ãß°¡ ÅÏÀ» È¹µæÇß½À´Ï´Ù.");
+            currentCharacter.hasExtraTurn = false; // ì¶”ê°€ í„´ ì‚¬ìš© ì™„ë£Œ
+            Debug.Log($"{currentCharacter.character.Name}ì´ ì¶”ê°€ í„´ì„ íšë“í–ˆìŠµë‹ˆë‹¤.");
         }
         else
         {
-            currentCharacter = turnQueue.Dequeue(); // Ãß°¡ ÅÏÀÌ ¾øÀ¸¸é ´ÙÀ½ Ä³¸¯ÅÍ·Î ³Ñ¾î°¨
+            currentCharacter = turnQueue.Dequeue(); // ì¶”ê°€ í„´ì´ ì—†ìœ¼ë©´ ë‹¤ìŒ ìºë¦­í„°ë¡œ ë„˜ì–´ê°
         }
 
-        Debug.Log("ÇöÀç Turn Queue.Count : " + turnQueue.Count + " ÇöÀç ÅÏ Ä³¸¯ÅÍ :" + currentCharacter.character.Name);
-        UIManager.Instance.UpdateTurnOrder(turnOrderList, currentCharacter);
+        Debug.Log("í˜„ì¬ Turn Queue.Count : " + turnQueue.Count + " í˜„ì¬ í„´ ìºë¦­í„° :" + currentCharacter.character.Name);
 
-        // Ä³¸¯ÅÍ°¡ »ì¾ÆÀÖÀ¸¸é ÅÏ ½ÃÀÛ, ±×·¸Áö ¾ÊÀ¸¸é ÅÏÀ» ³Ñ±è
+        if (UIManager.Instance != null)
+            UIManager.Instance.UpdateTurnOrder(turnOrderList, currentCharacter);
+
+        // ìºë¦­í„°ê°€ ì‚´ì•„ìˆìœ¼ë©´ í„´ ì‹œì‘, ê·¸ë ‡ì§€ ì•Šìœ¼ë©´ í„´ì„ ë„˜ê¹€
         if (currentCharacter.character.IsAlive)
         {
             currentCharacter.StartTurn(OnTurnEnd);
 
             if (currentCharacter.character.IsMine)
             {
-                // ÅÏ Á¾·á ¹öÆ° ¼³Á¤
+                // í„´ ì¢…ë£Œ ë²„íŠ¼ ì„¤ì •
                 SetEndTurnButtonAction();
             }
             else
@@ -104,7 +149,7 @@ public class TurnManager : MonoBehaviour
         }
         else
         {
-            StartNextTurn(); // »ç¸ÁÇÑ Ä³¸¯ÅÍ´Â ¹Ù·Î ÅÏÀ» ³Ñ±è
+            StartNextTurn(); // ì‚¬ë§í•œ ìºë¦­í„°ëŠ” ë°”ë¡œ í„´ì„ ë„˜ê¹€
         }
     }
 
@@ -119,20 +164,20 @@ public class TurnManager : MonoBehaviour
         {
             currentCharacter.combatHandler.AutoAssignDefaultCounterSkills();
             Debug.Log("CounterTurn Start");
-            //´ëÀÀÅÏ ½ÃÀÛ 30ÃÊ Á¦ÇÑ
+            //ëŒ€ì‘í„´ ì‹œì‘ 30ì´ˆ ì œí•œ
             currentCharacter.combatHandler.turnTimerCoroutine = StartCoroutine(currentCharacter.combatHandler.TurnTimer(30f, EndTurn));
 
             if (!currentCharacter.character.IsMine)
             {
-                SetCounterTurnButtonAction(); // ´ëÀÀ ÅÏ ¹öÆ° ¼³Á¤
+                SetCounterTurnButtonAction(); // ëŒ€ì‘ í„´ ë²„íŠ¼ ì„¤ì •
 
-                // ÇöÀç ÅÏÀÎ Ä³¸¯ÅÍ¿Í ¹İ´ë Áø¿µ¿¡ ÀÖ´Â Ä³¸¯ÅÍ¸¦ Ã£¾Æ ¹æ¾î ¹öÆ°À» È°¼ºÈ­
+                // í˜„ì¬ í„´ì¸ ìºë¦­í„°ì™€ ë°˜ëŒ€ ì§„ì˜ì— ìˆëŠ” ìºë¦­í„°ë¥¼ ì°¾ì•„ ë°©ì–´ ë²„íŠ¼ì„ í™œì„±í™”
                 List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
                 List<CharacterManager> enemies = allCharacters
                     .Where(character => character.character.IsMine != currentCharacter.character.IsMine && character.character.IsAlive)
                     .ToList();
 
-                // ¹æ¾î Ä³¸¯ÅÍ ¼±ÅÃ UI È°¼ºÈ­
+                // ë°©ì–´ ìºë¦­í„° ì„ íƒ UI í™œì„±í™”
                 foreach (CharacterManager enemy in enemies)
                 {
                     if (enemy.characterUIHandler.CounterButton != null)
@@ -142,11 +187,11 @@ public class TurnManager : MonoBehaviour
                         enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.AddListener(() =>
                         {
                             defenseCharacter = enemy;
-                            enemy.combatHandler.SetDefenseCharacter(enemy); // Ä³¸¯ÅÍ ¸Å´ÏÀú ÇÊµå°ª º¯°æ - ¹æ¾î Ä³¸¯ÅÍ·Î ¼±ÅÃ
-                            DisableDefenseButtons(enemies); // ¹æ¾î ¹öÆ° ºñÈ°¼ºÈ­
+                            enemy.combatHandler.SetDefenseCharacter(enemy); // ìºë¦­í„° ë§¤ë‹ˆì € í•„ë“œê°’ ë³€ê²½ - ë°©ì–´ ìºë¦­í„°ë¡œ ì„ íƒ
+                            DisableDefenseButtons(enemies); // ë°©ì–´ ë²„íŠ¼ ë¹„í™œì„±í™”
                             enemy.UpdateCharacterUI();
 
-                            // ¹æ¾î ´ë»ó Å¸°ÙÆÃ ½ÃÀÛ
+                            // ë°©ì–´ ëŒ€ìƒ íƒ€ê²ŸíŒ… ì‹œì‘
                             UIManager.Instance.characterTargeting.StartDefenseCharacterTargeting(defenseCharacter);
                         });
                     }
@@ -163,7 +208,7 @@ public class TurnManager : MonoBehaviour
         }
         else
         {
-            EndTurn(); // ÇöÀç ÅÏÀÌ ¿Â Ä³¸¯ÅÍ°¡ ¼±ÅÃÇÑ ½ºÅ³ÀÌ ¾øÀ» °æ¿ì EndTurn() È£Ãâ
+            EndTurn(); // í˜„ì¬ í„´ì´ ì˜¨ ìºë¦­í„°ê°€ ì„ íƒí•œ ìŠ¤í‚¬ì´ ì—†ì„ ê²½ìš° EndTurn() í˜¸ì¶œ
         }
     }
 
@@ -178,7 +223,7 @@ public class TurnManager : MonoBehaviour
     private void EndTurn()
     {        
         UIManager.Instance.characterTargeting.lineRenderer.enabled = false;
-        UIManager.Instance.ClearCounterSkillPanel(); // Ä«¿îÅÍ ½ºÅ³ ÆĞ³Î ÃÊ±âÈ­
+        UIManager.Instance.ClearCounterSkillPanel(); // ì¹´ìš´í„° ìŠ¤í‚¬ íŒ¨ë„ ì´ˆê¸°í™”
         if (currentCharacter != null)
         {
             if (currentCharacter.combatHandler.turnTimerCoroutine != null)
@@ -189,12 +234,12 @@ public class TurnManager : MonoBehaviour
             CombatHandler combatHandler = currentCharacter.GetComponent<CombatHandler>();
             if (combatHandler != null)
             {
-                // ´ëÀÀ ½ºÅ³Å¥ ¼øÂ÷ ½ÇÇà ¸Ş¼­µå ±¸Çö ÇÊ¿ä
+                // ëŒ€ì‘ ìŠ¤í‚¬í ìˆœì°¨ ì‹¤í–‰ ë©”ì„œë“œ êµ¬í˜„ í•„ìš”
                 combatHandler.ExecuteSkillQueue(() =>{});
             }
         }
 
-        // ¹æ¾îÀÚ¿Í ¹æ¾î ´ë»ó ÇÊµå ÃÊ±âÈ­
+        // ë°©ì–´ìì™€ ë°©ì–´ ëŒ€ìƒ í•„ë“œ ì´ˆê¸°í™”
         if (defenseCharacter != null)
         {
             defenseCharacter.combatHandler.isDefenseCharacter = false;
@@ -215,14 +260,14 @@ public class TurnManager : MonoBehaviour
 
         currentCharacter.UpdateCharacterUI();
 
-        // ÅÏÀÌ ³¡³¯ ¶§¸¶´Ù ½Â¸®/ÆĞ¹è Á¶°Ç Ã¼Å©
+        // í„´ì´ ëë‚  ë•Œë§ˆë‹¤ ìŠ¹ë¦¬/íŒ¨ë°° ì¡°ê±´ ì²´í¬
         if (!CheckBattleEnd())
         {
             StartNextTurn();
         }        
     }
 
-    private void ApplyStatusEffectsToAll() // ¸ğµç Ä³¸¯ÅÍ¿¡°Ô »óÅÂÀÌ»ó ÀÏ°ıÀû¿ë
+    private void ApplyStatusEffectsToAll() // ëª¨ë“  ìºë¦­í„°ì—ê²Œ ìƒíƒœì´ìƒ ì¼ê´„ì ìš©
     {
         foreach (var characterManager in allCharacters)
         {
@@ -230,13 +275,13 @@ public class TurnManager : MonoBehaviour
             {
                 foreach (var statusEffect in characterManager.character.StatusEffects.ToList())
                 {
-                    statusEffect.ApplyEffect(characterManager); // ¸ÅÅÏ Áö¼ÓÇü »óÅÂÀÌ»ó È¿°ú Àû¿ë
-                    statusEffect.ReduceTurn(); // »óÅÂÀÌ»óÀÇ ³²Àº Áö¼Ó ÅÏ °¨¼Ò
+                    statusEffect.ApplyEffect(characterManager); // ë§¤í„´ ì§€ì†í˜• ìƒíƒœì´ìƒ íš¨ê³¼ ì ìš©
+                    statusEffect.ReduceTurn(); // ìƒíƒœì´ìƒì˜ ë‚¨ì€ ì§€ì† í„´ ê°ì†Œ
 
-                    if (statusEffect.IsExpired()) // ÇØ´ç »óÅÂÀÌ»óÀÇ ³²Àº ÅÏÀÌ 0ÀÏ °æ¿ì
+                    if (statusEffect.IsExpired()) // í•´ë‹¹ ìƒíƒœì´ìƒì˜ ë‚¨ì€ í„´ì´ 0ì¼ ê²½ìš°
                     {
-                        statusEffect.OnExpire(characterManager); // È¿°ú Àû¿ë ÇØÁ¦
-                        characterManager.character.StatusEffects.Remove(statusEffect); // ¸®½ºÆ®¿¡¼­ »óÅÂÀÌ»ó Á¦°Å
+                        statusEffect.OnExpire(characterManager); // íš¨ê³¼ ì ìš© í•´ì œ
+                        characterManager.character.StatusEffects.Remove(statusEffect); // ë¦¬ìŠ¤íŠ¸ì—ì„œ ìƒíƒœì´ìƒ ì œê±°
                     }
                 }
             }
@@ -266,16 +311,16 @@ public class TurnManager : MonoBehaviour
 
     private void HandleVictory()
     {
-        // °æÇèÄ¡ È¹µæ, ¾ÆÀÌÅÛ µå¶ø, ½ºÅ×ÀÌÁö ¼±ÅÃ UI µî Ã³¸®
-        Debug.Log("½Â¸®!");
-        // ÀüÅõ Á¾·á Ã³¸® ·ÎÁ÷ Ãß°¡
+        // ê²½í—˜ì¹˜ íšë“, ì•„ì´í…œ ë“œë, ìŠ¤í…Œì´ì§€ ì„ íƒ UI ë“± ì²˜ë¦¬
+        Debug.Log("ìŠ¹ë¦¬!");
+        // ì „íˆ¬ ì¢…ë£Œ ì²˜ë¦¬ ë¡œì§ ì¶”ê°€
     }
 
     private void HandleDefeat()
     {
-        // ÆÄÆ¼ Àü¸ê UI ¹× ÀÌÈÄ Ã³¸®
-        Debug.Log("ÆĞ¹è!");
-        // ÀüÅõ Á¾·á Ã³¸® ·ÎÁ÷ Ãß°¡
+        // íŒŒí‹° ì „ë©¸ UI ë° ì´í›„ ì²˜ë¦¬
+        Debug.Log("íŒ¨ë°°!");
+        // ì „íˆ¬ ì¢…ë£Œ ì²˜ë¦¬ ë¡œì§ ì¶”ê°€
     }
 
     private void UpdateTurnQueue()
@@ -288,20 +333,20 @@ public class TurnManager : MonoBehaviour
         turnOrderList = turnQueue.ToList();
     }
 
-    // ÅÏ Á¾·á Äİ¹é - StartCounterTurnÀ» Äİ¹éÀ¸·Î È£ÃâÇØ¼­ ÇöÀç ÅÏÀÎ Ä³¸¯ÅÍÀÇ ½ºÅ³ Å¥ Ä«¿îÆ® ÈÄ 0ÀÏ°æ¿ì EndTurn È£Ãâ
+    // í„´ ì¢…ë£Œ ì½œë°± - StartCounterTurnì„ ì½œë°±ìœ¼ë¡œ í˜¸ì¶œí•´ì„œ í˜„ì¬ í„´ì¸ ìºë¦­í„°ì˜ ìŠ¤í‚¬ í ì¹´ìš´íŠ¸ í›„ 0ì¼ê²½ìš° EndTurn í˜¸ì¶œ
     public void OnTurnEnd()
     {
         StartCounterTurn();
     }
 
-    // ÅÏ Á¾·á ¹öÆ° ¼³Á¤
+    // í„´ ì¢…ë£Œ ë²„íŠ¼ ì„¤ì •
     private void SetEndTurnButtonAction()
     {        
         if (UIManager.Instance != null && UIManager.Instance.turnEndButton != null)
         {
             UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
             UIManager.Instance.turnEndButton.gameObject.SetActive(true);
-            // ¹öÆ°¿¡ »õ·Î¿î ¸®½º³Ê Ãß°¡
+            // ë²„íŠ¼ì— ìƒˆë¡œìš´ ë¦¬ìŠ¤ë„ˆ ì¶”ê°€
             UIManager.Instance.turnEndButton.onClick.RemoveAllListeners();
             UIManager.Instance.turnEndButton.onClick.AddListener(() =>
             {
@@ -309,21 +354,21 @@ public class TurnManager : MonoBehaviour
                 {
                     if (currentCharacter != null)
                     {
-                        StartCounterTurn(); // ´ëÀÀ ÅÏ ½ÃÀÛ (ÀÌÈÄ ´ëÀÀÅÏ Á¾·á ¹öÆ°¿¡¼­ ½ºÅ³ Å¥ ½ÇÇà)
+                        StartCounterTurn(); // ëŒ€ì‘ í„´ ì‹œì‘ (ì´í›„ ëŒ€ì‘í„´ ì¢…ë£Œ ë²„íŠ¼ì—ì„œ ìŠ¤í‚¬ í ì‹¤í–‰)
                     }
                 }
             });
         }
     }
 
-    // ÀÚµ¿´ëÀÀ ¹öÆ° ¼³Á¤
+    // ìë™ëŒ€ì‘ ë²„íŠ¼ ì„¤ì •
     private void SetCounterTurnButtonAction()
     {
         if (UIManager.Instance != null && UIManager.Instance.counterTurnEndButton != null)
         {
             UIManager.Instance.counterTurnEndButton.gameObject.SetActive(true);
             UIManager.Instance.turnEndButton.gameObject.SetActive(false);
-            // ¹öÆ°¿¡ »õ·Î¿î ¸®½º³Ê Ãß°¡
+            // ë²„íŠ¼ì— ìƒˆë¡œìš´ ë¦¬ìŠ¤ë„ˆ ì¶”ê°€
             UIManager.Instance.counterTurnEndButton.onClick.RemoveAllListeners();
             UIManager.Instance.counterTurnEndButton.onClick.AddListener(() =>
             {

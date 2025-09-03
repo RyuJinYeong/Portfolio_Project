@@ -181,7 +181,6 @@ public class CharacterCreation : MonoBehaviour
         PlayerManager._instance.CreateCharacter(characterManager.character);
         PlayerManager._instance.AddCharacterID(characterManager.character.ID);
         PlayerManager._instance.SaveCharacterPosition(characterManager.character.ID, false); // 후열로 기본 설정
-        characterManager.character.InitializeSkills();
 
 
         if (PlayerManager.Instance.GetCurrentPlayerData().activeCharacterIds == null)
@@ -192,7 +191,7 @@ public class CharacterCreation : MonoBehaviour
 
         Debug.Log("Character created and saved!");
 
-        // 튜토리얼 씬으로 전환
-        GameManager.Instance.LoadGameScene("Tutorial");
+        // 마을 씬으로 전환
+        GameManager.Instance.LoadGameScene("Town");
     }
 }

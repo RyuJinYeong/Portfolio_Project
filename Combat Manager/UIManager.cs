@@ -1,7 +1,9 @@
+using SoftKitty.InventoryEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
 using UnityEngine.UI;
@@ -9,6 +11,14 @@ using UnityEngine.UI;
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
+
+    [Header("Roots")]
+    public GameObject townUiRoot;    
+    public GameObject battleUiRoot;
+
+    [Header("Town Panels")]
+    [SerializeField] GameObject townRosterPanel;
+    [SerializeField] GameObject questBoardPanel;
 
     public GameObject turnOrderPanel;  // 상단 턴 큐 패널
     public GameObject characterPortraitPrefab;  // 캐릭터 초상화 프리팹
@@ -49,6 +59,8 @@ public class UIManager : MonoBehaviour
     public GameObject[] hotbarButtons = new GameObject[12]; // 12개의 핫바 버튼을 위한 GameObject 배열
 
     public CharacterTargeting characterTargeting;
+
+    public InventoryHolder storage_temp;
     private void Awake()
     {
         if (Instance == null)
@@ -60,6 +72,65 @@ public class UIManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
+
+    public void UISwitch(UIMode mode)
+    {
+        if (townUiRoot) townUiRoot.SetActive(mode == UIMode.Town);
+        if (battleUiRoot) battleUiRoot.SetActive(mode == UIMode.Battle);
+    }
+
+    #region 마을내 UI 버튼 조작
+
+    public void OnClick_Storage()
+    {
+        CameraFocusRig.Instance?.Focus("Storage");
+
+        /*
+        PlayerData currentPlayer = PlayerManager.Instance.GetCurrentPlayerData();
+        
+        currentPlayer.storage.OpenWindow();  // 창고 열기
+        */
+
+        storage_temp.OpenWindow(); // 임시 창고 열기 - PlayerData의 InventoryHolder 필드와 연동 필요 -> DB 백업용
+    }
+
+    public void OnClick_CharacterManage()
+    {
+        ShowTownRoster(true);
+    }
+
+    public void OnClick_QuestBoard()
+    {
+        CameraFocusRig.Instance?.Focus("Quest");
+        ShowQuestBoard(true);
+    }
+
+    public void OnClick_CloseQuestBoard()
+    {
+        ShowQuestBoard(false);
+        CameraFocusRig.Instance?.FocusHome();
+    }
+
+    public void ShowTownRoster(bool on)
+    {
+        if (townRosterPanel) townRosterPanel.SetActive(on);
+        if (on) { BuildTownRoster(); }
+    }
+
+    public void ShowQuestBoard(bool on)
+    {
+        if (questBoardPanel) questBoardPanel.SetActive(on);
+        if (on) { BuildQuestList(); }
+    }
+
+    void BuildTownRoster() { /* 보유 캐릭터 목록 갱신 */ }
+    void BuildQuestList() { /* 의뢰 목록 갱신 */ }
+
+    #endregion
+
+
+
+
 
     // 데미지 팝업 생성
     public void ShowDamage(int damageAmount, Vector3 worldPosition)
@@ -431,55 +502,54 @@ public class UIManager : MonoBehaviour
     {
         CharacterManager defenseCharacter = TurnManager.Instance.defenseCharacter;
 
-        // 아이콘 프리팹 생성
         GameObject skillQueueIcon = Instantiate(skillIconPrefab, parent);
-        
         GameObject atkSkillIcon = skillQueueIcon.transform.GetChild(0).gameObject;
         GameObject defSkillIcon = skillQueueIcon.transform.GetChild(2).gameObject;
 
-        // 이미지 설정
-        skill.LoadIcon();
-        RawImage atkIconImage = atkSkillIcon.GetComponent<RawImage>();
-        if (atkIconImage != null && skill.icon != null)
-        {            
-            atkIconImage.texture = skill.icon;
-        }
+        // 공격 스킬 아이콘
+        atkSkillIcon.GetComponent<SkillButton>().skill = skill;
+        var atkIconImage = atkSkillIcon.GetComponent<RawImage>();
+        if (atkIconImage && skill.icon) atkIconImage.texture = skill.icon;
 
-        // 이미지 설정
-        TurnManager.Instance.defenseCharacter.character.DefaultCounterSkill.LoadIcon();
-        RawImage defIconImage = defSkillIcon.GetComponent<RawImage>();
-        if (TurnManager.Instance.defenseCharacter.character.DefaultCounterSkill.icon != null)
+        // ▼▼▼ 여기부터 "해당 슬롯에 현재 등록된 대응 스킬"을 조회하여 사용 ▼▼▼
+        int idx0 = orderNumber - 1;
+        var counterQueue = defenseCharacter.combatHandler.GetCounterSkillQueue();
+        SkillBase counterToShow = defenseCharacter.character.DefaultCounterSkill;
+
+        if (idx0 >= 0 && idx0 < counterQueue.Count && counterQueue[idx0].skill != null)
         {
-            defIconImage.texture = TurnManager.Instance.defenseCharacter.character.DefaultCounterSkill.icon;
+            counterToShow = counterQueue[idx0].skill;
         }
 
-        // 순번 표시 (TextMeshProUGUI가 있다면)
-        TextMeshProUGUI orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
-        if (orderText != null)
-        {
-            orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
-        }
+        defSkillIcon.GetComponent<SkillButton>().skill = counterToShow;
+        var defIconImage = defSkillIcon.GetComponent<RawImage>();
+        if (defIconImage && counterToShow.icon) defIconImage.texture = counterToShow.icon;
+        // ▲▲▲ 현재 등록된 대응 스킬 반영 끝
 
-        Button button = defSkillIcon.GetComponent<Button>();
+        // 순번 표시
+        var orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
+        if (orderText) orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
+
+        // 버튼 리스너
+        var button = defSkillIcon.GetComponent<Button>();
         if (button != null)
         {
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() =>
             {
-                CharacterTargeting targeting = UIManager.Instance.characterTargeting;
+                CharacterTargeting tgt = UIManager.Instance.characterTargeting;
+                int idx0Local = orderNumber - 1;
 
-                if (targeting.isDefenseSkillTargeting)
+                if (tgt.isDefenseSkillTargeting)
                 {
-                    // 카운터 스킬 등록 모드
-                    defenseCharacter.SelectCounterSkill(targeting.selectedSkill, defenseCharacter);                    
-                    Debug.Log($"{defenseCharacter.name} - {orderNumber}에 방어 스킬 등록: {targeting.selectedSkill.name}");
-                    targeting.StopTargeting();
+                    // 새 대응 스킬로 교체
+                    defenseCharacter.combatHandler.SetOrResetCounterSkill(idx0Local, tgt.selectedSkill);
+                    tgt.StopTargeting();
                 }
                 else
                 {
-                    // 기존 스킬 제거 모드
-                    //defenseCharacter;
-                    Debug.Log($"[UIManager] 슬롯 {orderNumber}에서 방어 스킬 제거");
+                    // 기본 대응 스킬로 리셋
+                    defenseCharacter.combatHandler.SetOrResetCounterSkill(idx0Local, null);
                 }
             });
         }

@@ -79,7 +79,6 @@ public class CharacterUIHandler : MonoBehaviour
             {
                 // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
                 GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
-                queue[i].skill.LoadIcon(); // 스킬 아이콘 로드
                 skillIconInstance.GetComponent<RawImage>().texture = queue[i].skill.icon;  // 스킬 아이콘 설정                
 
                 var sb = skillIconInstance.GetComponent<SkillButton>();
@@ -130,7 +129,6 @@ public class CharacterUIHandler : MonoBehaviour
             {
                 // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
                 GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
-                queue[i].skill.LoadIcon(); // 스킬 아이콘 로드
                 skillIconInstance.GetComponent<RawImage>().texture = queue[i].skill.icon;  // 스킬 아이콘 설정                
 
                 var sb = skillIconInstance.GetComponent<SkillButton>();

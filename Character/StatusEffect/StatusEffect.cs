@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public abstract class StatusEffect : Root
 {
     public int RemainingTurns { get; private set; } // 남은 턴 수

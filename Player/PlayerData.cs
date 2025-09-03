@@ -1,4 +1,9 @@
+using SoftKitty.InventoryEngine;
+using System;
 using System.Collections.Generic;
+
+[Serializable]
+public class PositionEntry { public string characterId; public bool isFront; }
 
 public class PlayerData // 플레이어 계정 정보
 {
@@ -8,8 +13,8 @@ public class PlayerData // 플레이어 계정 정보
     public int level;
     // 플레이어의 골드
     public int gold;
-    // 플레이어의 인벤토리 아이템 목록
-    //public List<InventoryItem> inventoryItems = new List<InventoryItem>();
+    // 플레이어의 창고 아이템 목록
+    public InventoryHolder storage = new InventoryHolder();
     // 보유한 캐릭터 ID 목록
     public List<string> characterIds = new List<string>();
 
@@ -17,6 +22,11 @@ public class PlayerData // 플레이어 계정 정보
     public string currentStage;
     public List<string> activeCharacterIds = new List<string>();
 
+    // 저장용(네이티브 Dictionary대신)
+    public List<PositionEntry> positions = new();
+
+    // 런타임 캐시
+    [Newtonsoft.Json.JsonIgnore]
     // 캐릭터 위치 정보
     public Dictionary<string, bool> characterPositionMapping = new Dictionary<string, bool>(); // true for front row, false for back row
 }

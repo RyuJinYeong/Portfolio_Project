@@ -7,6 +7,7 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine.TextCore.Text;
 using SoftKitty.InventoryEngine;
 using Unity.VisualScripting.Antlr3.Runtime.Misc;
+using System.Threading.Tasks;
 
 public class CharacterStats // 기본 캐릭터 스탯
 {
@@ -518,10 +519,16 @@ public class CharacterData
     public List<TraitBase> EquipmentTraits { get; set; }
     public List<SkillBase> EquipmentSkills { get; set; }
 
-    //캐릭터 인벤토리, 장비창 관리      
-    public InventoryHolder CharacterInventory;
-    public InventoryHolder CharacterEquipment;
 
+    // 런타임 임시 스냅샷(JSON). 로컬 바인딩용.
+    [Newtonsoft.Json.JsonIgnore] public string InventoryJsonSnapshot;
+    [Newtonsoft.Json.JsonIgnore] public string EquipmentJsonSnapshot;
+
+    // 런타임 홀더(프리팹 컴포넌트) 참조
+    //캐릭터 인벤토리, 장비창 관리
+    [Newtonsoft.Json.JsonIgnore] public InventoryHolder CharacterInventory;
+    [Newtonsoft.Json.JsonIgnore] public InventoryHolder CharacterEquipment;   
+    
 
     public Equipment GetEquipmentByType(EquipmentType type)
     {
@@ -697,15 +704,6 @@ public class CharacterData
 
         // 최종 스탯을 업데이트한 후, Attribute로 변환하여 필요한 곳에서 사용할 수 있도록 동기화
         updatedAttributes = StatsConverter.ConvertStatsToAttributes(FinalStats);
-    }
-
-    // 캐릭터의 스킬을 초기화하고 아이콘을 로드하는 메서드
-    public void InitializeSkills()
-    {
-        foreach (SkillBase skill in Skills)
-        {
-            skill.LoadIcon();
-        }
     }
 
     public CharacterStats CalcStat(CharacterStats stats)

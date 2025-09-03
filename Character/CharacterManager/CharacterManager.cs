@@ -86,7 +86,6 @@ public class CharacterManager : MonoBehaviour
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
         characterData.UpdateFinalStats(); // 캐릭터 스탯 초기화
-        characterData.InitializeSkills(); // 스킬 아이콘 초기화
         EquipmentManager.UpdateAvailableAttributes(characterData); // 캐릭터 장비 세부속성 초기화
         EquipmentManager.UpdateSkillAvailability(characterData); // 장비 세부 속성에 따른 사용 가능 스킬 초기화        
 
@@ -102,6 +101,17 @@ public class CharacterManager : MonoBehaviour
                 character.CharacterEquipment = holder;
             }
         }
+
+        // 스냅샷 JSON을 실제 홀더로 복원
+        if (!string.IsNullOrEmpty(character.InventoryJsonSnapshot))
+            InventorySerializer.ImportJson(character.CharacterInventory, character.InventoryJsonSnapshot);
+
+        if (!string.IsNullOrEmpty(character.EquipmentJsonSnapshot))
+            InventorySerializer.ImportJson(character.CharacterEquipment, character.EquipmentJsonSnapshot);
+
+        // 스냅샷 비우기
+        character.InventoryJsonSnapshot = null;
+        character.EquipmentJsonSnapshot = null;
 
         UpdateCharacterUI();
     }

@@ -1,8 +1,11 @@
+using Newtonsoft.Json;
 using PlayFab;
 using PlayFab.ClientModels;
+using SoftKitty.InventoryEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
 
@@ -42,6 +45,55 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
+    public void GetSkillIconAddressesBulk(IEnumerable<string> characterIds, Action<List<string>> onDone)
+    {
+        var ids = characterIds?.Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList() ?? new List<string>();
+        if (ids.Count == 0) { onDone?.Invoke(new List<string>()); return; }
+
+        PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>
+        {
+            var keys = new HashSet<string>();
+
+            foreach (var id in ids)
+            {
+                var key = $"CHAR_{id}";
+                if (result.Data == null || !result.Data.TryGetValue(key, out var rec) || string.IsNullOrEmpty(rec.Value))
+                    continue;
+
+                try
+                {
+                    var dto = JsonConvert.DeserializeObject<CharacterSaveDTO>(rec.Value);
+                    if (dto?.skills != null)
+                        foreach (var s in dto.skills) TryAddSkillIcon(s.uid, keys);
+                    if (dto?.defaultCounterSkillUid != 0)
+                        TryAddSkillIcon(dto.defaultCounterSkillUid, keys);
+                    // 장비 부여 스킬 등을 DTO에 넣었다면 여기도 추가
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"GetSkillIconAddressesBulk: parse error for CHAR_{id}\n{e}");
+                }
+            }
+
+            onDone?.Invoke(keys.ToList());
+        },
+        err =>
+        {
+            Debug.LogError($"GetSkillIconAddressesBulk: PlayFab error\n{err.GenerateErrorReport()}");
+            onDone?.Invoke(new List<string>());
+        });
+    }
+
+    static void TryAddSkillIcon(int uid, HashSet<string> keys)
+    {
+        if (uid == 0) return;
+        if (ItemManager.itemDic.TryGetValue(uid, out var item) && item is SkillBase sb)
+        {
+            if (!string.IsNullOrEmpty(sb.IconAddress))
+                keys.Add(sb.IconAddress);
+        }
+    }
+
 
     // 플레이어 로그인 후 데이터를 불러오는 메서드
     public void LoadPlayerDataFromPlayFab()
@@ -51,18 +103,32 @@ public class PlayerManager : MonoBehaviour
 
     private void OnDataReceived(GetUserDataResult result)
     {
-        if (result.Data != null && result.Data.ContainsKey("PlayerData"))
+        try
         {
-            string jsonData = result.Data["PlayerData"].Value;
-            Debug.Log("Player data loaded: " + jsonData); // 추가된 디버그 로그
-            _instance.currentPlayerData = JsonUtility.FromJson<PlayerData>(jsonData);
-            Debug.Log("Player data loaded successfully!");
-            Debug.Log(_instance.currentPlayerData.characterIds[0] + " = JsonUtility.FromJson<PlayerData>().characterIds[0]");
+            if (result.Data != null && result.Data.ContainsKey("PlayerDataV2"))
+            {
+                string jsonData = result.Data["PlayerDataV2"].Value;
+                var dto = JsonConvert.DeserializeObject<PlayerSaveDTO>(jsonData);
+                _instance.currentPlayerData = SaveMapper.FromDto(dto);
+                Debug.Log("Player data (V2) loaded.");
+            }
+            else if (result.Data != null && result.Data.ContainsKey("PlayerData"))
+            {
+                // 구버전 호환(원한다면 마이그레이션 처리)
+                string jsonData = result.Data["PlayerData"].Value;
+                _instance.currentPlayerData = JsonUtility.FromJson<PlayerData>(jsonData);
+                Debug.LogWarning("Legacy PlayerData loaded. Consider migrating to V2.");
+            }
+            else
+            {
+                _instance.currentPlayerData = new PlayerData();
+                Debug.LogWarning("No player data found, initializing new player data.");
+            }
         }
-        else
+        catch (Exception e)
         {
+            Debug.LogError($"OnDataReceived parse error: {e}");
             _instance.currentPlayerData = new PlayerData();
-            Debug.LogWarning("No player data found, initializing new player data.");
         }
     }
 
@@ -75,20 +141,17 @@ public class PlayerManager : MonoBehaviour
     // 플레이어 데이터를 PlayFab에 저장하는 메서드
     public void SavePlayerDataToPlayFab()
     {
-        string jsonData = JsonUtility.ToJson(_instance.currentPlayerData);
-        Debug.Log("Saving player data: " + jsonData); // 추가된 디버그 로그
+        var dto = SaveMapper.ToDto(_instance.currentPlayerData);
+        string jsonData = JsonConvert.SerializeObject(dto);
 
         var request = new UpdateUserDataRequest
         {
-            Data = new Dictionary<string, string>
-        {
-            { "PlayerData", jsonData }
-        }
+            Data = new Dictionary<string, string> { { "PlayerDataV2", jsonData } }
         };
 
         PlayFabClientAPI.UpdateUserData(request,
-        result => Debug.Log("Player data saved successfully."),
-        error => Debug.LogError("Error saving player data: " + error.GenerateErrorReport())
+            result => Debug.Log("Player data (V2) saved."),
+            error => Debug.LogError("Error saving player data: " + error.GenerateErrorReport())
         );
     }
 
@@ -122,17 +185,17 @@ public class PlayerManager : MonoBehaviour
     // 캐릭터 데이터를 ID를 키로 플레이팹에 저장
     public void SaveCharacter(CharacterData characterData)
     {
+        var dto = SaveMapper.ToDto(characterData);
+        string json = JsonConvert.SerializeObject(dto);
+
         var request = new UpdateUserDataRequest
         {
-            Data = new Dictionary<string, string>
-            {
-                { characterData.ID, JsonHelper.SerializeCharacterData(characterData) }
-            }
+            Data = new Dictionary<string, string> { { $"CHAR_{characterData.ID}", json } }
         };
 
         PlayFabClientAPI.UpdateUserData(request,
-            result => Debug.Log("Character data saved successfully."),
-            error => Debug.LogError("Error saving character data: " + error.GenerateErrorReport())
+            result => Debug.Log("Character DTO saved."),
+            error => Debug.LogError("Error saving character DTO: " + error.GenerateErrorReport())
         );
     }
 
@@ -141,33 +204,32 @@ public class PlayerManager : MonoBehaviour
     {
         PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>
         {
-            if (result.Data != null && result.Data.ContainsKey(characterId))
+            var key = $"CHAR_{characterId}";
+            if (result.Data != null && result.Data.ContainsKey(key))
             {
-                string jsonData = result.Data[characterId].Value;
-                CharacterData characterData = JsonHelper.DeserializeCharacterData(jsonData);
+                try
+                {
+                    string json = result.Data[key].Value;
+                    var dto = JsonConvert.DeserializeObject<CharacterSaveDTO>(json);
+                    var ch = SaveMapper.FromDto(dto);
 
-                if (characterData != null)
-                {
-                    characterData.InitializeSkills();
-                    Debug.Log("Character data loaded successfully!");
-                    onCharacterLoaded?.Invoke(characterData); // 로드된 데이터를 콜백으로 전달
+                    onCharacterLoaded?.Invoke(ch);
+                    return;
                 }
-                else
+                catch (Exception e)
                 {
-                    Debug.LogError("Failed to deserialize character data.");
-                    onCharacterLoaded?.Invoke(null); // null을 콜백으로 전달하여 오류 상황 처리
+                    Debug.LogError("Character DTO parse error: " + e);
                 }
             }
-            else
-            {
-                Debug.LogError("Character data not found for ID: " + characterId);
-                onCharacterLoaded?.Invoke(null); // null을 콜백으로 전달하여 오류 상황 처리
-            }
-        },
-        error =>
+
+            // 구버전(통째 직렬화) 백업 로드 경로가 필요하면 여기에 추가
+            Debug.LogError("Character data not found for ID: " + characterId);
+            onCharacterLoaded?.Invoke(null);
+
+        }, error =>
         {
             Debug.LogError("Error loading character data: " + error.GenerateErrorReport());
-            onCharacterLoaded?.Invoke(null); // null을 콜백으로 전달하여 오류 상황 처리
+            onCharacterLoaded?.Invoke(null);
         });
     }
 

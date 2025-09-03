@@ -10,7 +10,6 @@ public static class SkillManager
         if (!character.Skills.Contains(skill))
         {
             character.Skills.Add(skill);
-            skill.LoadIcon();
         }
         else
         {

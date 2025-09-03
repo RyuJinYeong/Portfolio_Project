@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -145,6 +146,34 @@ public class CombatHandler : MonoBehaviour
             Debug.Log("경합 상태 해제");
             UIManager.Instance.characterTargeting.lineRenderer.enabled = false;
         }
+    }
+
+    //카운터 스킬 슬롯 대체 동작 메서드
+    public void SetOrResetCounterSkill(int idx, SkillBase newSkill /* null이면 리셋 */)
+    {
+        // 길이 보정
+        while (idx >= counterSkillQueue.Count)
+            counterSkillQueue.Add((characterManager.character.DefaultCounterSkill, characterManager));
+
+        // 환불 (기본스킬이 아닐 때만)
+        SkillBase old = counterSkillQueue[idx].skill;
+        if (old != characterManager.character.DefaultCounterSkill)
+        {
+            characterManager.character.FinalStats.CurrentStamina += (int)old.StaminaCost;
+            characterManager.character.FinalStats.CurrentMentality += (int)old.MentalCost;
+        }
+
+        // 교체 or 리셋
+        SkillBase finalSkill = newSkill ?? characterManager.character.DefaultCounterSkill;
+        counterSkillQueue[idx] = (finalSkill, characterManager);
+
+        // 공통 갱신
+        characterManager.UpdateCharacterUI();        
+        UIManager.Instance.UpdateSkillTransparency(characterManager);
+
+        // ▼▼▼ 하단 카운터 패널 전체 리프레시(중요) ▼▼▼
+        var tm = TurnManager.Instance;
+        UIManager.Instance.UpdateCounterSkillPanel(tm.defenseCharacter, tm.defenseTarget);
     }
 
     // 리소스 소비 로직
@@ -414,7 +443,7 @@ public class CombatHandler : MonoBehaviour
         {
             damageMultiplier *= 0.9f;  // 보조 무기 패널티 적용
         }
-
+        
         switch (skill.Type)
         {
             case SkillType.Physical:
@@ -700,5 +729,10 @@ public class CombatHandler : MonoBehaviour
     public List<(SkillBase skill, CharacterManager target)> GetSkillQueue()
     {
         return skillQueue;
+    }
+
+    public List<(SkillBase skill, CharacterManager target)> GetCounterSkillQueue()
+    {
+        return counterSkillQueue;
     }
 }

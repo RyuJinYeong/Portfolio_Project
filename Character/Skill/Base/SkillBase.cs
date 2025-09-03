@@ -1,5 +1,8 @@
 using SoftKitty.InventoryEngine;
+using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -28,22 +31,19 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
     public SkillAttribute Attribute { get; set; } // 스킬 세부 속성
 
     public string IconAddress { get; set; } // Addressables에서 아이콘을 찾을 주소    
-    
-    // 스킬 아이콘을 비동기적으로 로드하는 메서드
-    public async void LoadIcon()
-    {
-        AsyncOperationHandle<Texture2D> handle = Addressables.LoadAssetAsync<Texture2D>(IconAddress);
-        await handle.Task;
 
-        if (handle.Status == AsyncOperationStatus.Succeeded)
-        {
-            icon = handle.Result;
-        }
-        else
-        {
-            Debug.LogError($"{name} 아이콘 로드 실패: {IconAddress}");
-        }
+
+    // UI 바인딩 시점에 캐시에서 아이콘 꺼내기
+    public bool EnsureIconFromCache()
+    {
+        if (icon != null) return false;
+        if (string.IsNullOrEmpty(IconAddress)) return false;
+
+        var tex = IconStore.GetOrNull(IconAddress);
+        if (tex != null) { icon = tex; return true; }
+        return false; // 아직 미로딩 → 자리표시자 사용
     }
+
 
     // 진화 및 습득 조건 관련 필드    
     public bool IsEvolvableSkill { get; set; } // 진화 가능한 스킬 여부
@@ -114,10 +114,9 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
         // 스탯 조건 확인
         foreach (var condition in RequiredStats)
         {
-            if (character.FinalStats.GetStats()[condition.Key] < condition.Value)
-            {
-                return false; 
-            }
+            var stats = character.FinalStats.GetStats();
+            if (!stats.TryGetValue(condition.Key, out var val) || val < condition.Value)
+                return false;
         }
 
         // 특성 조건 확인
@@ -216,8 +215,6 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
             IsStatusEffectSkill = this.IsStatusEffectSkill
         };
 
-        copiedSkill.LoadIcon();
-
         // 습득 조건 및 진화 조건 복사
         foreach (var condition in RequiredStats)
         {
@@ -226,6 +223,9 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
 
         copiedSkill.RequiredTraits.AddRange(RequiredTraits);
         copiedSkill.EvolRequiredTraits.AddRange(EvolRequiredTraits);
+
+        // 아이콘 텍스처는 참조 공유(중복 메모리 방지)
+        copiedSkill.icon = this.icon;
 
         return copiedSkill;
     }

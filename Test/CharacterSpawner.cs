@@ -1,144 +1,173 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections.Generic;
 using SoftKitty.InventoryEngine;
-using UnityEngine.TextCore.Text;
-using System.Security.Cryptography;
-using UnityEngine.WSA;
 using System.Collections;
 
 public class CharacterSpawner : MonoBehaviour
 {
-    public GameObject frontCharacterObject; // Àü¿­¿¡ ¹èÄ¡ÇÒ Ä³¸¯ÅÍ ¿ÀºêÁ§Æ® (TestOrigin)
-    public GameObject backCharacterObject1; // ÈÄ¿­¿¡ ¹èÄ¡ÇÒ Ã¹ ¹øÂ° Ä³¸¯ÅÍ ¿ÀºêÁ§Æ® (»ç³É²Û)
-    public GameObject backCharacterObject2; // ÈÄ¿­¿¡ ¹èÄ¡ÇÒ µÎ ¹øÂ° Ä³¸¯ÅÍ ¿ÀºêÁ§Æ® (¸¶¹ı»ç)
+    public GameObject frontCharacterObject;     // ì•„êµ° ì „ì—´(TestOrigin)
+    public GameObject backCharacterObject1;     // ì•„êµ° í›„ì—´1(ì‚¬ëƒ¥ê¾¼)
+    public GameObject backCharacterObject2;     // ì•„êµ° í›„ì—´2(ë§ˆë²•ì‚¬)
 
-    public GameObject enemyFrontCharacterObject; // Àû±º Àü¿­ Ä³¸¯ÅÍ ¿ÀºêÁ§Æ®
-    public GameObject enemyBackCharacterObject1; // Àû±º ÈÄ¿­ Ã¹ ¹øÂ° Ä³¸¯ÅÍ ¿ÀºêÁ§Æ®
-    public GameObject enemyBackCharacterObject2; // Àû±º ÈÄ¿­ µÎ ¹øÂ° Ä³¸¯ÅÍ ¿ÀºêÁ§Æ®
+    public GameObject enemyFrontCharacterObject; // ì  ì „ì—´(ë°©ë‘ê¸°ì‚¬)
+    public GameObject enemyBackCharacterObject1; // ì  í›„ì—´1(ì‚¬ëƒ¥ê¾¼)
+    public GameObject enemyBackCharacterObject2; // ì  í›„ì—´2(ë§ˆë²•ì‚¬)
 
-    private void Start()
+    // ì•„ì´ì½˜ ìºì‹œ ê·¸ë£¹ (í…ŒìŠ¤íŠ¸ì”¬ ì „ìš©)
+    private const string IconGroup = "TestBattle";
+
+    // Startë¥¼ ì½”ë£¨í‹´ìœ¼ë¡œ ë³€ê²½
+    private IEnumerator Start()
     {
-        // ¾Æ±º Ä³¸¯ÅÍ µ¥ÀÌÅÍ ÃÊ±âÈ­
-        InitializeCharacter(frontCharacterObject, CharacterOrigin.GetOriginData()["TestOrigin"], true);
-        InitializeCharacter(backCharacterObject1, CharacterOrigin.GetOriginData()["»ç³É²Û"], true);
-        InitializeCharacter(backCharacterObject2, CharacterOrigin.GetOriginData()["¸¶¹ı»ç"], true);
+        // ì•„ì´ì½˜ í”„ë¦¬ë¡œë“œ
+        var origins = CharacterOrigin.GetOriginData();
+        var plan = new List<(GameObject go, CharacterData data, bool mine)>
+        {
+            (frontCharacterObject,       origins["TestOrigin"], true),
+            (backCharacterObject1,       origins["ì‚¬ëƒ¥ê¾¼"],     true),
+            (backCharacterObject2,       origins["ë§ˆë²•ì‚¬"],     true),
+            (enemyFrontCharacterObject,  origins["ë°©ë‘ê¸°ì‚¬"],   false),
+            (enemyBackCharacterObject1,  origins["ì‚¬ëƒ¥ê¾¼"],     false),
+            (enemyBackCharacterObject2,  origins["ë§ˆë²•ì‚¬"],     false),
+        };
 
-        // Àû±º Ä³¸¯ÅÍ µ¥ÀÌÅÍ ÃÊ±âÈ­
-        InitializeCharacter(enemyFrontCharacterObject, CharacterOrigin.GetOriginData()["¹æ¶û±â»ç"], false);
-        InitializeCharacter(enemyBackCharacterObject1, CharacterOrigin.GetOriginData()["»ç³É²Û"], false);
-        InitializeCharacter(enemyBackCharacterObject2, CharacterOrigin.GetOriginData()["¸¶¹ı»ç"], false);        
+        var keys = new HashSet<string>();
+        foreach (var (_, data, _) in plan) CollectSkillIconAddresses(data, keys);
+        if (keys.Count > 0) yield return IconStore.Preload(keys, "TestBattle");
+
+        // ìŠ¤í° + ë“±ë¡
+        foreach (var (go, data, mine) in plan)
+        {
+            InitializeCharacter(go, data, mine);  // <-- ë°˜í™˜ê°’ì„ CharacterManagerë¡œ            
+        }
+
+        // ìŠ¤í°ì´ ì „ë¶€ ëë‚¬ìŒì„ ì•Œë¦¼ â†’ TurnManagerê°€ ìë™ ì‹œì‘
+        GameManager.Instance.SignalRosterReady();
+
+        //TurnManager.Instance.ForceRebuildAndRestart();
+    }
+
+    private void OnDestroy()
+    {
+        // í…ŒìŠ¤íŠ¸ì”¬ ëë‚  ë•Œ ê·¸ë£¹ ë‹¨ìœ„ ì •ë¦¬ (ì›í•˜ë©´ ì£¼ì„ì²˜ë¦¬í•´ì„œ ì¬ì…ì¥ì‹œ ìºì‹œ ì¬ì‚¬ìš© ê°€ëŠ¥)
+        IconStore.ClearGroup(IconGroup);
+    }
+
+    // ê° ìºë¦­í„°ì˜ ìŠ¤í‚¬ ì•„ì´ì½˜ ì£¼ì†Œë¥¼ keysì— ì¶”ê°€
+    private static void CollectSkillIconAddresses(CharacterData characterData, HashSet<string> keys)
+    {
+        if (characterData?.Skills != null)
+            foreach (var s in characterData.Skills)
+                if (!string.IsNullOrEmpty(s.IconAddress)) keys.Add(s.IconAddress);
+
+        if (characterData?.DefaultCounterSkill != null &&
+            !string.IsNullOrEmpty(characterData.DefaultCounterSkill.IconAddress))
+            keys.Add(characterData.DefaultCounterSkill.IconAddress);
+    }
+
+    // ìºì‹œì— ë“¤ì–´ìˆëŠ” í…ìŠ¤ì²˜ë¥¼ ìŠ¤í‚¬/ì¹´ìš´í„° ìŠ¤í‚¬ì— ê½‚ì•„ë„£ê¸°
+    private static void EnsureSkillIconsFromCache(CharacterData c)
+    {
+        if (c?.Skills != null)
+            foreach (var s in c.Skills)
+                s?.EnsureIconFromCache();
+
+        c?.DefaultCounterSkill?.EnsureIconFromCache();
     }
 
     IEnumerator Delay(CharacterManager characterManager, GameObject characterObject)
     {
         yield return new WaitForEndOfFrame();
-        yield return new WaitForSeconds(0.1f); // ¾Ö´Ï¸ŞÀÌ¼Ç ¹İ¿µÀ» À§ÇÑ ÂªÀº µô·¹ÀÌ
-
-        characterManager.character.Portrait = characterObject.GetComponent<CharacterCustomization>().CapturePortrait(); // ÃÊ»óÈ­ ÃÔ¿µ        
+        yield return new WaitForSeconds(0.1f); // ì• ë‹ˆ ë°˜ì˜ìš© ì§§ì€ ë”œë ˆì´
+        characterManager.character.Portrait = characterObject.GetComponent<CharacterCustomization>().CapturePortrait();
     }
 
     private void InitializeCharacter(GameObject characterObject, CharacterData characterData, bool isMine)
     {
         if (characterObject == null)
         {
-            Debug.LogError("Character object is missing for " + characterData.Name);
+            Debug.LogError("Character object is missing for " + characterData?.Name);
             return;
         }
 
-        CharacterManager characterManager = characterObject.GetComponent<CharacterManager>();
-
-        if (characterManager != null)
+        var characterManager = characterObject.GetComponent<CharacterManager>();
+        if (characterManager == null)
         {
-            characterManager.InitializeCharacter(DeepCopy.DeepCopyCharacter(characterData));
-            characterObject.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(characterManager.character);
-            characterManager.character.IsMine = isMine;
-            characterManager.character.IsAlive = true;
+            Debug.LogError("CharacterManager component is missing on the character object.");
+            return;
+        }
 
-            if (characterManager.character.originName == "¸¶¹ı»ç") 
-            {
-                characterManager.character.Traits[0].ApplyTrait(characterManager);
-            }
+        // ì›ë³¸ì„ ê¹Šì€ ë³µì‚¬í•˜ì—¬ ì¸ìŠ¤í„´ìŠ¤ ìƒì„±
+        characterManager.InitializeCharacter(DeepCopy.DeepCopyCharacter(characterData));
 
-            List<Equipment> equipmentList = (List<Equipment>)characterManager.character.GetEquipments();
+        // (í”„ë¦¬ë¡œë“œê°€ ëë‚œ ìƒíƒœì´ë¯€ë¡œ) ìŠ¤í‚¬ ì•„ì´ì½˜ì„ ìºì‹œì—ì„œ ì—°ê²°
+        EnsureSkillIconsFromCache(characterManager.character);
 
-            InventoryHolder[] inventoryHolders = characterObject.GetComponents<InventoryHolder>();
-            InventoryHolder inventoryHolder = null;
-            InventoryHolder equipmentHolder = null;
+        // ì¥ë¹„ ì™¸í˜• ë°˜ì˜ ë° ì†Œìœ /ìƒíƒœ ì„¸íŒ…
+        characterObject.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(characterManager.character);
+        characterManager.character.IsMine = isMine;
+        characterManager.character.IsAlive = true;
 
-            VerifyAndSetEquipmentIcons((List<Equipment>)characterManager.character.GetEquipments());
+        if (characterManager.character.originName == "ë§ˆë²•ì‚¬")
+            characterManager.character.Traits[0].ApplyTrait(characterManager);
 
-            if (inventoryHolders[0].Type == InventoryHolder.HolderType.PlayerEquipment)
-            {
-                equipmentHolder = inventoryHolders[0];
-            }
-            else
-            {
-                inventoryHolder = inventoryHolders[0];
-            }
+        // ì¥ë¹„ ì•„ì´ì½˜(ë¦¬ì†ŒìŠ¤) í™•ì¸ ë° ë³´ì •
+        VerifyAndSetEquipmentIcons((List<Equipment>)characterManager.character.GetEquipments());
 
-            if (inventoryHolders[1].Type == InventoryHolder.HolderType.PlayerEquipment)
-            {
-                equipmentHolder = inventoryHolders[1];
-            }
-            else
-            {
-                inventoryHolder = inventoryHolders[1];
-            }
+        // InventoryHolder ì—°ê²°
+        var holders = characterObject.GetComponents<InventoryHolder>();
+        InventoryHolder inventoryHolder = null;
+        InventoryHolder equipmentHolder = null;
 
+        if (holders.Length >= 2)
+        {
+            equipmentHolder = (holders[0].Type == InventoryHolder.HolderType.PlayerEquipment) ? holders[0] : holders[1];
+            inventoryHolder = (holders[0].Type == InventoryHolder.HolderType.PlayerEquipment) ? holders[1] : holders[0];
+        }
 
-            // °¢ Àåºñ¸¦ InventoryHolderÀÇ Stacks¿¡ Ãß°¡
-            foreach (Equipment equipment in equipmentList)
-            {
-                if (equipment != null)
-                {
-                    // ¸ÕÀú Àåºñ¸¦ ½ºÅÃ¿¡ Ãß°¡
-                    var addResult = equipmentHolder.AddItem(equipment, 1); // AddItemÀÇ ¹İÈ¯°ªÀ» È°¿ëÇÏ¿© Ãß°¡ ¼º°ø ¿©ºÎ È®ÀÎ
+        // ì¥ë¹„ ì ìš©
+        foreach (var equipment in (List<Equipment>)characterManager.character.GetEquipments())
+        {
+            if (equipment == null) continue;
 
-                    // º¯°æµÈ Àåºñ Á¤º¸¸¦ µñ¼Å³Ê¸®¿¡ Ãß°¡ÇÏ¿© ItemChanged È£Ãâ
-                    Dictionary<Item, int> _changedItems = new Dictionary<Item, int>();
-                    _changedItems.Add(equipment, 1);
-                    equipmentHolder.ItemChanged(_changedItems);
+            equipmentHolder?.AddItem(equipment, 1);
+            var changed = new Dictionary<Item, int> { { equipment, 1 } };
+            equipmentHolder?.ItemChanged(changed);
 
-                    // ´É·ÂÄ¡¿¡ Àåºñ È¿°ú Àû¿ë
-                    equipment.Equip(characterManager.character);                    
-                }
-            }
+            equipment.Equip(characterManager.character);
+        }
 
-            characterManager.character.ApplyAllTraits(characterManager);
-            characterManager.character.UpdateFinalStats();
-            characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
+        characterManager.character.ApplyAllTraits(characterManager);
+        characterManager.character.UpdateFinalStats();
+        characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
 
-            StartCoroutine(Delay(characterManager, characterObject)); // ¾Ö´Ï¸ŞÀÌ¼Ç ·»´õ¸µÀ» À§ÇÑ µô·¹ÀÌ Àû¿ë
+        StartCoroutine(Delay(characterManager, characterObject));
 
-            if (isMine)
-            {
-                characterManager.character.Name = "Test_Ally" + characterManager.character.originName;
-            }
-            else
-            {
-                characterManager.character.Name = "Test_Enemy" + characterManager.character.originName;
-                characterManager.character.Type = CharacterType.Elite;
-                characterManager.character.personality = Personality.Cunning;
-            }
+        // í…ŒìŠ¤íŠ¸ìš© ì´ë¦„/ì„±í–¥
+        if (isMine)
+        {
+            characterManager.character.Name = "Test_Ally" + characterManager.character.originName;
         }
         else
         {
-            Debug.LogError("CharacterManager component is missing on the character object.");
+            characterManager.character.Name = "Test_Enemy" + characterManager.character.originName;
+            characterManager.character.Type = CharacterType.Elite;
+            characterManager.character.personality = Personality.Cunning;
         }
+
+        GameManager.Instance.RegisterCharacter(characterManager);
     }
-    
-    // ¸ğµç Àåºñ ¾ÆÀÌÄÜ Àç¼³Á¤ ÄÚµå ¿¹½Ã
+
+    // ê¸°ì¡´ ì¥ë¹„ ì•„ì´ì½˜ ë¦¬ì†ŒìŠ¤ ë³´ì • (ë¦¬ì†ŒìŠ¤ ê¸°ë°˜ ìœ ì§€)
     public void VerifyAndSetEquipmentIcons(List<Equipment> equipmentList)
     {
         foreach (Equipment equip in equipmentList)
         {
             if (equip != null && equip.icon == null)
             {
-                // ¾ÆÀÌÅÛÀÇ ÀÌ¸§¿¡¼­ °ø¹éÀ» Á¦°ÅÇÏ°í ¾ÆÀÌÄÜ ´Ù½Ã ·Îµå
                 string iconName = equip.name.Replace(" ", "");
                 equip.icon = Resources.Load<Texture2D>($"Icons/{iconName}");
             }
         }
     }
-    
 }
