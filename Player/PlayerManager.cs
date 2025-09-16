@@ -17,6 +17,8 @@ public class PlayerManager : MonoBehaviour
     // 현재 로그인한 플레이어 정보
     private PlayerData currentPlayerData;
 
+    public List<CharacterManager> Characters = new List<CharacterManager>();
+
     private void Awake()
     {
         _instance = this;
@@ -56,7 +58,7 @@ public class PlayerManager : MonoBehaviour
 
             foreach (var id in ids)
             {
-                var key = $"CHAR_{id}";
+                var key = id;
                 if (result.Data == null || !result.Data.TryGetValue(key, out var rec) || string.IsNullOrEmpty(rec.Value))
                     continue;
 
@@ -71,7 +73,7 @@ public class PlayerManager : MonoBehaviour
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning($"GetSkillIconAddressesBulk: parse error for CHAR_{id}\n{e}");
+                    Debug.LogWarning($"GetSkillIconAddressesBulk: parse error for {id}\n{e}");
                 }
             }
 
@@ -190,7 +192,7 @@ public class PlayerManager : MonoBehaviour
 
         var request = new UpdateUserDataRequest
         {
-            Data = new Dictionary<string, string> { { $"CHAR_{characterData.ID}", json } }
+            Data = new Dictionary<string, string> { { characterData.ID, json } }
         };
 
         PlayFabClientAPI.UpdateUserData(request,
@@ -204,7 +206,7 @@ public class PlayerManager : MonoBehaviour
     {
         PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>
         {
-            var key = $"CHAR_{characterId}";
+            var key = characterId;
             if (result.Data != null && result.Data.ContainsKey(key))
             {
                 try
@@ -222,7 +224,6 @@ public class PlayerManager : MonoBehaviour
                 }
             }
 
-            // 구버전(통째 직렬화) 백업 로드 경로가 필요하면 여기에 추가
             Debug.LogError("Character data not found for ID: " + characterId);
             onCharacterLoaded?.Invoke(null);
 

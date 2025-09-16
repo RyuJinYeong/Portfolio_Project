@@ -477,8 +477,19 @@ public class CustomizationData
 
 public class CharacterData
 {
+    public Origin origin; // 출신지
+    public string originName; // 출신지 명
+
+    public Personality personality = Personality.Simple; // 성향
+    public int Belonging { get; set; } // 소속감
+    public int Morale { get; set; } // 사기
+
+
+    public string ID; // 캐릭터 식별을 위한 고유 ID
+    public string Name; // 캐릭터 이름 - 중복 허용
+
     [JsonIgnore] // JSON 직렬화 시 무시 - Sprite는 DB 공간 낭비가 심해서 인게임에서 처리
-    public Texture2D Portrait; // 캐릭터 초상화 - 게임 실행시 게임씬에서 렌더이미지를 촬영하여 할당
+    public Texture2D Portrait; // 캐릭터 초상화 - 게임 실행시 게임씬에서 렌더이미지를 촬영하여 할당 - 렌더 이미지는 보류하고 출신지별 구분 아이콘 넣기
 
     public CustomizationData customizationData; // 캐릭터 커스터마이징 데이터 - 이 데이터를 기반으로 생성된 베이스 캐릭터에 커스터마이징 적용
     public CharacterType Type {  get; set; } = CharacterType.Character;
@@ -498,7 +509,6 @@ public class CharacterData
     public float AttackSpeedMultiplier { get; set; } = 1.0f; // 공격 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
     public float CastSpeedMultiplier { get; set; } = 1.0f; // 시전 속도 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
 
-    //public int BonusStatpoint { get; set; } // 투자 가능 스탯
     public bool IsAlive { get; set; } // 캐릭터의 생존유무
     public bool IsMine { get; set; } // 캐릭터 아군여부
 
@@ -513,7 +523,7 @@ public class CharacterData
     // 캐릭터에 적용되어있는 상태이상
     public List<StatusEffect> StatusEffects { get; set; } // 적용중인 상태이상 목록
 
-    public List<SkillAttribute> AvailableAttributes { get; private set; } = new List<SkillAttribute>(); // 캐릭터가 장착한 무기의 세부 속성 리스트
+    public List<SkillAttribute> AvailableAttributes { get; set; } = new List<SkillAttribute>(); // 캐릭터가 장착한 무기의 세부 속성 리스트
 
     // 장비로 인해 습득한 스킬과 특성 리스트
     public List<TraitBase> EquipmentTraits { get; set; }
@@ -530,19 +540,6 @@ public class CharacterData
     [Newtonsoft.Json.JsonIgnore] public InventoryHolder CharacterEquipment;   
     
 
-    public Equipment GetEquipmentByType(EquipmentType type)
-    {
-        List<Equipment> EquippedItems = (List<Equipment>)GetEquipments();
-        foreach (var equipment in EquippedItems)
-        {
-            if (equipment != null && equipment.EquipType == type)
-            {
-                return equipment;
-            }
-        }
-        return null; // 해당 타입의 장비가 장착되지 않은 경우 null 반환
-    }
-
     //캐릭터의 장비
     public Equipment Helmet { get; set; }
     public Equipment Armor { get; set; }
@@ -556,17 +553,18 @@ public class CharacterData
     public Equipment SubWeapon { get; set; }
 
 
-    // 추가 정보
-    public Origin origin; // 출신지
-    public string originName; // 출신지 명
-
-    public Personality personality = Personality.Simple; // 성향
-    public int Belonging { get; set; } // 소속감
-    public int Morale { get; set; } // 사기
-
-
-    public string ID; // 캐릭터 식별을 위한 고유 ID
-    public string Name; // 캐릭터 이름 - 중복 허용
+    public Equipment GetEquipmentByType(EquipmentType type)
+    {
+        List<Equipment> EquippedItems = (List<Equipment>)GetEquipments();
+        foreach (var equipment in EquippedItems)
+        {
+            if (equipment != null && equipment.EquipType == type)
+            {
+                return equipment;
+            }
+        }
+        return null; // 해당 타입의 장비가 장착되지 않은 경우 null 반환
+    }
 
     // 장비 리스트를 반환하는 메서드 - 캐릭터의 장착중인 모든 장비 순회를 위한 메서드
     public IEnumerable<Equipment> GetEquipments()

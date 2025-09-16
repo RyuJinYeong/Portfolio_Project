@@ -30,9 +30,10 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
-
+                
         EquipmentDatabase.InitializeDatabase();
         SkillDatabase.InitializeDatabase();
+
         SetDefaultCursor();        
     }
     public void RegisterCharacter(CharacterManager cm)
@@ -183,8 +184,6 @@ public class GameManager : MonoBehaviour
             yield return IconStore.Preload(keys, "Stage");
     }
 
-
-
     public void ShowStageSelectionUI()
     {
 
@@ -194,19 +193,53 @@ public class GameManager : MonoBehaviour
     public void LoadGameScene(string stage)
     {
         SceneManager.LoadScene("GameScene");
+        StartCoroutine(CoAfterSceneLoaded(stage));
+    }
+
+    private IEnumerator CoAfterSceneLoaded(string stage)
+    {
+        // 한 프레임 대기
+        yield return null;
+
+
+        // 오브젝트 풀링
+        bool done = false;
+        CharacterPoolManager.Instance.BuildPoolFromPlayerData(() => done = true);
+        while (!done) yield return null;
+
+
+        // 아이콘 프리로드
+        var pd = PlayerManager.Instance.GetCurrentPlayerData();
+        var targetIds = StagePreloadPolicy.GetPreloadCharacterIds(pd, stage);
+
+        List<string> keys = null;
+        bool addrDone = false;
+        PlayerManager.Instance.GetSkillIconAddressesBulk(targetIds, list => { keys = list ?? new List<string>(); addrDone = true; });
+        while (!addrDone) yield return null;
+
+        if (keys != null && keys.Count > 0)
+        {         
+            yield return IconStore.Preload(keys, stage);         
+        }
+
+        foreach (var cm in CharacterPoolManager.Instance.All())
+        {
+            IconFixer.FixAllIcons(cm.character);
+        }
+
+        // 풀 보장 후 게임씬 셋업
         StartCoroutine(SetupGameScene(stage));
     }
 
     public IEnumerator SetupGameScene(string stage)
     {
         yield return new WaitForSeconds(1); // 씬 로드 시간 대기
-
+        
         var playerData = PlayerManager.Instance.GetCurrentPlayerData();
 
         if (playerData == null)
         {
             Debug.LogError("Player data is null.");
-            ShowStageSelectionUI();
             yield break;
         }
 
@@ -215,7 +248,6 @@ public class GameManager : MonoBehaviour
         if (string.IsNullOrEmpty(playerData.currentStage) || playerData.activeCharacterIds == null || playerData.activeCharacterIds.Count == 0)
         {
             Debug.LogWarning("No active characters or current stage is null.");
-            ShowStageSelectionUI();
             yield break;
         }
 

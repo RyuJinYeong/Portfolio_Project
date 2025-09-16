@@ -8,6 +8,11 @@ public class DurableTrait : TraitBase // 추상클래스 TraitBase를 상속받�
 {
     public override string Name => "철벽"; // 특성명
     public override bool IsPercentage => false;
+    public override int Id => 1000;
+    public override TraitGrade Grade => TraitGrade.C;
+
+    public override int Level => 1;
+    public override TraitPolarity Polarity => TraitPolarity.Positive;
 
     public override void ApplyTrait(CharacterManager manager) // 모든 방어력 3 증가
     {
@@ -229,7 +234,7 @@ public class DunceTrait : TraitBase
     public override string Name => "둔재"; // 특성명
     public override bool IsPercentage => true;
 
-    public override void ApplyTrait(CharacterManager manager) // 기본 기교, 지능, 지혜 스탯 반감 +20
+    public override void ApplyTrait(CharacterManager manager) // 기본 기교, 지능, 지혜 스탯 반감
     {
         manager.character.BaseStats.Dexterity /= 2;
         manager.character.BaseStats.Wisdom /= 2;

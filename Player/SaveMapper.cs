@@ -52,7 +52,18 @@ public static class SaveMapper
         {
             id = c.ID,
             name = c.Name,
+            type = (int)(c.Type),
 
+            // 출신
+            origin = (int)(c.origin),
+            originName = c.originName,
+
+            // 성향/심리
+            personality = (int)(c.personality),
+            belonging = c.Belonging,
+            morale = c.Morale,
+
+            // 커스터마이징
             isMale = c.customizationData?.IsMale ?? true,
             hairType = c.customizationData?.HairType ?? 0,
             eyebrowsType = c.customizationData?.EyebrowsType ?? 0,
@@ -62,6 +73,7 @@ public static class SaveMapper
             hairColor = c.customizationData?.HairColor ?? 0,
             skinTone = c.customizationData?.SkinTone ?? 0,
 
+            // 레벨 / 현재 수치
             level = c.FinalStats?.Lv ?? 1,
             exp = c.FinalStats?.Exp ?? 0,
             currentHp = c.FinalStats?.CurrentHp ?? 0,
@@ -82,6 +94,20 @@ public static class SaveMapper
             necklaceUid = (c.Necklace as Item)?.uid ?? 0,
             weaponUid = (c.Weapon as Item)?.uid ?? 0,
             subWeaponUid = (c.SubWeapon as Item)?.uid ?? 0,
+
+            // 배율
+            physicalDamageMultiplier = c.PhysicalDamageMultiplier,
+            magicalDamageMultiplier = c.MagicalDamageMultiplier,
+            attackSpeedMultiplier = c.AttackSpeedMultiplier,
+            castSpeedMultiplier = c.CastSpeedMultiplier,
+
+            // 상태/진영
+            isAlive = c.IsAlive,
+            isMine = c.IsMine,
+
+            // 방어도
+            physicalArmor = c.PhysicalArmor,
+            magicalArmor = c.MagicalArmor,
 
             defaultCounterSkillUid = c.DefaultCounterSkill?.uid ?? 0,
         };
@@ -104,6 +130,48 @@ public static class SaveMapper
                 });
             }
         }
+        
+        // 특성
+        if (c.Traits != null)
+        {
+            foreach (var t in c.Traits)
+                dto.traits.Add(new TraitSaveDTO
+                {
+                    id = t.Id,
+                    level = (t.Level <= 0 ? 1 : t.Level)
+                });
+        }
+        
+        // 장비로 얻은 스킬/특성
+        if (c.EquipmentSkills != null)
+            foreach (var s in c.EquipmentSkills)
+                dto.equipmentSkills.Add(new SkillSaveDTO
+                {
+                    uid = s.uid,
+                    useCount = s.SkillUseCount,
+                    killCount = s.SkillKillCount,
+                    damageCount = s.SkillDamageCount,
+                    quickSlot = s.QuickSlot
+                });
+        
+        if (c.EquipmentTraits != null)
+        {
+            foreach (var t in c.EquipmentTraits)
+                dto.equipmentTraits.Add(new TraitSaveDTO
+                {
+                    id = t.Id,
+                    level = (t.Level <= 0 ? 1 : t.Level)
+                });
+        }
+        
+
+
+        // 무기 세부 속성
+        if (c.AvailableAttributes != null)
+        {
+            foreach (var a in c.AvailableAttributes)
+                dto.availableAttributes.Add((int)a);
+        }
 
         return dto;
     }
@@ -114,6 +182,13 @@ public static class SaveMapper
         {
             ID = dto.id,
             Name = dto.name,
+            Type = (CharacterType)dto.type,
+
+            origin = (Origin)dto.origin,
+            originName = dto.originName,
+            personality = (Personality)dto.personality,
+            Belonging = dto.belonging,
+            Morale = dto.morale,
 
             customizationData = new CustomizationData
             {
@@ -130,11 +205,32 @@ public static class SaveMapper
             // 원천 스탯 복원
             BaseStats = dto.baseStats?.Copy() ?? new CharacterStats(),
             ModifiedStats = dto.modifiedStats?.Copy() ?? new CharacterStats(),
-            FinalStats = new CharacterStats(), // 계산은 아래 UpdateFinalStats에서
+            FinalStats = new CharacterStats(),
 
             Traits = new List<TraitBase>(),
-            Skills = new List<SkillBase>()
+            EquipmentTraits = new List<TraitBase>(),
+            Skills = new List<SkillBase>(),
+            EquipmentSkills = new List<SkillBase>(),
+            StatusEffects = new List<StatusEffect>(),
+            AvailableAttributes = new List<SkillAttribute>()
         };
+
+        // --- 런타임 배율/상태/방어도(기본값 가드) ---
+        c.PhysicalDamageMultiplier = dto.physicalDamageMultiplier > 0f ? dto.physicalDamageMultiplier : 1f;
+        c.MagicalDamageMultiplier = dto.magicalDamageMultiplier > 0f ? dto.magicalDamageMultiplier : 1f;
+        c.AttackSpeedMultiplier = dto.attackSpeedMultiplier > 0f ? dto.attackSpeedMultiplier : 1f;
+        c.CastSpeedMultiplier = dto.castSpeedMultiplier > 0f ? dto.castSpeedMultiplier : 1f;
+
+        c.IsAlive = dto.isAlive;
+        c.IsMine = dto.isMine;
+        c.PhysicalArmor = dto.physicalArmor;
+        c.MagicalArmor = dto.magicalArmor;
+
+        c.FinalStats.Lv = dto.level;
+        c.FinalStats.Exp = dto.exp;
+        c.FinalStats.CurrentHp = dto.currentHp;
+        c.FinalStats.CurrentStamina = dto.currentStamina;
+        c.FinalStats.CurrentMentality = dto.currentMentality;
 
         // 인벤토리/장비 JSON은 스폰된 프리팹의 홀더에 Import할 것이므로 일단 캐시
         c.InventoryJsonSnapshot = dto.inventoryJson;
@@ -171,6 +267,53 @@ public static class SaveMapper
 
                 c.Skills.Add(skill);
             }
+        }
+
+        // --- 특성 복원 ---
+        if (dto.traits != null)
+        {
+            foreach (var t in dto.traits)
+            {
+                var trait = TraitRegistry.Create(t.id);
+                if (trait == null) continue;
+                trait.Level = (t.level <= 0 ? 1 : t.level);
+                c.Traits.Add(trait);
+            }
+        }
+
+        // --- 장비로 얻는 스킬/특성 복원 ---
+        if (dto.equipmentSkills != null)
+        {
+            foreach (var s in dto.equipmentSkills)
+            {
+                var skill = ItemDbCopyAs<SkillBase>(s.uid);
+                if (skill == null) continue;
+
+                skill.SkillUseCount = s.useCount;
+                skill.SkillKillCount = s.killCount;
+                skill.SkillDamageCount = s.damageCount;
+                skill.QuickSlot = s.quickSlot;
+
+                c.EquipmentSkills.Add(skill);
+            }
+        }
+
+        if (dto.equipmentTraits != null)
+        {
+            foreach (var t in dto.equipmentTraits)
+            {
+                var trait = TraitRegistry.Create(t.id);
+                if (trait == null) continue;
+                trait.Level = (t.level <= 0 ? 1 : t.level);
+                c.EquipmentTraits.Add(trait);
+            }
+        }
+
+        // --- 무기 세부 속성 ---
+        if (dto.availableAttributes != null)
+        {
+            foreach (var a in dto.availableAttributes)
+                c.AvailableAttributes.Add((SkillAttribute)a);
         }
 
         // 기본 대응 스킬

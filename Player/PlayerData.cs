@@ -19,7 +19,7 @@ public class PlayerData // 플레이어 계정 정보
     public List<string> characterIds = new List<string>();
 
     // 진행 중인 스테이지와 해당 스테이지를 진행 중인 캐릭터 ID 목록
-    public string currentStage;
+    public string currentStage = "Town";
     public List<string> activeCharacterIds = new List<string>();
 
     // 저장용(네이티브 Dictionary대신)

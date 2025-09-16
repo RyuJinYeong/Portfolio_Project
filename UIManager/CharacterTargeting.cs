@@ -30,32 +30,36 @@ public class CharacterTargeting : MonoBehaviour
 
     void Update()
     {
-        // 마우스 커서가 올라간 캐릭터에 외곽선 적용
-        HandleHoverOutline();
-
-        if (!isTargeting && !isDefenseCharacterTargeting && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        if (PlayerManager.Instance.GetCurrentPlayerData().currentStage != "Town" || PlayerManager.Instance.GetCurrentPlayerData().currentStage != null)
         {
-            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit))
+            // 마우스 커서가 올라간 캐릭터에 외곽선 적용
+            HandleHoverOutline();
+
+
+            if (!isTargeting && !isDefenseCharacterTargeting && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
             {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
+                Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+                if (Physics.Raycast(ray, out RaycastHit hit))
                 {
-                    SelectCharacter(characterManager);
+                    if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
+                    {
+                        SelectCharacter(characterManager);
+                    }
                 }
             }
-        }
 
-        if (isTargeting)
-        {
-            if (isDefenseSkillTargeting)
-                HandleDefenseSkillTargeting();
-            else
-                HandleSkillTargeting();
-        }
+            if (isTargeting)
+            {
+                if (isDefenseSkillTargeting)
+                    HandleDefenseSkillTargeting();
+                else
+                    HandleSkillTargeting();
+            }
 
-        if (isDefenseCharacterTargeting)
-        {
-            HandleDefenseTargeting();
+            if (isDefenseCharacterTargeting)
+            {
+                HandleDefenseTargeting();
+            }
         }
     }
 

@@ -1,11 +1,13 @@
-using UnityEngine;
-using UnityEngine.UI;
+using PlayFab;
+using PlayFab.ClientModels;
+using SoftKitty.InventoryEngine;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using PlayFab.ClientModels;
-using PlayFab;
-using UnityEngine.SceneManagement;
+using UnityEngine;
 using UnityEngine.Rendering.Universal.Internal;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class CharacterCreation : MonoBehaviour
 {
@@ -26,7 +28,7 @@ public class CharacterCreation : MonoBehaviour
 
     public TraitSelectionUI traitSelectionUI;
 
-    void Awake()
+    public void Awake()
     {
         originDataDictionary = CharacterOrigin.GetOriginData();
         PopulateDropdown();
@@ -169,11 +171,18 @@ public class CharacterCreation : MonoBehaviour
             return;
         }
 
-        UpdateEquipmentEffect();
+        // ① 프리뷰 오브젝트에 붙은 홀더를 캐릭터데이터에 연결
+        BindHoldersToCharacterData();
+
+        // ② 오리진 장비를 실제 '장비창 홀더'에 한 번 집어넣음
+        SeedOriginEquipmentsIntoHolders();
+
+        // ③ 이후엔 기존 흐름 그대로: 장비 효과 적용 + 커스텀/초상화/스탯 갱신 → 저장 
+        //UpdateEquipmentEffect(); - 2회 적용으로 인해 주석 처리
 
         characterManager.character.Name = characterNameInput.text;
         characterManager.character.customizationData = CustomInfo.customizationInfo; // 커스터마이징 정보 저장
-        characterManager.character.Portrait = CustomInfo.characterCustom.CapturePortrait(); // 초상화 촬영용 렌더카메라로 초상화 촬영 후 Sprite로 변환하여 캐릭터 데이터에 저장
+        //characterManager.character.Portrait = CustomInfo.characterCustom.CapturePortrait(); // 초상화 촬영용 렌더카메라로 초상화 촬영 후 Sprite로 변환하여 캐릭터 데이터에 저장
         characterManager.character.IsMine = true; //캐릭터 소유권 지정
         characterManager.character.UpdateFinalStats();
         characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
@@ -191,7 +200,52 @@ public class CharacterCreation : MonoBehaviour
 
         Debug.Log("Character created and saved!");
 
+        PlayerManager.Instance.GetCurrentPlayerData().currentStage = "Town";
+
         // 마을 씬으로 전환
         GameManager.Instance.LoadGameScene("Town");
+    }
+
+    public void OnClickPlayButton()
+    {
+        GameManager.Instance.LoadGameScene(PlayerManager.Instance.GetCurrentPlayerData().currentStage);
+    }
+
+    // 프리뷰 캐릭터(남/여)의 InventoryHolder를 캐릭터데이터에 연결
+    void BindHoldersToCharacterData()
+    {
+        var inv = default(InventoryHolder);
+        var eq = default(InventoryHolder);
+
+        var holders = characterManager.GetComponents<InventoryHolder>();
+        foreach (var h in holders)
+        {
+            if (h.Type == InventoryHolder.HolderType.PlayerInventory) inv = h;
+            else if (h.Type == InventoryHolder.HolderType.PlayerEquipment) eq = h;
+        }
+
+        characterManager.character.CharacterInventory = inv;
+        characterManager.character.CharacterEquipment = eq;
+    }
+
+    // 오리진 장비(Equipment 필드)에 들어있는 것들을 실제 장비창 홀더에 넣어두기
+    void SeedOriginEquipmentsIntoHolders()
+    {
+        var eqHolder = characterManager.character.CharacterEquipment;
+        if (eqHolder == null) return;
+
+        var equips = (List<Equipment>)characterManager.character.GetEquipments();
+        if (equips == null) return;
+
+        foreach (var equipment in equips)
+        {
+            if (equipment == null) continue;
+            // 장비창에 실제 스택으로 추가
+            var res = eqHolder.AddItem(equipment, 1);
+
+            // 에셋 쪽 UI/링크 갱신
+            var changed = new Dictionary<Item, int> { { equipment, 1 } };
+            eqHolder.ItemChanged(changed);
+        }
     }
 }

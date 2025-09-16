@@ -76,7 +76,7 @@ public class CharacterManager : MonoBehaviour
         characterInstance.GetComponent<CharacterCustomization>().SetEyes(characterData.customizationData.EyeType);
         characterInstance.GetComponent<CharacterCustomization>().SetMouth(characterData.customizationData.MouthType);
 
-        characterData.Portrait = characterInstance.GetComponent<CharacterCustomization>().CapturePortrait(); // 초상화 촬영
+        //characterData.Portrait = characterInstance.GetComponent<CharacterCustomization>().CapturePortrait(); // 초상화 촬영
     }
 
     // 캐릭터 데이터 초기화 메서드
@@ -85,36 +85,55 @@ public class CharacterManager : MonoBehaviour
         character = characterData;
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
-        characterData.UpdateFinalStats(); // 캐릭터 스탯 초기화
-        EquipmentManager.UpdateAvailableAttributes(characterData); // 캐릭터 장비 세부속성 초기화
-        EquipmentManager.UpdateSkillAvailability(characterData); // 장비 세부 속성에 따른 사용 가능 스킬 초기화        
 
-        InventoryHolder[] inventoryHolders = this.GetComponents<InventoryHolder>();
-        foreach (var holder in inventoryHolders)
+        // 1) 프리팹의 홀더 컴포넌트를 캐릭터 필드에 연결
+        InventoryHolder[] holders = GetComponents<InventoryHolder>();
+        foreach (var holder in holders)
         {
             if (holder.Type == InventoryHolder.HolderType.PlayerInventory)
-            {
                 character.CharacterInventory = holder;
-            }
             else if (holder.Type == InventoryHolder.HolderType.PlayerEquipment)
-            {
                 character.CharacterEquipment = holder;
-            }
         }
 
-        // 스냅샷 JSON을 실제 홀더로 복원
+        // 2) 저장해 둔 스냅샷(JSON) → 실제 홀더로 복원 (순서: 연결 후 Import)
         if (!string.IsNullOrEmpty(character.InventoryJsonSnapshot))
             InventorySerializer.ImportJson(character.CharacterInventory, character.InventoryJsonSnapshot);
 
         if (!string.IsNullOrEmpty(character.EquipmentJsonSnapshot))
             InventorySerializer.ImportJson(character.CharacterEquipment, character.EquipmentJsonSnapshot);
 
-        // 스냅샷 비우기
+        // 3) 장비 효과 적용(EquipmentHolder의 장비를 실제 캐릭터에 Equip)
+        if (character.CharacterEquipment != null)
+        {
+            var stacks = character.CharacterEquipment.Stacks;
+            for (int i = 0; i < stacks.Count; i++)
+            {
+                if (!stacks[i].isEmpty() && stacks[i].Item is Equipment eq)
+                    eq.Equip(character);
+            }
+        }
+
+        // 4) 장비/특성 반영 후 계산(여기가 핵심: Import & Equip 이후에 호출)
+        character.ApplyAllTraits(this);               // 필요 시
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
+        character.UpdateFinalStats();
+
+        // 5) 외형 갱신(무기 등)
+        GetComponent<CharacterCustomization>()?.UpdateEquipmentAppearance(character);
+                
+        character.Portrait = Resources.Load<Texture2D>("OriginIcon/"+character.originName);
+        Debug.Log(Resources.Load<Texture2D>("OriginIcon/" + character.originName) + " " + character.originName + " 초상화 초기화");
+
+        // 6) 스냅샷 비우기
         character.InventoryJsonSnapshot = null;
         character.EquipmentJsonSnapshot = null;
 
+        // 7) UI 갱신
         UpdateCharacterUI();
     }
+
     public void SetDefaultCounterSkill(SkillBase skill)
     {
         if (skill.StaminaCost + skill.MentalCost == 1)

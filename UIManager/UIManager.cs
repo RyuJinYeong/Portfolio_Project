@@ -7,18 +7,22 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
 using UnityEngine.UI;
+using static Unity.Burst.Intrinsics.X86.Avx;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
     [Header("Roots")]
-    public GameObject townUiRoot;    
-    public GameObject battleUiRoot;
+    public GameObject battleUiRoot; // 전투 UI 루트
+    public GameObject townUiRoot;   // 마을 UI 루트
+    public GameObject TownMenuCanvas; // 마을 UI - 월드 스페이스 메뉴 캔버스
 
-    [Header("Town Panels")]
-    [SerializeField] GameObject townRosterPanel;
-    [SerializeField] GameObject questBoardPanel;
+    [Header("Town Panel - Menu")]
+    public GameObject CharacterManagePanel; // TownUI 하위 메뉴 패널 (캐릭터 관리)
+    public GameObject RecruitPanel;         // TownUI 하위 메뉴 패널 (고용)
+
+    CharacterManagementPanel _cmp;
 
     public GameObject turnOrderPanel;  // 상단 턴 큐 패널
     public GameObject characterPortraitPrefab;  // 캐릭터 초상화 프리팹
@@ -71,12 +75,39 @@ public class UIManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        _cmp = CharacterManagePanel.GetComponent<CharacterManagementPanel>();
+    }
+
+    public void Update()
+    {
+        // ESC: 타운 패널 > 닫기, 그 외엔 포커스 홈
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (townUiRoot && townUiRoot.activeInHierarchy &&
+                ((RecruitPanel && RecruitPanel.activeSelf) || (CharacterManagePanel && CharacterManagePanel.activeSelf)))
+            {
+                CloseAllTownOverlays();
+                CameraFocusRig.Instance?.FocusHome();
+            }
+            else if (CameraFocusRig.Instance && CameraFocusRig.Instance.isFocused)
+            {
+                CameraFocusRig.Instance.FocusHome();
+            }
+        }
     }
 
     public void UISwitch(UIMode mode)
     {
-        if (townUiRoot) townUiRoot.SetActive(mode == UIMode.Town);
-        if (battleUiRoot) battleUiRoot.SetActive(mode == UIMode.Battle);
+        bool isTown = (mode == UIMode.Town);
+
+        // 루트 토글
+        if (townUiRoot) townUiRoot.SetActive(isTown);
+        if (TownMenuCanvas) TownMenuCanvas.SetActive(isTown);
+        if (battleUiRoot) battleUiRoot.SetActive(!isTown);
+
+        // 타운 진입 시엔 모든 서브 패널 닫고 기본 상태로
+        if (isTown) CloseAllTownOverlays();
     }
 
     #region 마을내 UI 버튼 조작
@@ -85,46 +116,45 @@ public class UIManager : MonoBehaviour
     {
         CameraFocusRig.Instance?.Focus("Storage");
 
+        CloseAllTownOverlays();
+
+        storage_temp.OpenWindow(); // 임시 창고 열기 - PlayerData의 InventoryHolder 필드와 연동 필요 -> DB 백업용
+
         /*
         PlayerData currentPlayer = PlayerManager.Instance.GetCurrentPlayerData();
         
         currentPlayer.storage.OpenWindow();  // 창고 열기
         */
+    }
 
-        storage_temp.OpenWindow(); // 임시 창고 열기 - PlayerData의 InventoryHolder 필드와 연동 필요 -> DB 백업용
+    public void Open_Storage()
+    {
+        storage_temp.OpenWindow();
     }
 
     public void OnClick_CharacterManage()
     {
-        ShowTownRoster(true);
+        CloseAllTownOverlays();
+
+        CharacterManagePanel?.SetActive(true);
+        _cmp.OpenAndBuild();
+    }
+
+    public void OnClick_Recruit()
+    {
+        CloseAllTownOverlays();        
+        RecruitPanel?.SetActive(true);
     }
 
     public void OnClick_QuestBoard()
     {
         CameraFocusRig.Instance?.Focus("Quest");
-        ShowQuestBoard(true);
     }
-
-    public void OnClick_CloseQuestBoard()
-    {
-        ShowQuestBoard(false);
-        CameraFocusRig.Instance?.FocusHome();
+    public void CloseAllTownOverlays()
+    {        
+        CharacterManagePanel?.SetActive(false);
+        RecruitPanel?.SetActive(false);
     }
-
-    public void ShowTownRoster(bool on)
-    {
-        if (townRosterPanel) townRosterPanel.SetActive(on);
-        if (on) { BuildTownRoster(); }
-    }
-
-    public void ShowQuestBoard(bool on)
-    {
-        if (questBoardPanel) questBoardPanel.SetActive(on);
-        if (on) { BuildQuestList(); }
-    }
-
-    void BuildTownRoster() { /* 보유 캐릭터 목록 갱신 */ }
-    void BuildQuestList() { /* 의뢰 목록 갱신 */ }
 
     #endregion
 

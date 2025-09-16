@@ -79,7 +79,7 @@ public class CharacterSpawner : MonoBehaviour
     {
         yield return new WaitForEndOfFrame();
         yield return new WaitForSeconds(0.1f); // 애니 반영용 짧은 딜레이
-        characterManager.character.Portrait = characterObject.GetComponent<CharacterCustomization>().CapturePortrait();
+        //characterManager.character.Portrait = characterObject.GetComponent<CharacterCustomization>().CapturePortrait();
     }
 
     private void InitializeCharacter(GameObject characterObject, CharacterData characterData, bool isMine)
