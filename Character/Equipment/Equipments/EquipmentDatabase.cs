@@ -4,8 +4,11 @@ using UnityEngine;
 
 public static class EquipmentDatabase
 {
+    private static bool _initialized;
     public static void InitializeDatabase()
     {
+        if (_initialized) return; // 중복 초기화 방지
+
         List<Equipment> equipmentList = new List<Equipment>(); // 지역 변수로 아이템 리스트 생성
 
         // 기본 방어구 추가
@@ -130,5 +133,8 @@ public static class EquipmentDatabase
             if (item is Armor armor)
                 ItemManager.itemDic.Add(armor.uid, armor);
         }
+
+        _initialized = true;
+        Debug.Log("장비 DB 초기화");
     }
 }

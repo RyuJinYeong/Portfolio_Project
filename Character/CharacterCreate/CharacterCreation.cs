@@ -30,6 +30,8 @@ public class CharacterCreation : MonoBehaviour
 
     public void Awake()
     {
+        DatabaseBootstrapper.EnsureInitialized();
+
         originDataDictionary = CharacterOrigin.GetOriginData();
         PopulateDropdown();
         originDropdown.onValueChanged.AddListener(delegate { OnDropdownValueChanged(originDropdown); });
