@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 public static class TraitEconomy
 {
@@ -8,10 +7,10 @@ public static class TraitEconomy
         TraitGrade.F => 1,
         TraitGrade.E => 2,
         TraitGrade.D => 3,
-        TraitGrade.C => 5,  
-        TraitGrade.B => 12,  
-        TraitGrade.A => 25,
-        TraitGrade.S => 55,
+        TraitGrade.C => 5,
+        TraitGrade.B => 8,
+        TraitGrade.A => 13,
+        TraitGrade.S => 21,
         _ => 0
     };
 
@@ -20,8 +19,8 @@ public static class TraitEconomy
         int baseCost = BaseCostByGrade(t.Grade);
         return t.Polarity switch
         {
-            TraitPolarity.Positive => baseCost * Mathf.Max(1, t.Level),
-            TraitPolarity.Negative => baseCost * Mathf.Max(1, t.Level),
+            TraitPolarity.Positive => baseCost * Math.Max(1, t.Level),
+            TraitPolarity.Negative => -baseCost,
             TraitPolarity.Mixed => 0,
             _ => 0
         };

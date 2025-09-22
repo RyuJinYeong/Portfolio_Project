@@ -4,12 +4,8 @@ using UnityEngine;
 
 public static class SkillDatabase
 {
-    private static bool _initialized;
-
     public static void InitializeDatabase()
     {
-        if (_initialized) return;
-
         int uidCounter = 3000;
         List<SkillBase> skillList = new List<SkillBase>();
 
@@ -250,8 +246,5 @@ public static class SkillDatabase
         {
             ItemManager.itemDic.Add(skill.uid, skill);
         }
-
-        _initialized = true;
-        Debug.Log("스킬 DB 초기화");
     }
 }

@@ -21,8 +21,6 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        DatabaseBootstrapper.EnsureInitialized();
-
         if (Instance == null)
         {
             Instance = this;
@@ -32,6 +30,9 @@ public class GameManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+                
+        EquipmentDatabase.InitializeDatabase();
+        SkillDatabase.InitializeDatabase();
 
         SetDefaultCursor();        
     }

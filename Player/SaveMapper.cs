@@ -274,7 +274,7 @@ public static class SaveMapper
         {
             foreach (var t in dto.traits)
             {
-                var trait = TraitDatabase.Create(t.id);
+                var trait = TraitRegistry.Create(t.id);
                 if (trait == null) continue;
                 trait.Level = (t.level <= 0 ? 1 : t.level);
                 c.Traits.Add(trait);
@@ -302,7 +302,7 @@ public static class SaveMapper
         {
             foreach (var t in dto.equipmentTraits)
             {
-                var trait = TraitDatabase.Create(t.id);
+                var trait = TraitRegistry.Create(t.id);
                 if (trait == null) continue;
                 trait.Level = (t.level <= 0 ? 1 : t.level);
                 c.EquipmentTraits.Add(trait);

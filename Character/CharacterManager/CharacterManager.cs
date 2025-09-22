@@ -27,11 +27,8 @@ public class CharacterManager : MonoBehaviour
 
     public void Start() // UI 작동 테스트
     {
-        if (characterUIHandler != null)
-        {
-            UpdateCharacterUI();
-            characterUIHandler.FaceCamera();
-        }
+        UpdateCharacterUI();
+        characterUIHandler.FaceCamera();
     }
 
     public CharacterManager(CharacterData characterData)

@@ -5,8 +5,6 @@ public static class CharacterOrigin
 {
     public static Dictionary<string, CharacterData> GetOriginData()
     {
-        DatabaseBootstrapper.EnsureInitialized();
-
         return new Dictionary<string, CharacterData>
         {
             {
