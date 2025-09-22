@@ -1,28 +1,27 @@
-using System;
 using System.Collections.Generic;
 
-public static class TraitDataBase
+public static class TraitDatabase
 {
-    private static readonly Dictionary<int, Func<TraitBase>> Map = new()
+    private static readonly Dictionary<int, System.Func<TraitBase>> Map = new()
     {
-        { 1001, () => new DurableTrait() },
-        { 1002, () => new BarbarianPowerTrait() },
-        { 1003, () => new DeftnessTrait() },
-        { 1004, () => new SwiftMovementTrait() },
-        { 1005, () => new KeenEyeTrait() },
-        { 1006, () => new KeenInsightTrait() },
-        { 1400, () => new OneArmedTrait() },
-        { 1401, () => new DunceTrait() },
+        { 1000, () => new DurableTrait() },
+        { 1001, () => new BarbarianPowerTrait() },
+        { 1002, () => new DeftnessTrait() },
+        { 1003, () => new SwiftMovementTrait() },
+        { 1004, () => new KeenEyeTrait() },
+        { 1005, () => new KeenInsightTrait() },
+        { 1006, () => new SwordMasteryTrait() },
+        { 1007, () => new BowMasteryTrait() },
 
-        { 2550, () => new SwordMasteryTrait() },
-        { 2551, () => new BowMasteryTrait() },
+        { 1010, () => new FireElementalAptitudeTrait() },
+        { 1011, () => new WaterElementalAptitudeTrait() },
+        { 1012, () => new EarthElementalAptitudeTrait() },
+        { 1013, () => new WindElementalAptitudeTrait() },
+        { 1014, () => new BasicElementalAptitudeTrait() },
 
-        { 2801, () => new FireElementalAptitudeTrait() },
-        { 2802, () => new WaterElementalAptitudeTrait() },
-        { 2803, () => new EarthElementalAptitudeTrait() },
-        { 2804, () => new WindElementalAptitudeTrait() },
+        { 5000, () => new OneArmedTrait() },
+        { 5001, () => new DunceTrait() },
     };
-
     public static TraitBase Create(int id) =>
         Map.TryGetValue(id, out var ctor) ? ctor() : null;
 }
