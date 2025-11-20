@@ -36,7 +36,7 @@ public static class TraitManager
 
         if (exist != null)
         {
-            if(exist.Level == 1)
+            if(exist.Level <= 1)
             {
                 // 레벨이 1 이하인 경우 특성 제거
                 manager.character.Traits.Remove(trait);

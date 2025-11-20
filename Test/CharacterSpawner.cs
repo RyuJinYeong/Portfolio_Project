@@ -139,7 +139,7 @@ public class CharacterSpawner : MonoBehaviour
 
         characterManager.character.ApplyAllTraits(characterManager);
         characterManager.character.UpdateFinalStats();
-        characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
+        characterManager.character.CurrentHp = characterManager.character.FinalStats.MaxHp;
 
         StartCoroutine(Delay(characterManager, characterObject));
 

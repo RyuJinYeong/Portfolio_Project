@@ -233,22 +233,29 @@ public class OneArmedTrait : TraitBase
     public override TraitGrade Grade => TraitGrade.A;
     public override TraitPolarity Polarity { get => TraitPolarity.Negative; set { } }
 
-    private int strDelta; // 적용량 캐시
+    private int strDelta = 0;
 
     public override void ApplyTrait(CharacterManager m)
     {
         var s = m.character.BaseStats;
-        int before = s.Strength;
-        int divisor = 1 << Mathf.Clamp(Level, 1, 10); // 2^Level
-        int after = Mathf.Max(0, before / divisor);
-        strDelta = after - before; // 음수
-        s.Strength += strDelta;
 
+        // Level 미사용 정책이라도 1로 고정 방어 (레벨 0이 들어와도 반감되도록)
+        int lv = Level <= 0 ? 1 : Level;
+        int divisor = 1 << Mathf.Clamp(lv, 1, 10); // 2^Level
+
+        int before = s.Strength;
+        int after = Mathf.Max(0, before / divisor);
+
+        strDelta = after - before; // 음수
+        s.Strength += strDelta;    // after가 됨
+
+        // 착용 불가 정리
         if (m.character.Weapon is Weapon w && !m.character.CanEquipMainWeapon(w))
-            EquipmentManager.Unequip(m, EquipmentType.Weapon);
-        if (!m.character.CanEquipSubWeapon())
-            EquipmentManager.Unequip(m, EquipmentType.SubWeapon);
+            EquipmentManager.Unequip(m, EquipmentType.Weapon, 1, suppressTraitRecalc: true);
+        if (m.character.SubWeapon != null && !m.character.CanEquipSubWeapon())
+            EquipmentManager.Unequip(m, EquipmentType.SubWeapon, 1, suppressTraitRecalc: true);
     }
+
     public override void RemoveTrait(CharacterManager m)
     {
         m.character.BaseStats.Strength -= strDelta;
@@ -283,6 +290,7 @@ public class DunceTrait : TraitBase
         s.Dexterity += delta.dx;
         s.Wisdom += delta.wi;
         s.Intelligence += delta.it;
+        Debug.Log($"둔재 적용: {delta}");
     }
     public override void RemoveTrait(CharacterManager m)
     {
@@ -291,6 +299,7 @@ public class DunceTrait : TraitBase
         s.Wisdom -= delta.wi;
         s.Intelligence -= delta.it;
         delta = default;
+        Debug.Log($"둔재 적용 해제: {(-delta.dx, -delta.wi, -delta.it)}");
     }
 }
 

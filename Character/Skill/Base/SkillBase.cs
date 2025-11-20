@@ -139,7 +139,7 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
             SkillUseCount++;
             SkillDamageCount += damage;
 
-            if (target.FinalStats.CurrentHp <= 0) // 타겟이 죽었을 경우
+            if (target.CurrentHp <= 0) // 타겟이 죽었을 경우
             {
                 SkillKillCount++;
             }

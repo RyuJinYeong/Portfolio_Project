@@ -19,17 +19,6 @@ public class StageVisualProfile
     public Color fogColor = Color.gray;
     public float fogDensity = 0.01f;
 
-    /*
-    [Header("Ambient")]
-    public bool overrideAmbient = false;
-    public AmbientMode ambientMode = AmbientMode.Skybox; // Skybox/Flat/Trilight
-    public Color ambientLight = Color.white; // Flat 모드에서 사용
-
-    [Header("Optional Sun Light")]
-    public Light sun;                       // 필요하면 스테이지별 태양광도 연결
-    public Color sunColor = Color.white;
-    public float sunIntensity = 1.2f;*/
-
     [Header("UI Mode")]
     public UIMode uiMode = UIMode.Battle;   // Town이면 Town, 그 외 Battle
 }
@@ -116,7 +105,6 @@ public class StageManager : MonoBehaviour
         if (p == null)
         {
             RenderSettings.fog = false;
-            //RenderSettings.ambientMode = AmbientMode.Skybox;
             DynamicGI.UpdateEnvironment();
             return;
         }
@@ -126,32 +114,7 @@ public class StageManager : MonoBehaviour
         if (RenderSettings.skybox)
         {
             var m = RenderSettings.skybox;
-            //if (m.HasProperty("_Rotation")) m.SetFloat("_Rotation", p.skyboxRotation);
-            //if (m.HasProperty("_Exposure")) m.SetFloat("_Exposure", p.skyboxExposure);
         }
-
-        /*
-        // Ambient
-        if (p.overrideAmbient)
-        {
-            RenderSettings.ambientMode = p.ambientMode;
-            if (p.ambientMode == AmbientMode.Flat)
-                RenderSettings.ambientLight = p.ambientLight;
-        }
-        else
-        {
-            RenderSettings.ambientMode = AmbientMode.Skybox;
-        }
-                 
-        // Sun Light
-        if (p.sun)
-        {
-            RenderSettings.sun = p.sun;
-            p.sun.color = p.sunColor;
-            p.sun.intensity = p.sunIntensity;
-        }
-        
-         */
 
         // Fog
         RenderSettings.fog = p.useFog;

@@ -19,7 +19,8 @@ public static class SaveMapper
             activeCharacterIds = new List<string>(src.activeCharacterIds),
             positions = src.characterPositionMapping
                             .Select(kv => new PositionEntry { characterId = kv.Key, isFront = kv.Value })
-                            .ToList()
+                            .ToList(),
+            questState = ToDto(QuestManager.Instance)
         };
         return dto;
     }
@@ -42,7 +43,67 @@ public static class SaveMapper
         foreach (var p in pd.positions)
             pd.characterPositionMapping[p.characterId] = p.isFront;
 
+        FromDto(dto.questState);
+
         return pd;
+    }
+
+    // ---------- Quest ----------
+    public static QuestStateDTO ToDto(QuestManager qm)
+    {
+        if (qm == null) return null;
+
+        return new QuestStateDTO
+        {
+            board = qm.board != null ? new List<QuestBoardEntry>(qm.board) : new List<QuestBoardEntry>(),
+            active = qm.active == null ? null : new ActiveQuestRuntime
+            {
+                def = qm.active.def,
+                status = qm.active.status,
+                leaderCharacterId = qm.active.leaderCharacterId,
+                partyCharacterIds = new List<string>(qm.active.partyCharacterIds ?? new List<string>()),
+                stageKey = qm.active.stageKey,
+                stageNodeIndex = qm.active.stageNodeIndex,
+                retreated = qm.active.retreated
+            },
+            completed = qm.completed != null ? new List<CompletedQuestEntry>(qm.completed) : new List<CompletedQuestEntry>()
+        };
+    }
+
+    public static void FromDto(QuestStateDTO dto)
+    {
+        var qm = QuestManager.Instance;
+        if (qm == null)
+        {
+            Debug.LogWarning("[SaveMapper] QuestManager.Instance is null. Quest state not applied.");
+            return;
+        }
+
+        if (dto == null)
+        {
+            // 저장 데이터에 퀘스트가 없으면 보드 생성
+            qm.board = new List<QuestBoardEntry>();
+            qm.active = null;
+            qm.completed = new List<CompletedQuestEntry>();
+            qm.GenerateBoardIfEmpty(8);
+            return;
+        }
+
+        qm.board = dto.board != null ? new List<QuestBoardEntry>(dto.board) : new List<QuestBoardEntry>();
+        qm.active = dto.active == null ? null : new ActiveQuestRuntime
+        {
+            def = dto.active.def,
+            status = dto.active.status,
+            leaderCharacterId = dto.active.leaderCharacterId,
+            partyCharacterIds = new List<string>(dto.active.partyCharacterIds ?? new List<string>()),
+            stageKey = dto.active.stageKey,
+            stageNodeIndex = dto.active.stageNodeIndex,
+            retreated = dto.active.retreated
+        };
+        qm.completed = dto.completed != null ? new List<CompletedQuestEntry>(dto.completed) : new List<CompletedQuestEntry>();
+
+        // 보드가 비었으면 기본 생성
+        qm.GenerateBoardIfEmpty(8);
     }
 
     // ---------- Character ----------
@@ -73,12 +134,12 @@ public static class SaveMapper
             hairColor = c.customizationData?.HairColor ?? 0,
             skinTone = c.customizationData?.SkinTone ?? 0,
 
-            // 레벨 / 현재 수치
-            level = c.FinalStats?.Lv ?? 1,
-            exp = c.FinalStats?.Exp ?? 0,
-            currentHp = c.FinalStats?.CurrentHp ?? 0,
-            currentStamina = c.FinalStats?.CurrentStamina ?? 0,
-            currentMentality = c.FinalStats?.CurrentMentality ?? 0,
+            // ★ 런타임 값은 CharacterData에서
+            level = c.Level,
+            exp = c.Exp,
+            currentHp = c.CurrentHp,
+            currentStamina = c.CurrentStamina,
+            currentMentality = c.CurrentMentality,
 
             // 원천 값만 저장(계산 결과는 로드 시 재계산)
             baseStats = c.BaseStats?.Copy(),
@@ -175,7 +236,6 @@ public static class SaveMapper
 
         return dto;
     }
-
     public static CharacterData FromDto(CharacterSaveDTO dto)
     {
         var c = new CharacterData
@@ -202,7 +262,6 @@ public static class SaveMapper
                 SkinTone = dto.skinTone
             },
 
-            // 원천 스탯 복원
             BaseStats = dto.baseStats?.Copy() ?? new CharacterStats(),
             ModifiedStats = dto.modifiedStats?.Copy() ?? new CharacterStats(),
             FinalStats = new CharacterStats(),
@@ -212,10 +271,17 @@ public static class SaveMapper
             Skills = new List<SkillBase>(),
             EquipmentSkills = new List<SkillBase>(),
             StatusEffects = new List<StatusEffect>(),
-            AvailableAttributes = new List<SkillAttribute>()
+            AvailableAttributes = new List<SkillAttribute>(),
+
+            // ★ 런타임 값은 CharacterData로
+            Level = dto.level,
+            Exp = dto.exp,
+            CurrentHp = dto.currentHp,
+            CurrentStamina = dto.currentStamina,
+            CurrentMentality = dto.currentMentality
         };
 
-        // --- 런타임 배율/상태/방어도(기본값 가드) ---
+        // 배율/상태
         c.PhysicalDamageMultiplier = dto.physicalDamageMultiplier > 0f ? dto.physicalDamageMultiplier : 1f;
         c.MagicalDamageMultiplier = dto.magicalDamageMultiplier > 0f ? dto.magicalDamageMultiplier : 1f;
         c.AttackSpeedMultiplier = dto.attackSpeedMultiplier > 0f ? dto.attackSpeedMultiplier : 1f;
@@ -226,17 +292,11 @@ public static class SaveMapper
         c.PhysicalArmor = dto.physicalArmor;
         c.MagicalArmor = dto.magicalArmor;
 
-        c.FinalStats.Lv = dto.level;
-        c.FinalStats.Exp = dto.exp;
-        c.FinalStats.CurrentHp = dto.currentHp;
-        c.FinalStats.CurrentStamina = dto.currentStamina;
-        c.FinalStats.CurrentMentality = dto.currentMentality;
-
-        // 인벤토리/장비 JSON은 스폰된 프리팹의 홀더에 Import할 것이므로 일단 캐시
+        // 스냅샷만 캐시 (★ 여기선 Import하지 않음. 프리팹 홀더 바인딩 후 Import)
         c.InventoryJsonSnapshot = dto.inventoryJson;
         c.EquipmentJsonSnapshot = dto.equipmentJson;
 
-        // 장비 복원(UID → DB → Copy())
+        // 장비 복원
         c.Helmet = ItemDbCopyAs<Equipment>(dto.helmetUid);
         c.Armor = ItemDbCopyAs<Equipment>(dto.armorUid);
         c.Gloves = ItemDbCopyAs<Equipment>(dto.glovesUid);
@@ -248,28 +308,26 @@ public static class SaveMapper
         c.Weapon = ItemDbCopyAs<Equipment>(dto.weaponUid);
         c.SubWeapon = ItemDbCopyAs<Equipment>(dto.subWeaponUid);
 
-        // 인벤토리 복원
-        InventorySerializer.ImportJson(c.CharacterInventory, dto.inventoryJson);
-        InventorySerializer.ImportJson(c.CharacterEquipment, dto.equipmentJson);
+        // ★ 여기 두 줄은 제거하세요 (홀더 미바인딩 시 NRE/중복 Import)
+        // InventorySerializer.ImportJson(c.CharacterInventory, dto.inventoryJson);
+        // InventorySerializer.ImportJson(c.CharacterEquipment, dto.equipmentJson);
 
-        // 스킬 복원(UID → DB → Copy() + 카운터 반영)
+        // 스킬 복원
         if (dto.skills != null)
         {
             foreach (var s in dto.skills)
             {
                 var skill = ItemDbCopyAs<SkillBase>(s.uid);
                 if (skill == null) continue;
-
                 skill.SkillUseCount = s.useCount;
                 skill.SkillKillCount = s.killCount;
                 skill.SkillDamageCount = s.damageCount;
                 skill.QuickSlot = s.quickSlot;
-
                 c.Skills.Add(skill);
             }
         }
 
-        // --- 특성 복원 ---
+        // 특성 복원
         if (dto.traits != null)
         {
             foreach (var t in dto.traits)
@@ -281,23 +339,20 @@ public static class SaveMapper
             }
         }
 
-        // --- 장비로 얻는 스킬/특성 복원 ---
+        // 장비로 얻는 스킬/특성
         if (dto.equipmentSkills != null)
         {
             foreach (var s in dto.equipmentSkills)
             {
                 var skill = ItemDbCopyAs<SkillBase>(s.uid);
                 if (skill == null) continue;
-
                 skill.SkillUseCount = s.useCount;
                 skill.SkillKillCount = s.killCount;
                 skill.SkillDamageCount = s.damageCount;
                 skill.QuickSlot = s.quickSlot;
-
                 c.EquipmentSkills.Add(skill);
             }
         }
-
         if (dto.equipmentTraits != null)
         {
             foreach (var t in dto.equipmentTraits)
@@ -309,21 +364,21 @@ public static class SaveMapper
             }
         }
 
-        // --- 무기 세부 속성 ---
         if (dto.availableAttributes != null)
-        {
             foreach (var a in dto.availableAttributes)
                 c.AvailableAttributes.Add((SkillAttribute)a);
-        }
 
-        // 기본 대응 스킬
         c.DefaultCounterSkill = ItemDbCopyAs<SkillBase>(dto.defaultCounterSkillUid);
 
-        // 최종 스탯 계산
+        // ★ 계산 먼저
         c.UpdateFinalStats();
+
+        // ★ 계산 후 현재치 상한 보정
+        c.ClampRuntimeResources();
 
         return c;
     }
+
 
     private static T ItemDbCopyAs<T>(int uid) where T : class
     {

@@ -10,6 +10,23 @@ public static class EquipmentManager
     {
         CharacterData character = manager.character;
 
+        if (equipment.EquipType == EquipmentType.Weapon && equipment is Weapon wMain)
+        {
+            if (!character.CanEquipMainWeapon(wMain))
+            {
+                Debug.Log("장착 불가능한 주무기입니다.");
+                return;
+            }
+        }
+        else if (equipment.EquipType == EquipmentType.SubWeapon)
+        {
+            if (!character.CanEquipSubWeapon())
+            {
+                Debug.Log("장착 불가능한 보조무기입니다.");
+                return;
+            }
+        }
+
         character.RemoveAllTraits(manager); // 캐릭터의 모든 특성 적용 해제
         switch (equipment.EquipType)
         {
@@ -66,29 +83,12 @@ public static class EquipmentManager
                 break;
 
             case EquipmentType.Weapon:
-                if(equipment is Weapon weapon) // Equipment타입으로 전달 받은 장비 객체를 임의로 Weapon 형식으로 캐스팅
-                {                    
-                    if (!character.CanEquipMainWeapon(weapon)) // 장착 불가능한 무기일 경우
-                    {
-                        Debug.Log("장착 불가능한 주무기입니다.");
-                        character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
-                        return;
-                    }
-                }
-
                 if (character.Weapon != null)
                     character.Weapon.Unequip(character);
                 character.Weapon = equipment;
                 break;
 
             case EquipmentType.SubWeapon:
-                if (!character.CanEquipSubWeapon()) // 장착 불가능한 보조 무기일 경우
-                {
-                    Debug.Log("장착 불가능한 보조무기입니다.");
-                    character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
-                    return;
-                }
-
                 if (character.SubWeapon != null)
                     character.SubWeapon.Unequip(character);
                 character.SubWeapon = equipment;
@@ -107,10 +107,13 @@ public static class EquipmentManager
         manager.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(manager.character);
     }
 
-    public static void Unequip(CharacterManager manager, EquipmentType equipType, int slotIndex = 1)
+    public static void Unequip(CharacterManager manager, EquipmentType equipType, int slotIndex = 1, bool suppressTraitRecalc = false)
     {
         CharacterData character = manager.character;
-        character.RemoveAllTraits(manager); // 캐릭터의 모든 특성 적용 해제
+
+        if (!suppressTraitRecalc)
+            character.RemoveAllTraits(manager); // 캐릭터의 모든 특성 적용 해제
+
 
         Equipment equipment = null;
 
@@ -137,7 +140,7 @@ public static class EquipmentManager
                 break;
 
             case EquipmentType.Cape:
-                equipment = character.Shoes;
+                equipment = character.Cape;
                 character.Cape = null;
                 break;
 
@@ -176,7 +179,11 @@ public static class EquipmentManager
             UpdateSkillAvailability(character);
 
             equipment.Unequip(character); // 해당 장비로 증감된 능력치 캐릭터에 적용 해제
-            character.ApplyAllTraits(manager);   // 캐릭터의 모든 특성 적용
+        }
+
+        if (!suppressTraitRecalc)
+        {
+            character.ApplyAllTraits(manager);
             character.UpdateFinalStats();
         }
 

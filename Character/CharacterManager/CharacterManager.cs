@@ -106,7 +106,9 @@ public class CharacterManager : MonoBehaviour
         if (!string.IsNullOrEmpty(character.EquipmentJsonSnapshot))
             InventorySerializer.ImportJson(character.CharacterEquipment, character.EquipmentJsonSnapshot);
 
-        // 3) 장비 효과 적용(EquipmentHolder의 장비를 실제 캐릭터에 Equip)
+
+        /*
+        // 3) 장비 효과 적용(EquipmentHolder의 장비를 실제 캐릭터에 Equip) ( 중복 적용으로 인해 주석처리 )
         if (character.CharacterEquipment != null)
         {
             var stacks = character.CharacterEquipment.Stacks;
@@ -117,8 +119,10 @@ public class CharacterManager : MonoBehaviour
             }
         }
 
-        // 4) 장비/특성 반영 후 계산(여기가 핵심: Import & Equip 이후에 호출)
-        character.ApplyAllTraits(this);               // 필요 시
+        
+        //character.ApplyAllTraits(this);               // 필요 시*/
+
+        // 4) 장비/특성 반영 후 계산
         EquipmentManager.UpdateAvailableAttributes(character);
         EquipmentManager.UpdateSkillAvailability(character);
         character.UpdateFinalStats();
@@ -200,17 +204,11 @@ public class CharacterManager : MonoBehaviour
 
     #region Character Management
 
-    // 스탯 포인트 투자
-    public void InvestStatPoint(string statName, int points)
-    {
-        statHandler.InvestStatPoint(this, statName, points);
-    }
-
     // 리소스 회복 메서드 (지구력, 정신력 등)
     public void RecoverResources()
     {
-        character.FinalStats.CurrentStamina += character.FinalStats.StaminaRecovery;
-        character.FinalStats.CurrentMentality += character.FinalStats.MentalityRecovery;
+        character.CurrentStamina += character.FinalStats.StaminaRecovery;
+        character.CurrentMentality += character.FinalStats.MentalityRecovery;
 
         UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
     }

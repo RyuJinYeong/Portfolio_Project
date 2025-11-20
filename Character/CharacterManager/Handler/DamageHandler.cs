@@ -13,11 +13,11 @@ public class DamageHandler
         int remainingDamage = ApplyArmor(character, reducedDamage);
 
         // 남은 데미지를 체력에서 차감
-        character.FinalStats.CurrentHp -= remainingDamage;
+        character.CurrentHp -= remainingDamage;
 
-        if (character.FinalStats.CurrentHp <= 0)
+        if (character.CurrentHp <= 0)
         {
-            character.FinalStats.CurrentHp = 0;
+            character.CurrentHp = 0;
             character.IsAlive = false;
             // 캐릭터 사망 처리 로직 추가
         }

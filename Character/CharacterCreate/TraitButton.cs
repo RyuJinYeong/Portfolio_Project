@@ -17,8 +17,15 @@ public class TraitButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
         this.trait = trait;
         this.traitSelectionUI = ui;
         this.isAdded = isAdded;
-        buttonText.text = $"{trait.Name} ({traitCost})"; // 특성명과 소모 포인트를 함께 표시
 
+        // 표기: "{Grade} {Name} ({+/-BaseCost})"
+        int baseCost = TraitEconomy.BaseCostByGrade(trait.Grade);
+        string sign = trait.Polarity == TraitPolarity.Negative ? "+" : (baseCost > 0 ? "-" : "");
+        string grade = trait.Grade.ToString(); // F/E/D/C/B/A/S
+
+        buttonText.text = $"{grade} {trait.Name} ({sign}{baseCost})";
+
+        button.onClick.RemoveAllListeners();
         button.onClick.AddListener(OnClick);
     }
 

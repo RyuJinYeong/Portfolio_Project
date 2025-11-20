@@ -107,30 +107,37 @@ public class PlayerManager : MonoBehaviour
     {
         try
         {
-            if (result.Data != null && result.Data.ContainsKey("PlayerDataV2"))
+            var data = result.Data;
+
+            if (data != null && data.TryGetValue("PlayerData", out var rec) && !string.IsNullOrEmpty(rec.Value))
             {
-                string jsonData = result.Data["PlayerDataV2"].Value;
-                var dto = JsonConvert.DeserializeObject<PlayerSaveDTO>(jsonData);
+                var dto = JsonConvert.DeserializeObject<PlayerSaveDTO>(rec.Value);
+
                 _instance.currentPlayerData = SaveMapper.FromDto(dto);
-                Debug.Log("Player data (V2) loaded.");
-            }
-            else if (result.Data != null && result.Data.ContainsKey("PlayerData"))
-            {
-                // 구버전 호환(원한다면 마이그레이션 처리)
-                string jsonData = result.Data["PlayerData"].Value;
-                _instance.currentPlayerData = JsonUtility.FromJson<PlayerData>(jsonData);
-                Debug.LogWarning("Legacy PlayerData loaded. Consider migrating to V2.");
+                Debug.Log("Player data loaded.");
+
+                if (dto.questState != null)
+                {
+                    SaveMapper.FromDto(dto.questState);
+                }
+                else
+                {
+                    QuestManager.Instance?.GenerateBoardIfEmpty(8);
+                }
             }
             else
             {
                 _instance.currentPlayerData = new PlayerData();
                 Debug.LogWarning("No player data found, initializing new player data.");
+
+                QuestManager.Instance?.GenerateBoardIfEmpty(8);
             }
         }
         catch (Exception e)
         {
             Debug.LogError($"OnDataReceived parse error: {e}");
             _instance.currentPlayerData = new PlayerData();
+            QuestManager.Instance?.GenerateBoardIfEmpty(8);
         }
     }
 
@@ -148,7 +155,7 @@ public class PlayerManager : MonoBehaviour
 
         var request = new UpdateUserDataRequest
         {
-            Data = new Dictionary<string, string> { { "PlayerDataV2", jsonData } }
+            Data = new Dictionary<string, string> { { "PlayerData", jsonData } }
         };
 
         PlayFabClientAPI.UpdateUserData(request,

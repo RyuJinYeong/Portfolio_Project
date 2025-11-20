@@ -24,7 +24,7 @@ public class GameManager : MonoBehaviour
         DatabaseBootstrapper.EnsureInitialized();
 
         if (Instance == null)
-        {
+        { 
             Instance = this;
             DontDestroyOnLoad(gameObject);
         }

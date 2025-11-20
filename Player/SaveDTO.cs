@@ -15,6 +15,8 @@ public class PlayerSaveDTO
 
     // Dictionary 대체
     public List<PositionEntry> positions = new(); // { characterId, isFront }
+
+    public QuestStateDTO questState; // 퀘스트 보드, 진행 상태
 }
 
 [Serializable]
@@ -100,4 +102,12 @@ public class TraitSaveDTO
 {
     public int id;      // 정수 식별자
     public int level;   // 중복 스택(최소 1)
+}
+
+[Serializable]
+public class QuestStateDTO
+{
+    public List<QuestBoardEntry> board = new();
+    public ActiveQuestRuntime active;
+    public List<CompletedQuestEntry> completed = new();
 }

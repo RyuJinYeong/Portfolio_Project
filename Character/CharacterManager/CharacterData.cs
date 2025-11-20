@@ -30,11 +30,8 @@ public class CharacterStats // 기본 캐릭터 스탯
     private float weaponCastSpeedMultiplier;
 
     private int maxHp;
-    private int currentHp;
     private int maxMentality;
     private int maxStamina;
-    private int currentMentality;
-    private int currentStamina;
 
     private int staminaRecovery;
     private int mentalityRecovery;
@@ -125,12 +122,6 @@ public class CharacterStats // 기본 캐릭터 스탯
         set => maxHp = Mathf.Max(0, value);
     }
 
-    public int CurrentHp
-    {
-        get => currentHp;
-        set => currentHp = Mathf.Clamp(value, 0, MaxHp); // 0에서 MaxHp 사이로 제한
-    }
-
     public int MaxMentality
     {
         get => maxMentality;
@@ -142,19 +133,6 @@ public class CharacterStats // 기본 캐릭터 스탯
         get => maxStamina;
         set => maxStamina = Mathf.Max(0, value);
     }
-
-    public int CurrentMentality
-    {
-        get => currentMentality;
-        set => currentMentality = Mathf.Clamp(value, 0, MaxMentality);
-    }
-
-    public int CurrentStamina
-    {
-        get => currentStamina;
-        set => currentStamina = Mathf.Clamp(value, 0, MaxStamina);
-    }
-
     public int StaminaRecovery
     {
         get => staminaRecovery;
@@ -202,8 +180,6 @@ public class CharacterStats // 기본 캐릭터 스탯
     public int MagicalDefense { get; set; } = 0;
     #endregion
 
-    public int Lv { get; set; }
-    public int Exp { get; set; }
 
     #region 생성자
     public CharacterStats()
@@ -220,7 +196,6 @@ public class CharacterStats // 기본 캐릭터 스탯
         Wisdom = wis;
         Health = hth;
         Endurance = end;
-        Lv = 1;
     }
     #endregion
 
@@ -267,9 +242,7 @@ public class CharacterStats // 기본 캐릭터 스탯
             WindAffinity = a.WindAffinity + b.WindAffinity,
             PierceAffinity = a.PierceAffinity + b.PierceAffinity,
             SlashAffinity = a.SlashAffinity + b.SlashAffinity,
-            SmashAffinity = a.SmashAffinity + b.SmashAffinity,
-            Lv = a.Lv + b.Lv,
-            Exp = a.Exp + b.Exp
+            SmashAffinity = a.SmashAffinity + b.SmashAffinity
         };
     }
 
@@ -315,9 +288,7 @@ public class CharacterStats // 기본 캐릭터 스탯
             WindAffinity = a.WindAffinity - b.WindAffinity,
             PierceAffinity = a.PierceAffinity - b.PierceAffinity,
             SlashAffinity = a.SlashAffinity - b.SlashAffinity,
-            SmashAffinity = a.SmashAffinity - b.SmashAffinity,
-            Lv = a.Lv - b.Lv,
-            Exp = a.Exp - b.Exp
+            SmashAffinity = a.SmashAffinity - b.SmashAffinity
         };
     }
     #endregion
@@ -341,11 +312,8 @@ public class CharacterStats // 기본 캐릭터 스탯
         if (WeaponAttackSpeedMultiplier != 0) stats.Add("Weapon Attack Speed Multiplier", WeaponAttackSpeedMultiplier);
         if (WeaponCastSpeedMultiplier != 0) stats.Add("Weapon Cast Speed Multiplier", WeaponCastSpeedMultiplier);
         if (MaxHp != 0) stats.Add("Max HP", MaxHp);
-        if (CurrentHp != 0) stats.Add("Current HP", CurrentHp);
         if (MaxMentality != 0) stats.Add("Max Mentality", MaxMentality);
         if (MaxStamina != 0) stats.Add("Max Stamina", MaxStamina);
-        if (CurrentMentality != 0) stats.Add("Current Mentality", CurrentMentality);
-        if (CurrentStamina != 0) stats.Add("Current Stamina", CurrentStamina);
         if (StaminaRecovery != 0) stats.Add("Stamina Recovery", StaminaRecovery);
         if (MentalityRecovery != 0) stats.Add("Mentality Recovery", MentalityRecovery);
 
@@ -394,7 +362,6 @@ public class CharacterStats // 기본 캐릭터 스탯
         if (WeaponAttackSpeedMultiplier != 0) basicStats.Add("Weapon Attack Speed Multiplier", WeaponAttackSpeedMultiplier);
         if (WeaponCastSpeedMultiplier != 0) basicStats.Add("Weapon Cast Speed Multiplier", WeaponCastSpeedMultiplier);
         if (MaxHp != 0) basicStats.Add("Max HP", MaxHp);
-        if (CurrentHp != 0) basicStats.Add("Current HP", CurrentHp);
         if (MaxMentality != 0) basicStats.Add("Max Mentality", MaxMentality);
         if (MaxStamina != 0) basicStats.Add("Max Stamina", MaxStamina);
         if (StaminaRecovery != 0) basicStats.Add("Stamina Recovery", StaminaRecovery);
@@ -428,11 +395,8 @@ public class CharacterStats // 기본 캐릭터 스탯
             WeaponAttackSpeedMultiplier = this.WeaponAttackSpeedMultiplier,
             WeaponCastSpeedMultiplier = this.WeaponCastSpeedMultiplier,
             MaxHp = this.MaxHp,
-            CurrentHp = this.CurrentHp,
             MaxMentality = this.MaxMentality,
             MaxStamina = this.MaxStamina,
-            CurrentMentality = this.CurrentMentality,
-            CurrentStamina = this.CurrentStamina,
             StaminaRecovery = this.StaminaRecovery,
             MentalityRecovery = this.MentalityRecovery,
             FireResistance = this.FireResistance,
@@ -452,9 +416,7 @@ public class CharacterStats // 기본 캐릭터 스탯
             PhysicalAttack = this.PhysicalAttack,
             MagicalAttack = this.MagicalAttack,
             PhysicalDefense = this.PhysicalDefense,
-            MagicalDefense = this.MagicalDefense,
-            Lv = this.Lv,
-            Exp = this.Exp
+            MagicalDefense = this.MagicalDefense
         };
     }
     #endregion
@@ -552,7 +514,26 @@ public class CharacterData
     public Equipment Weapon { get; set; }
     public Equipment SubWeapon { get; set; }
 
+    
+    public int Level { get; set; }
+    public int Exp { get; set; }
 
+    public int CurrentHp { get; set; }
+    public int CurrentStamina { get; set; }
+    public int CurrentMentality { get; set; }
+
+    
+    public void ClampRuntimeResources()
+    {
+        if (FinalStats != null)
+        {
+            CurrentHp = Mathf.Clamp(CurrentHp, 0, FinalStats.MaxHp);
+            CurrentStamina = Mathf.Clamp(CurrentStamina, 0, FinalStats.MaxStamina);
+            CurrentMentality = Mathf.Clamp(CurrentMentality, 0, FinalStats.MaxMentality);
+        }
+    }
+
+   
     public Equipment GetEquipmentByType(EquipmentType type)
     {
         List<Equipment> EquippedItems = (List<Equipment>)GetEquipments();
@@ -689,6 +670,8 @@ public class CharacterData
         Weapon = weapon;
         SubWeapon = subWeapon;
         DefaultCounterSkill = defaultCounterSkill;
+
+        Level = 1;
     }
     #endregion    
 
@@ -719,7 +702,7 @@ public class CharacterData
         uint baseMagicalAttack = stats.MagicalAttack + (uint)stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
         int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));
         int baseInsight =  stats.Insight + (int)(stats.Wisdom * ((double)(stats.Wisdom / 10.0)) + stats.Intelligence * ((double)(stats.Intelligence / 10.0)));
-        int baseMaxHp = 15 + stats.Lv * 5 + stats.Health * 3 + stats.MaxHp;
+        int baseMaxHp = 15 + Level * 5 + stats.Health * 3 + stats.MaxHp;
         float baseAtkSpd = (1.0f + stats.Speed * 0.01f); // 기본 속도 1.0 + 속도 스탯 * 0.01
         if (Weapon != null)
         {

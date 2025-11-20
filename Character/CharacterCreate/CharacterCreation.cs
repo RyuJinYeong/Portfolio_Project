@@ -180,14 +180,14 @@ public class CharacterCreation : MonoBehaviour
         SeedOriginEquipmentsIntoHolders();
 
         // ③ 이후엔 기존 흐름 그대로: 장비 효과 적용 + 커스텀/초상화/스탯 갱신 → 저장 
-        //UpdateEquipmentEffect(); - 2회 적용으로 인해 주석 처리
+        UpdateEquipmentEffect();
 
         characterManager.character.Name = characterNameInput.text;
         characterManager.character.customizationData = CustomInfo.customizationInfo; // 커스터마이징 정보 저장
         //characterManager.character.Portrait = CustomInfo.characterCustom.CapturePortrait(); // 초상화 촬영용 렌더카메라로 초상화 촬영 후 Sprite로 변환하여 캐릭터 데이터에 저장
         characterManager.character.IsMine = true; //캐릭터 소유권 지정
         characterManager.character.UpdateFinalStats();
-        characterManager.character.FinalStats.CurrentHp = characterManager.character.FinalStats.MaxHp;
+        characterManager.character.CurrentHp = characterManager.character.FinalStats.MaxHp;
 
         PlayerManager._instance.CreateCharacter(characterManager.character);
         PlayerManager._instance.AddCharacterID(characterManager.character.ID);

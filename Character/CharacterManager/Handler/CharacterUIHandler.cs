@@ -170,26 +170,26 @@ public class CharacterUIHandler : MonoBehaviour
 
     public void UpdateResourceTexts()
     {
-        hpText.text = $"{characterManager.character.FinalStats.CurrentHp} / {characterManager.character.FinalStats.MaxHp}";
-        staminaText.text = $"{characterManager.character.FinalStats.CurrentStamina} / {characterManager.character.FinalStats.MaxStamina} (+{characterManager.character.FinalStats.StaminaRecovery})";
-        mentalityText.text = $"{characterManager.character.FinalStats.CurrentMentality} / {characterManager.character.FinalStats.MaxMentality} (+{characterManager.character.FinalStats.MentalityRecovery})";
+        hpText.text = $"{characterManager.character.CurrentHp} / {characterManager.character.FinalStats.MaxHp}";
+        staminaText.text = $"{characterManager.character.CurrentStamina} / {characterManager.character.FinalStats.MaxStamina} (+{characterManager.character.FinalStats.StaminaRecovery})";
+        mentalityText.text = $"{characterManager.character.CurrentMentality} / {characterManager.character.FinalStats.MaxMentality} (+{characterManager.character.FinalStats.MentalityRecovery})";
     }
 
     private void UpdateHPBar()
     {
-        float hpPercentage = (float)characterManager.character.FinalStats.CurrentHp / characterManager.character.FinalStats.MaxHp;
+        float hpPercentage = (float)characterManager.character.CurrentHp / characterManager.character.FinalStats.MaxHp;
         hpBar.GetComponent<Slider>().value = hpPercentage;
     }
 
     private void UpdateStaminaBar()
     {
-        float staminaPercentage = (float)characterManager.character.FinalStats.CurrentStamina / characterManager.character.FinalStats.MaxStamina;
+        float staminaPercentage = (float)characterManager.character.CurrentStamina / characterManager.character.FinalStats.MaxStamina;
         staminaBar.GetComponent<Slider>().value = staminaPercentage;
     }
 
     private void UpdateMentalityBar()
     {
-        float mentalityPercentage = (float)characterManager.character.FinalStats.CurrentMentality / characterManager.character.FinalStats.MaxMentality;
+        float mentalityPercentage = (float)characterManager.character.CurrentMentality / characterManager.character.FinalStats.MaxMentality;
         mentalityBar.GetComponent<Slider>().value = mentalityPercentage;
     }
 

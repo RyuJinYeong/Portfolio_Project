@@ -91,7 +91,7 @@ public class CombatHandler : MonoBehaviour
 
         skillQueue.Add((skill, target));
         int order = skillQueue.Count;
-        Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
+        Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.CurrentStamina}, Mentality: {characterManager.character.CurrentMentality}");
 
 
 
@@ -119,8 +119,8 @@ public class CombatHandler : MonoBehaviour
         {
             var skillEntry = skillQueue[index];
 
-            characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost);
-            characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost);
+            characterManager.character.CurrentStamina += (int)(skill.StaminaCost);
+            characterManager.character.CurrentMentality += (int)(skill.MentalCost);
 
             // UI 갱신
             characterManager.UpdateCharacterUI();
@@ -159,8 +159,8 @@ public class CombatHandler : MonoBehaviour
         SkillBase old = counterSkillQueue[idx].skill;
         if (old != characterManager.character.DefaultCounterSkill)
         {
-            characterManager.character.FinalStats.CurrentStamina += (int)old.StaminaCost;
-            characterManager.character.FinalStats.CurrentMentality += (int)old.MentalCost;
+            characterManager.character.CurrentStamina += (int)old.StaminaCost;
+            characterManager.character.CurrentMentality += (int)old.MentalCost;
         }
 
         // 교체 or 리셋
@@ -179,14 +179,14 @@ public class CombatHandler : MonoBehaviour
     // 리소스 소비 로직
     private bool ConsumeResources(SkillBase skill)
     {
-        if (characterManager.character.FinalStats.CurrentStamina < skill.StaminaCost || characterManager.character.FinalStats.CurrentMentality < skill.MentalCost)
+        if (characterManager.character.CurrentStamina < skill.StaminaCost || characterManager.character.CurrentMentality < skill.MentalCost)
         {
             Debug.Log("리소스가 부족하여 스킬을 사용할 수 없습니다.");
             return false;
         }
 
-        characterManager.character.FinalStats.CurrentStamina -= skill.StaminaCost;
-        characterManager.character.FinalStats.CurrentMentality -= skill.MentalCost;
+        characterManager.character.CurrentStamina -= skill.StaminaCost;
+        characterManager.character.CurrentMentality -= skill.MentalCost;
         characterManager.UpdateCharacterUI();
         return true;
     }
@@ -199,7 +199,7 @@ public class CombatHandler : MonoBehaviour
         
         counterSkillQueue.Add((skill, target));
         int order = counterSkillQueue.Count;
-        Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.FinalStats.CurrentStamina}, Mentality: {characterManager.character.FinalStats.CurrentMentality}");
+        Debug.Log($"Skill {skill.name} added to queue. CurrentResources - Stamina: {characterManager.character.CurrentStamina}, Mentality: {characterManager.character.CurrentMentality}");
 
         // 스킬 큐 UI에 추가 (캐릭터 UI 핸들러 사용)
         target.characterUIHandler.UpdateCounterSkillQueueUI(counterSkillQueue, target); // 타겟 카운터 UI 갱신
@@ -220,8 +220,8 @@ public class CombatHandler : MonoBehaviour
         {
             var skillEntry = counterSkillQueue[index];
             
-            characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost);
-            characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost);
+            characterManager.character.CurrentStamina += (int)(skill.StaminaCost);
+            characterManager.character.CurrentMentality += (int)(skill.MentalCost);
 
             // UI 갱신
             characterManager.UpdateCharacterUI();
@@ -269,8 +269,8 @@ public class CombatHandler : MonoBehaviour
         {
             SkillBase skill = item.skill;
             // 리소스 일부 반환 (예: 50%) - 해당 필드도 변수화시켜서 관리 시 반환 값에 변주를 줄 수 있으니 필요시 추후 개선필요
-            characterManager.character.FinalStats.CurrentStamina += (int)(skill.StaminaCost * 0.5f);
-            characterManager.character.FinalStats.CurrentMentality += (int)(skill.MentalCost * 0.5f);
+            characterManager.character.CurrentStamina += (int)(skill.StaminaCost * 0.5f);
+            characterManager.character.CurrentMentality += (int)(skill.MentalCost * 0.5f);
                         
             target = item.target;
         }
@@ -284,7 +284,7 @@ public class CombatHandler : MonoBehaviour
         target.characterUIHandler.UpdateCounterSkillQueueUI(target.combatHandler.counterSkillQueue, target); // 타겟 대응 스킬 UI 갱신
 
         characterManager.UpdateCharacterUI();
-        Debug.Log($"스킬 시전 예약 취소 지구력: {characterManager.character.FinalStats.CurrentStamina}, 정신력: {characterManager.character.FinalStats.CurrentMentality}");
+        Debug.Log($"스킬 시전 예약 취소 지구력: {characterManager.character.CurrentStamina}, 정신력: {characterManager.character.CurrentMentality}");
     }
 
     // 스킬 큐 순차 실행
@@ -587,8 +587,8 @@ public class CombatHandler : MonoBehaviour
     {
         SkillBase selectedSkill = null;
         List<SkillBase> availableSkills = characterManager.character.Skills
-            .Where(skill => characterManager.character.FinalStats.CurrentStamina >= skill.StaminaCost &&
-                            characterManager.character.FinalStats.CurrentMentality >= skill.MentalCost)
+            .Where(skill => characterManager.character.CurrentStamina >= skill.StaminaCost &&
+                            characterManager.character.CurrentMentality >= skill.MentalCost)
             .ToList();
 
         if (availableSkills.Count == 0)
@@ -675,12 +675,12 @@ public class CombatHandler : MonoBehaviour
                 selectedTarget = enemies.FirstOrDefault();
                 if (deviateFromPersonality)
                 {
-                    selectedTarget = enemies.OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                    selectedTarget = enemies.OrderBy(enemy => enemy.character.CurrentHp).FirstOrDefault();
                 }
                 break;
 
             case Personality.Aggressive:
-                selectedTarget = enemies.OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                selectedTarget = enemies.OrderBy(enemy => enemy.character.CurrentHp).FirstOrDefault();
                 if (deviateFromPersonality)
                 {
                     selectedTarget = enemies.FirstOrDefault();
@@ -688,7 +688,7 @@ public class CombatHandler : MonoBehaviour
                 break;
 
             case Personality.Cunning:
-                selectedTarget = enemies.OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                selectedTarget = enemies.OrderBy(enemy => enemy.character.CurrentHp).FirstOrDefault();
                 if (deviateFromPersonality)
                 {
                     selectedTarget = enemies.OrderByDescending(enemy => enemy.character.FinalStats.PhysicalDefense).FirstOrDefault();
@@ -697,10 +697,10 @@ public class CombatHandler : MonoBehaviour
 
             case Personality.Cautious:
                 selectedTarget = enemies.Where(enemy => enemy.character.StatusEffects.Count > 0)
-                    .OrderBy(enemy => enemy.character.FinalStats.CurrentHp).FirstOrDefault();
+                    .OrderBy(enemy => enemy.character.CurrentHp).FirstOrDefault();
                 if (selectedTarget == null || deviateFromPersonality)
                 {
-                    selectedTarget = enemies.OrderByDescending(enemy => enemy.character.FinalStats.CurrentHp).LastOrDefault();
+                    selectedTarget = enemies.OrderByDescending(enemy => enemy.character.CurrentHp).LastOrDefault();
                 }
                 break;
 
@@ -717,7 +717,7 @@ public class CombatHandler : MonoBehaviour
     {
         // 대응 스킬 로직 구현 (AI가 특정 스킬에 대응하는 방법)
         SkillBase counterSkill = characterManager.character.Skills
-            .FirstOrDefault(skill => skill.IsCounterSkill && characterManager.character.FinalStats.CurrentStamina >= skill.StaminaCost);
+            .FirstOrDefault(skill => skill.IsCounterSkill && characterManager.character.CurrentStamina >= skill.StaminaCost);
 
         return counterSkill;
     }

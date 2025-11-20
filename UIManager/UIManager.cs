@@ -21,8 +21,13 @@ public class UIManager : MonoBehaviour
     [Header("Town Panel - Menu")]
     public GameObject CharacterManagePanel; // TownUI 하위 메뉴 패널 (캐릭터 관리)
     public GameObject RecruitPanel;         // TownUI 하위 메뉴 패널 (고용)
+    public GameObject QuestBoardPanel;      // TownUI 하위 메뉴 패널 (퀘스트 게시판)
 
-    CharacterManagementPanel _cmp;
+    // 외부(파티편성/게임매니저)로 이벤트 넘겨줄 훅
+    public System.Action<QuestDef> onQuestAcceptRequest;
+
+    CharacterManagementPanel _characterManagePanel;
+    QuestPanel _questPanel;
 
     public GameObject turnOrderPanel;  // 상단 턴 큐 패널
     public GameObject characterPortraitPrefab;  // 캐릭터 초상화 프리팹
@@ -76,7 +81,24 @@ public class UIManager : MonoBehaviour
             Destroy(gameObject);
         }
 
-        _cmp = CharacterManagePanel.GetComponent<CharacterManagementPanel>();
+        _characterManagePanel = CharacterManagePanel.GetComponent<CharacterManagementPanel>();
+
+        _questPanel = QuestBoardPanel.GetComponent<QuestPanel>();
+
+        WireQuestPanel();
+    }
+
+    private void WireQuestPanel()
+    {
+        if (_questPanel == null) return;
+
+        // 퀘스트 카드에서 "수락" 눌렀을 때 → 상층으로 이벤트 전달(파티 편성 화면이 받게)
+        _questPanel.OnAcceptRequest = def =>
+        {
+            CloseAllTownOverlays();
+            // 여기서 바로 Accept까지 태우지 말고, 파티 편성으로 위임
+            onQuestAcceptRequest?.Invoke(def);
+        };
     }
 
     public void Update()
@@ -137,7 +159,7 @@ public class UIManager : MonoBehaviour
         CloseAllTownOverlays();
 
         CharacterManagePanel?.SetActive(true);
-        _cmp.OpenAndBuild();
+        _characterManagePanel.OpenAndBuild();
     }
 
     public void OnClick_Recruit()
@@ -148,7 +170,7 @@ public class UIManager : MonoBehaviour
 
     public void OnClick_QuestBoard()
     {
-        CameraFocusRig.Instance?.Focus("Quest");
+        CameraFocusRig.Instance?.Focus("Quest"); // 카메라 포커스 이동 - 퀘스트 패널은 월드 스페이스 캔버스에 있기 때문에 따로 패널 활성화가 필요하지 않음.
     }
     public void CloseAllTownOverlays()
     {        
@@ -237,8 +259,8 @@ public class UIManager : MonoBehaviour
                 if (linkedSkill != null)
                 {
                     // 리소스가 충분한지 체크
-                    bool canUseSkill = characterManager.character.FinalStats.CurrentStamina >= linkedSkill.StaminaCost &&
-                                       characterManager.character.FinalStats.CurrentMentality >= linkedSkill.MentalCost;
+                    bool canUseSkill = characterManager.character.CurrentStamina >= linkedSkill.StaminaCost &&
+                                       characterManager.character.CurrentMentality >= linkedSkill.MentalCost;
 
                     // 현재 턴이 아니거나 리소스가 부족할 경우 스킬 사용 불가로 표시
                     bool Inactive = !characterManager.isPlayerTurn || !canUseSkill;
@@ -297,13 +319,13 @@ public class UIManager : MonoBehaviour
         characterPortrait.texture = characterData.Portrait;
         characterName.text = characterData.Name;
 
-        currentHP.text = $"{characterData.FinalStats.CurrentHp}";
+        currentHP.text = $"{characterData.CurrentHp}";
         characterHP.text = $"{characterData.FinalStats.MaxHp}";
 
-        currentStamina.text = $"{characterData.FinalStats.CurrentStamina}";
+        currentStamina.text = $"{characterData.CurrentStamina}";
         characterStamina.text = $"{characterData.FinalStats.MaxStamina}";
 
-        currentMental.text = $"{characterData.FinalStats.CurrentMentality}";
+        currentMental.text = $"{characterData.CurrentMentality}";
         characterMental.text = $"{characterData.FinalStats.MaxMentality}";
 
         characterPhysicalAttack.text = $"{characterData.FinalStats.PhysicalAttack}";

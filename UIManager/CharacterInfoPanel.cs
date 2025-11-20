@@ -52,8 +52,8 @@ public class CharacterInfoPanel : MonoBehaviour
 
         portrait.texture = c.Portrait;
         nameText.text = c.Name;
-        levelText.text = "Lv." + c.FinalStats.Lv;
-        hpText.text = c.FinalStats.CurrentHp + "/" + c.FinalStats.MaxHp;
+        levelText.text = "Lv." + c.Level;
+        hpText.text = c.CurrentHp + "/" + c.FinalStats.MaxHp;
 
         if (baseStats != null && baseStats.Length > 0)
         {
