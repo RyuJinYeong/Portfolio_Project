@@ -5,9 +5,7 @@ using System.Linq;
 using TMPro;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.TextCore.Text;
 using UnityEngine.UI;
-using static Unity.Burst.Intrinsics.X86.Avx;
 
 public class UIManager : MonoBehaviour
 {

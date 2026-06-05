@@ -30,8 +30,8 @@ public class CharacterTargeting : MonoBehaviour
 
     void Update()
     {
-        if (PlayerManager.Instance.GetCurrentPlayerData().currentStage != "Town" || PlayerManager.Instance.GetCurrentPlayerData().currentStage != null)
-        {
+        //if (PlayerManager.Instance.GetCurrentPlayerData().currentStage != "Town" || PlayerManager.Instance.GetCurrentPlayerData().currentStage != null)
+        //{
             // 마우스 커서가 올라간 캐릭터에 외곽선 적용
             HandleHoverOutline();
 
@@ -60,7 +60,7 @@ public class CharacterTargeting : MonoBehaviour
             {
                 HandleDefenseTargeting();
             }
-        }
+        //}
     }
 
     // 기존 타겟팅 로직 - 공격 스킬

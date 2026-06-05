@@ -1,318 +1,558 @@
-using System;
+using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
+using SoftKitty.InventoryEngine;
+using P09.Modular.Humanoid.Data;
 
 public class CharacterCustomization : MonoBehaviour
 {
+    [Header("P09 Model Root")]
+    [SerializeField] private Transform modelRoot;
+
+    [Header("Body Customization Containers")]
+    public EditPartDataContainer genderContainer;
+    public EditPartDataContainer faceTypeContainer;
+    public EditPartDataContainer hairStyleContainer;
+    public EditPartDataContainer hairColorContainer;
+    public EditPartDataContainer skinColorContainer;
+    public EditPartDataContainer eyeColorContainer;
+    public EditPartDataContainer facialHairContainer;
+    public EditPartDataContainer bustSizeContainer;
+
+    [Header("Weapon Roots")]
+    public Transform weaponRoot;
+    public Transform bowRoot;
+    public Transform shieldRoot;
+    public Transform staffRoot;
+    public Transform swordRoot;
+    public Transform axeRoot;
+    public Transform hammerRoot;
+    public Transform twoHandedRoot;
+
+    [Header("Weapon Models")]
+    public GameObject[] bows;
+    public GameObject[] shields;
+    public GameObject[] staffs;
+    public GameObject[] swords;
+    public GameObject[] axes;
+    public GameObject[] hammers;
+    public GameObject[] twoHandedWeapons;
+
+    [Header("Portrait - 추후 구현")]
     public RenderTexture portraitRenderTexture;
     public Camera portraitCamera;
 
-    // 캐릭터 루트 및 모델들
-    public GameObject characterRoot;
-    public bool isMale;
+    [Header("Runtime")]
+    public bool isMale = true;
 
-    // 커스터마이징 요소들
-    public GameObject[] eyebrows;
-    public GameObject[] eyes;
-    public GameObject[] mouth;    
-    public GameObject[] hair;
-    public GameObject[] beard;
+    private const int MaleGenderId = 1;
+    private const int FemaleGenderId = 2;
 
-    private CharacterManager characterManager; 
+    private const string SkinMaterialPattern = @"^P09_.*_Skin.*$";
+    private const string EyeMaterialPattern = @"^P09_Eye.*$";
 
-    // 장비 관리
-    public Transform WeaponParent;  // 무기 부모 오브젝트
-    public Transform ArmorParent;   // 방어구 부모 오브젝트
+    private int currentGenderId = MaleGenderId;
+    private int currentFaceTypeId = 1;
+    private int currentHairStyleId = 1;
+    private int currentHairColorId = 1;
+    private int currentSkinColorId = 1;
+    private int currentEyeColorId = 1;
+    private int currentFacialHairId = 0;
+    private int currentBustSizeId = 2;
 
-    public GameObject[] rightHandWeapons; // 주무기
-    public GameObject[] leftHandWeapons; // 보조무기
-    public GameObject[] twoHandedWeapons; // 양손무기
-    private GameObject[] armors; // 방어구 배열 (중갑, 경갑, 의복 등)
+    private Transform[] cachedTransforms;
+    private Renderer[] cachedRenderers;
 
-    string handType;
-
-    public Sprite characterPortrait { get; set; }
-
-    void Awake()
+    private void Awake()
     {
-        // CharacterManager를 캐릭터 루트에서 찾아서 참조
-        characterManager = characterRoot.GetComponent<CharacterManager>();
+        if (modelRoot == null)
+            modelRoot = transform;
 
-        // 각 무기 배열에 부모 오브젝트의 자식 오브젝트들을 할당
-        GameObject[] newRightHandWeapons = GetChildObjects(WeaponParent.GetChild(0));
-        GameObject[] newLeftHandWeapons = GetChildObjects(WeaponParent.GetChild(1));
-        GameObject[] newTwoHandedWeapons = GetChildObjects(WeaponParent.GetChild(2));
-
-        // 기존 배열의 크기를 유지하면서, 새로운 객체를 배열의 시작 부분에 채워 넣기
-        for (int i = 0; i < newRightHandWeapons.Length && i < rightHandWeapons.Length; i++)
-        {
-            rightHandWeapons[i] = newRightHandWeapons[i];
-        }
-
-        for (int i = 0; i < newLeftHandWeapons.Length && i < leftHandWeapons.Length; i++)
-        {
-            leftHandWeapons[i] = newLeftHandWeapons[i];
-        }
-
-        for (int i = 0; i < newTwoHandedWeapons.Length && i < twoHandedWeapons.Length; i++)
-        {
-            twoHandedWeapons[i] = newTwoHandedWeapons[i];
-        }
+        CacheModelParts();
+        CacheWeaponObjectsFromParent();
+        DeactivateAllWeapons();
     }
 
-    // 자식 오브젝트 배열로 반환
-    private GameObject[] GetChildObjects(Transform parent)
+    private void CacheModelParts()
     {
-        int childCount = parent.childCount;
-        GameObject[] childObjects = new GameObject[childCount];
+        if (modelRoot == null) return;
 
-        for (int i = 0; i < childCount; i++)
-        {
-            childObjects[i] = parent.GetChild(i).gameObject;
-        }
-
-        return childObjects;
+        cachedTransforms = modelRoot.GetComponentsInChildren<Transform>(true);
+        cachedRenderers = modelRoot.GetComponentsInChildren<Renderer>(true);
     }
 
-    #region 커스터마이징 로직
+    private void CacheWeaponObjectsFromParent()
+    {
+        if (weaponRoot != null)
+        {
+            if (bowRoot == null) bowRoot = FindDirectChild(weaponRoot, "Bow");
+            if (shieldRoot == null) shieldRoot = FindDirectChild(weaponRoot, "Shield");
+            if (staffRoot == null) staffRoot = FindDirectChild(weaponRoot, "Staff");
+            if (swordRoot == null) swordRoot = FindDirectChild(weaponRoot, "Sword");
+            if (axeRoot == null) axeRoot = FindDirectChild(weaponRoot, "Axe");
+            if (hammerRoot == null) hammerRoot = FindDirectChild(weaponRoot, "Hammer");
+            if (twoHandedRoot == null) twoHandedRoot = FindDirectChild(weaponRoot, "TwoHanded");
+        }
 
-    // 커스터마이징 적용
+        if (bowRoot != null && (bows == null || bows.Length == 0))
+            bows = GetDirectChildObjectsByPrefix(bowRoot, "Bow_");
+
+        if (shieldRoot != null && (shields == null || shields.Length == 0))
+            shields = GetDirectChildObjectsByPrefix(shieldRoot, "Shield_");
+
+        if (staffRoot != null && (staffs == null || staffs.Length == 0))
+            staffs = GetDirectChildObjectsByPrefix(staffRoot, "Staff_");
+
+        if (swordRoot != null && (swords == null || swords.Length == 0))
+            swords = GetDirectChildObjectsByPrefix(swordRoot, "Sword_");
+
+        if (axeRoot != null && (axes == null || axes.Length == 0))
+            axes = GetDirectChildObjectsByPrefix(axeRoot, "Axe_");
+
+        if (hammerRoot != null && (hammers == null || hammers.Length == 0))
+            hammers = GetDirectChildObjectsByPrefix(hammerRoot, "Hammer_");
+
+        if (twoHandedRoot != null && (twoHandedWeapons == null || twoHandedWeapons.Length == 0))
+            twoHandedWeapons = GetAllDirectChildObjects(twoHandedRoot);
+    }
+
+    private GameObject[] GetAllDirectChildObjects(Transform parent)
+    {
+        if (parent == null) return new GameObject[0];
+
+        return parent
+            .Cast<Transform>()
+            .OrderBy(t => t.name)
+            .Select(t => t.gameObject)
+            .ToArray();
+    }
+
+    private Transform FindDirectChild(Transform parent, string childName)
+    {
+        if (parent == null) return null;
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            if (child.name == childName)
+                return child;
+        }
+
+        return null;
+    }
+
+    private GameObject[] GetDirectChildObjectsByPrefix(Transform parent, string prefix)
+    {
+        if (parent == null) return new GameObject[0];
+
+        return parent
+            .Cast<Transform>()
+            .Where(t => t.name.StartsWith(prefix))
+            .OrderBy(t => t.name)
+            .Select(t => t.gameObject)
+            .ToArray();
+    }
+
+    #region 커스터마이징 적용
+
     public void ApplyCustomization(CharacterData characterData)
     {
-        SetHairStyle(characterData.customizationData.HairType);
-        SetHairColor(characterData.customizationData.HairColor);
+        if (characterData == null || characterData.customizationData == null)
+            return;
 
-        SetEyebrows(characterData.customizationData.EyebrowsType);
-        SetEyes(characterData.customizationData.EyeType);
+        ApplyCustomization(characterData.customizationData);
+    }
 
-        SetMouth(characterData.customizationData.MouthType);
+    public void ApplyCustomization(CustomizationData data)
+    {
+        if (data == null) return;
+
+        currentGenderId = data.GenderId <= 0 ? (data.IsMale ? MaleGenderId : FemaleGenderId) : data.GenderId;
+        isMale = currentGenderId == MaleGenderId;
+
+        currentFaceTypeId = data.FaceTypeId <= 0 ? 1 : data.FaceTypeId;
+        currentHairStyleId = data.HairStyleId <= 0 ? 1 : data.HairStyleId;
+        currentHairColorId = data.HairColorId <= 0 ? 1 : data.HairColorId;
+        currentSkinColorId = data.SkinColorId <= 0 ? 1 : data.SkinColorId;
+        currentEyeColorId = data.EyeColorId <= 0 ? 1 : data.EyeColorId;
+
+        currentFacialHairId = data.FacialHairId;
+        currentBustSizeId = data.BustSizeId <= 0 ? 2 : data.BustSizeId;
+
+        ApplyRendererPart(currentGenderId, genderContainer);
+        ApplyRendererPart(currentFaceTypeId, faceTypeContainer);
+        ApplyRendererPart(currentHairStyleId, hairStyleContainer);
+
+        ApplyHairColor(currentHairColorId, currentHairStyleId);
+        ApplySkinColor(currentSkinColorId);
+        ApplyEyeColor(currentEyeColorId);
+
         if (isMale)
-            SetBeard(characterData.customizationData.BeardType);  // 남성일 경우만
-
-        SetSkinTone(characterData.customizationData.SkinTone);
-    }
-
-    public Texture2D CapturePortrait()
-    {
-        portraitCamera.gameObject.SetActive(true);
-
-        // RenderTexture에 캡처
-        portraitCamera.targetTexture = portraitRenderTexture;
-        portraitCamera.Render();
-        portraitCamera.targetTexture = null;
-
-        // RenderTexture의 데이터를 Texture2D로 변환
-        RenderTexture.active = portraitRenderTexture;
-        Texture2D portraitTexture = new Texture2D(portraitRenderTexture.width, portraitRenderTexture.height, TextureFormat.RGB24, false);
-        portraitTexture.ReadPixels(new Rect(0, 0, portraitRenderTexture.width, portraitRenderTexture.height), 0, 0);
-        portraitTexture.Apply();
-        RenderTexture.active = null;
-
-        portraitCamera.gameObject.SetActive(false);
-
-        return portraitTexture;
-    }
-
-
-
-    // 눈썹 설정
-    public void SetEyebrows(int index)
-    {
-        ActivateModelFromArray(eyebrows, index);
-    }
-
-    // 눈 설정
-    public void SetEyes(int index)
-    {
-        ActivateModelFromArray(eyes, index);
-    }
-
-    // 입 설정
-    public void SetMouth(int index)
-    {
-        ActivateModelFromArray(mouth, index);
-    }
-
-    // 수염 설정
-    public void SetBeard(int index)
-    {
-        if (beard.Length > 0 && isMale)
         {
-            ActivateModelFromArray(beard, index);
+            ApplyRendererPart(currentFacialHairId, facialHairContainer);
+        }
+        else
+        {
+            ClearRendererPart(facialHairContainer);
+            ApplyBustSize(currentBustSizeId);
         }
     }
 
-    // 헤어스타일 설정
-    public void SetHairStyle(int index)
+
+    #endregion
+
+    #region 기존 코드 호환용 Setter
+
+    public void SetGender(int genderId)
     {
-        ActivateModelFromArray(hair, index);
+        currentGenderId = genderId <= 0 ? MaleGenderId : genderId;
+        isMale = currentGenderId == MaleGenderId;
+
+        ApplyRendererPart(currentGenderId, genderContainer);
     }
 
-    // 머리색 설정
-    public void SetHairColor(int index)
+    public void SetFaceType(int faceTypeId)
     {
-        //머리 색 변경 로직
+        currentFaceTypeId = faceTypeId <= 0 ? 1 : faceTypeId;
+        ApplyRendererPart(currentFaceTypeId, faceTypeContainer);
     }
 
-    // 피부톤 설정
-    public void SetSkinTone(int index)
+    public void SetHairStyle(int hairStyleId)
     {
-        //피부 톤 변경 로직
+        currentHairStyleId = hairStyleId <= 0 ? 1 : hairStyleId;
+        ApplyRendererPart(currentHairStyleId, hairStyleContainer);
+        ApplyHairColor(currentHairColorId, currentHairStyleId);
     }
 
-    // 배열에서 선택한 모델만 활성화
-    private void ActivateModelFromArray(GameObject[] modelArray, int index)
+    public void SetHairColor(int hairColorId)
     {
-        for (int i = 0; i < modelArray.Length; i++)
+        currentHairColorId = hairColorId <= 0 ? 1 : hairColorId;
+        ApplyHairColor(currentHairColorId, currentHairStyleId);
+    }
+
+    public void SetSkinColor(int skinColorId)
+    {
+        currentSkinColorId = skinColorId <= 0 ? 1 : skinColorId;
+        ApplySkinColor(currentSkinColorId);
+    }
+
+    public void SetEyeColor(int eyeColorId)
+    {
+        currentEyeColorId = eyeColorId <= 0 ? 1 : eyeColorId;
+        ApplyEyeColor(currentEyeColorId);
+    }
+
+    public void SetFacialHair(int facialHairId)
+    {
+        currentFacialHairId = facialHairId;
+
+        if (isMale)
+            ApplyRendererPart(currentFacialHairId, facialHairContainer);
+    }
+
+    public void SetBustSize(int bustSizeId)
+    {
+        currentBustSizeId = bustSizeId <= 0 ? 2 : bustSizeId;
+
+        if (!isMale)
+            ApplyBustSize(currentBustSizeId);
+    }
+
+    public void SetSkinTone(int skinColorId) => SetSkinColor(skinColorId);
+    public void SetBeard(int facialHairId) => SetFacialHair(facialHairId);
+
+    public void SetEyebrows(int faceTypeId) => SetFaceType(faceTypeId);
+    public void SetEyes(int eyeColorId) => SetEyeColor(eyeColorId);
+    public void SetMouth(int index) { }
+
+    #endregion
+
+    #region P09 외형 적용 로직
+
+    private void ApplyRendererPart(int currentId, EditPartDataContainer container)
+    {
+        if (container == null || container.PartDataList == null)
+            return;
+
+        EnsureCache();
+
+        foreach (Transform child in cachedTransforms)
         {
-            modelArray[i].SetActive(i == index);
+            foreach (var data in container.PartDataList)
+            {
+                if (string.IsNullOrEmpty(data.MeshName))
+                    continue;
+
+                if (child.name == data.MeshName)
+                {
+                    child.gameObject.SetActive(data.ContentId == currentId);
+                }
+                else if (child.name == string.Format(data.MeshName, "Male"))
+                {
+                    child.gameObject.SetActive(isMale && data.ContentId == currentId);
+                }
+                else if (child.name == string.Format(data.MeshName, "Female") ||
+                         child.name == string.Format(data.MeshName, "Fem"))
+                {
+                    child.gameObject.SetActive(!isMale && data.ContentId == currentId);
+                }
+            }
+        }
+    }
+
+    private void ClearRendererPart(EditPartDataContainer container)
+    {
+        if (container == null || container.PartDataList == null)
+            return;
+
+        EnsureCache();
+
+        foreach (Transform child in cachedTransforms)
+        {
+            foreach (var data in container.PartDataList)
+            {
+                if (string.IsNullOrEmpty(data.MeshName))
+                    continue;
+
+                if (child.name == data.MeshName ||
+                    child.name == string.Format(data.MeshName, "Male") ||
+                    child.name == string.Format(data.MeshName, "Female") ||
+                    child.name == string.Format(data.MeshName, "Fem"))
+                {
+                    child.gameObject.SetActive(false);
+                }
+            }
+        }
+    }
+
+    private void ApplyHairColor(int hairColorId, int hairStyleId)
+    {
+        if (hairColorContainer == null || hairColorContainer.PartDataList == null)
+            return;
+
+        EnsureCache();
+
+        var currentData = hairColorContainer.PartDataList
+            .FirstOrDefault(d => d.ContentId == hairColorId) as HairColorEditPartData;
+
+        if (currentData == null)
+            return;
+
+        foreach (Transform child in cachedTransforms)
+        {
+            foreach (var data in hairColorContainer.PartDataList)
+            {
+                if (string.IsNullOrEmpty(data.MeshName))
+                    continue;
+
+                if (child.name == string.Format(data.MeshName, hairStyleId))
+                {
+                    Renderer renderer = child.GetComponent<Renderer>();
+                    if (renderer != null)
+                        renderer.material = currentData.GetMaterial(hairStyleId);
+                }
+            }
+        }
+    }
+
+    private void ApplySkinColor(int skinColorId)
+    {
+        if (skinColorContainer == null || skinColorContainer.PartDataList == null)
+            return;
+
+        EnsureCache();
+
+        var currentData = skinColorContainer.PartDataList
+            .FirstOrDefault(d => d.ContentId == skinColorId) as ColorEditPartData;
+
+        if (currentData == null)
+            return;
+
+        foreach (Renderer renderer in cachedRenderers)
+        {
+            if (renderer == null) continue;
+
+            Material[] materials = renderer.materials;
+
+            for (int i = 0; i < materials.Length; i++)
+            {
+                if (materials[i] == null) continue;
+
+                if (Regex.IsMatch(materials[i].name, SkinMaterialPattern))
+                    materials[i] = currentData.Material;
+            }
+
+            renderer.materials = materials;
+        }
+    }
+
+    private void ApplyEyeColor(int eyeColorId)
+    {
+        if (eyeColorContainer == null || eyeColorContainer.PartDataList == null)
+            return;
+
+        EnsureCache();
+
+        var currentData = eyeColorContainer.PartDataList
+            .FirstOrDefault(d => d.ContentId == eyeColorId) as ColorEditPartData;
+
+        if (currentData == null)
+            return;
+
+        foreach (Renderer renderer in cachedRenderers)
+        {
+            if (renderer == null) continue;
+
+            Material[] materials = renderer.materials;
+
+            for (int i = 0; i < materials.Length; i++)
+            {
+                if (materials[i] == null) continue;
+
+                if (Regex.IsMatch(materials[i].name, EyeMaterialPattern))
+                    materials[i] = currentData.Material;
+            }
+
+            renderer.materials = materials;
+        }
+    }
+
+    private void ApplyBustSize(int bustSizeId)
+    {
+        if (bustSizeContainer == null || bustSizeContainer.PartDataList == null)
+            return;
+
+        EnsureCache();
+
+        var currentData = bustSizeContainer.PartDataList
+            .FirstOrDefault(d => d.ContentId == bustSizeId) as BustSizeEditPartData;
+
+        if (currentData == null)
+            return;
+
+        foreach (Transform child in cachedTransforms)
+        {
+            if (child.name != string.Format(currentData.MeshName, "R") &&
+                child.name != string.Format(currentData.MeshName, "L"))
+            {
+                continue;
+            }
+
+            child.localScale = currentData.Size;
+        }
+    }
+
+    private void EnsureCache()
+    {
+        if (cachedTransforms == null || cachedTransforms.Length == 0 ||
+            cachedRenderers == null || cachedRenderers.Length == 0)
+        {
+            CacheModelParts();
         }
     }
 
     #endregion
 
+    #region 무기 / 보조무기 외형 로직
+
     public void UpdateEquipmentAppearance(CharacterData characterData)
     {
         UpdateWeaponAppearance(characterData);
-        //UpdateArmorAppearance(characterData); // - 로직 완성 전까지 적용 보류
+
+        // 방어구/헬멧은 추후 구현
+        // UpdateArmorAppearance(characterData);
+        // UpdateHelmetAppearance(characterData);
     }
 
-    #region 무기 로직
-
-    // 무기 외형 업데이트 메서드
     public void UpdateWeaponAppearance(CharacterData characterData)
-    {/*
-        if(characterData.Weapon is Weapon wea)
+    {
+        DeactivateAllWeapons();
+
+        if (characterData == null)
+            return;
+
+        bool mainWeaponIsTwoHanded = false;
+
+        if (characterData.Weapon is Weapon mainWeapon)
         {
-            Debug.Log(wea.weaponTags[0]);
-            Debug.Log(wea.WeaponType);
-        }*/
-        if (characterData.Weapon is Weapon weapon)
-        {
-            if (weapon.WeaponTags.Contains(WeaponTag.TwoHanded))
-            {
-                handType = "TwoHanded";
-                ChangeWeaponModel(weapon.WeaponType);
-            }
+            mainWeaponIsTwoHanded = mainWeapon.WeaponTags.Contains(WeaponTag.TwoHanded);
+
+            if (mainWeaponIsTwoHanded)
+                ActivateTwoHandedWeapon(mainWeapon.WeaponType);
             else
-            {
-                handType = "RightHanded";
-                ChangeWeaponModel(weapon.WeaponType);
-            }
+                ActivateMainWeapon(mainWeapon.WeaponType);
         }
-        else if (characterData.Weapon == null)
-        {
-            foreach (var rightHand in rightHandWeapons)
-                rightHand.SetActive(false);
-            foreach (var twoHand in twoHandedWeapons)
-                twoHand.SetActive(false);
-        }
+
+        if (mainWeaponIsTwoHanded)
+            return;
 
         if (characterData.SubWeapon is Weapon subWeapon)
         {
-            handType = "LeftHanded";
-            ChangeWeaponModel(subWeapon.WeaponType);
-        }
-        else if (characterData.SubWeapon == null)
-        {
-            foreach (var leftHand in leftHandWeapons)
-                leftHand.SetActive(false);
+            ActivateSubWeapon(subWeapon.WeaponType);
         }
     }
 
-    // 무기 외형을 변경하는 메서드
-    private void ChangeWeaponModel(WeaponType weaponType)
-    {
-        DeactivateWeapons(handType);
-
-        switch (handType)
-        {
-            case "TwoHanded":
-                ActivateTwoHandedWeapon(weaponType);
-                break;
-            case "RightHanded":
-                ActivateRightHandWeapon(weaponType);
-                break;
-            case "LeftHanded":
-                ActivateLeftHandWeapon(weaponType);
-                break;
-        }
-    }
-    private void DeactivateWeapons(string handType)
-    {
-        switch (handType)
-        {
-            case "RightHanded":
-                foreach (var weapon in rightHandWeapons)
-                    weapon.SetActive(false);
-                foreach (var weapon in twoHandedWeapons)
-                    weapon.SetActive(false);
-                break;
-            case "LeftHanded":
-                foreach (var weapon in leftHandWeapons)
-                    weapon.SetActive(false);
-                foreach (var weapon in twoHandedWeapons)
-                    weapon.SetActive(false);
-                break;
-            case "TwoHanded":
-                DeactivateAllWeapons();
-                break;
-        }
-    }
-
-    private void DeactivateAllWeapons()
-    {
-        foreach (var weapon in rightHandWeapons) weapon.SetActive(false);
-
-        foreach (var weapon in leftHandWeapons) weapon.SetActive(false);
-
-        foreach (var weapon in twoHandedWeapons) weapon.SetActive(false);
-    }
-
-    private void ActivateRightHandWeapon(WeaponType weaponType)
+    private void ActivateMainWeapon(WeaponType weaponType)
     {
         switch (weaponType)
         {
-            case WeaponType.LongSword:
-                rightHandWeapons[0].SetActive(true);
+            case WeaponType.Bow:
+                ActivateArrayIndex(bows, 0);
                 break;
-            case WeaponType.Dagger:
-                rightHandWeapons[1].SetActive(true);
-                break;
+
             case WeaponType.Staff:
-                rightHandWeapons[2].SetActive(true);
+                ActivateArrayIndex(staffs, 0);
                 break;
+
+            case WeaponType.LongSword:
+                ActivateArrayIndex(swords, 0);
+                break;
+
+            case WeaponType.Dagger:
+                ActivateArrayIndex(swords, 1);
+                break;
+
             case WeaponType.Greatsword:
-                rightHandWeapons[3].SetActive(true);
+                ActivateArrayIndex(swords, 2);
                 break;
+
             case WeaponType.Axe:
-                rightHandWeapons[4].SetActive(true);
-                break;/*
-            case WeaponType.Mace:
-                rightHandWeapons[5].SetActive(true);
+                ActivateArrayIndex(axes, 0);
                 break;
+
             case WeaponType.Hammer:
-                rightHandWeapons[5].SetActive(true);
-                break;*/
+                ActivateArrayIndex(hammers, 0);
+                break;
+
+            case WeaponType.Two_HandedSword:
+                ActivateArrayIndex(swords, 4);
+                break;
+
+            case WeaponType.Spear:
+                // 현재 모델 없음
+                break;
         }
     }
 
-    private void ActivateLeftHandWeapon(WeaponType weaponType)
+    private void ActivateSubWeapon(WeaponType weaponType)
     {
         switch (weaponType)
         {
-            case WeaponType.Dagger:
-                leftHandWeapons[0].SetActive(true);
-                break;
             case WeaponType.Shield:
-                leftHandWeapons[1].SetActive(true);
+                ActivateArrayIndex(shields, 0);
                 break;
+
+            case WeaponType.Dagger:
+                ActivateArrayIndex(swords, 1);
+                break;
+
             case WeaponType.Orb:
-                leftHandWeapons[2].SetActive(true);
+                // 현재 모델 없음
                 break;
+
             case WeaponType.Book:
-                leftHandWeapons[3].SetActive(true);
+                // 현재 모델 없음
                 break;
-                // 기타 보조무기 타입들
         }
     }
 
@@ -321,57 +561,121 @@ public class CharacterCustomization : MonoBehaviour
         switch (weaponType)
         {
             case WeaponType.Bow:
-                twoHandedWeapons[0].SetActive(true);
+                ActivateArrayIndex(bows, 0);
                 break;
-            case WeaponType.Spear:
-                twoHandedWeapons[1].SetActive(true);
+
+            case WeaponType.Staff:
+                ActivateArrayIndex(staffs, 0);
                 break;
-            case WeaponType.Hammer:
-                twoHandedWeapons[2].SetActive(true);
-                break;
+
             case WeaponType.Axe:
-                twoHandedWeapons[3].SetActive(true);
+                ActivateTwoHandedByName("Axe");
                 break;
+
+            case WeaponType.Hammer:
+                ActivateTwoHandedByName("Hammer");
+                break;
+
             case WeaponType.Two_HandedSword:
-                twoHandedWeapons[4].SetActive(true);
+            case WeaponType.Greatsword:
+                ActivateTwoHandedByName("Sword");
                 break;
-                // 기타 양손 무기
+
+            case WeaponType.Spear:
+                ActivateTwoHandedByName("Spear");
+                break;
+
+            default:
+                break;
         }
+    }
+    private void ActivateTwoHandedByName(string keyword)
+    {
+        if (twoHandedWeapons == null || twoHandedWeapons.Length == 0)
+            return;
+
+        foreach (var obj in twoHandedWeapons)
+        {
+            if (obj == null) continue;
+
+            if (obj.name.Contains(keyword))
+            {
+                obj.SetActive(true);
+                return;
+            }
+        }
+    }
+
+    private void DeactivateAllWeapons()
+    {
+        SetAllActive(bows, false);
+        SetAllActive(shields, false);
+        SetAllActive(staffs, false);
+        SetAllActive(swords, false);
+        SetAllActive(axes, false);
+        SetAllActive(hammers, false);
+        SetAllActive(twoHandedWeapons, false);
+    }
+
+    private void SetAllActive(GameObject[] objects, bool active)
+    {
+        if (objects == null) return;
+
+        foreach (GameObject obj in objects)
+        {
+            if (obj != null)
+                obj.SetActive(active);
+        }
+    }
+
+    private void ActivateArrayIndex(GameObject[] array, int index)
+    {
+        if (array == null) return;
+        if (index < 0 || index >= array.Length) return;
+        if (array[index] == null) return;
+
+        array[index].SetActive(true);
     }
 
     #endregion
 
-    #region 방어구 로직
+    #region 캐릭터 초상화 촬영
 
-    // 캐릭터 데이터에서 방어구 상태 확인
-    public void UpdateArmorAppearance(CharacterData characterData)
+    public Texture2D CapturePortrait(Camera camera, RenderTexture renderTexture)
     {
-        if (characterData.Armor is Armor armor)
-        {
-            ChangeArmorModel(armor.ArmorCategory);
-        }
-    }
+        if (camera == null || renderTexture == null)
+            return null;
 
-    // 방어구 외형을 변경하는 메서드
-    private void ChangeArmorModel(ArmorCategory armorCategory)
-    {
-        foreach (var armor in armors)
-        {
-            armor.SetActive(false);
-        }
+        bool prevCameraActive = camera.gameObject.activeSelf;
+        RenderTexture prevTarget = camera.targetTexture;
+        RenderTexture prevActive = RenderTexture.active;
 
-        switch (armorCategory)
-        {
-            case ArmorCategory.HeavyArmor:
-                armors[0].SetActive(true);
-                break;
-            case ArmorCategory.LightArmor:
-                armors[1].SetActive(true);
-                break;
-            case ArmorCategory.ClothArmor:
-                armors[2].SetActive(true);
-                break;
-        }
+        camera.gameObject.SetActive(true);
+        camera.targetTexture = renderTexture;
+        camera.Render();
+
+        RenderTexture.active = renderTexture;
+
+        Texture2D texture = new Texture2D(
+            renderTexture.width,
+            renderTexture.height,
+            TextureFormat.RGBA32,
+            false
+        );
+
+        texture.ReadPixels(
+            new Rect(0, 0, renderTexture.width, renderTexture.height),
+            0,
+            0
+        );
+
+        texture.Apply();
+
+        camera.targetTexture = prevTarget;
+        RenderTexture.active = prevActive;
+        camera.gameObject.SetActive(prevCameraActive);
+
+        return texture;
     }
 
     #endregion

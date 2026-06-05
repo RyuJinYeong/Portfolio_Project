@@ -424,17 +424,31 @@ public class CharacterStats // 기본 캐릭터 스탯
 
 public class CustomizationData
 {
-    public bool IsMale { get; set; }
-    public int HairType { get; set; }
-    public int EyebrowsType { get; set; }
-    public int EyeType { get; set; }
-    public int MouthType { get; set; }
-    public int BeardType { get; set; }
+    public bool IsMale { get; set; } = true;
 
-    public int HairColor { get; set; }
-    public int SkinTone { get; set; }
+    // P09 EditPartDataContainer의 ContentId 기준으로 저장
+    public int GenderId { get; set; } = 1;      // 1 = Male, 2 = Female
+    public int FaceTypeId { get; set; } = 1;
+    public int HairStyleId { get; set; } = 1;
+    public int HairColorId { get; set; } = 1;
+    public int SkinColorId { get; set; } = 1;
+    public int EyeColorId { get; set; } = 1;
 
-    // 기타 커스터마이징 옵션들
+    // 남성 전용 필드
+    public int FacialHairId { get; set; } = 0;
+
+    // 여성 전용 필드, P09 기준: 1 = S, 2 = M, 3 = L
+    public int BustSizeId { get; set; } = 2;
+
+    public void SyncGenderFromBool()
+    {
+        GenderId = IsMale ? 1 : 2;
+    }
+
+    public void SyncBoolFromGender()
+    {
+        IsMale = GenderId == 1;
+    }
 }
 
 public class CharacterData

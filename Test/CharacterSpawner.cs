@@ -42,9 +42,9 @@ public class CharacterSpawner : MonoBehaviour
         }
 
         // 스폰이 전부 끝났음을 알림 → TurnManager가 자동 시작
-        GameManager.Instance.SignalRosterReady();
+        GameManager.Instance.SignalRosterReady();                
 
-        //TurnManager.Instance.ForceRebuildAndRestart();
+        TurnManager.Instance.ForceRebuildAndRestart();
     }
 
     private void OnDestroy()

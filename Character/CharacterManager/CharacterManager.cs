@@ -43,47 +43,8 @@ public class CharacterManager : MonoBehaviour
 
     #region 캐릭터 데이터 초기화, 스폰관련 로직 - 세부 기능 구현 필요
 
-    // 캐릭터 프리로드 및 초상화 촬영
-    public void LoadCharacters(List<CharacterData> characters)
-    {
-        foreach (var characterData in characters)
-        {
-            GameObject characterInstance = InstantiateCharacter(characterData);
-
-            // 커스터마이징 적용 && 초상화 촬영
-            ApplyCustomization(characterInstance, characterData);
-        }
-    }
-
-    private GameObject InstantiateCharacter(CharacterData characterData)
-    {
-        GameObject characterInstance = new();
-        // 캐릭터를 풀에서 가져오거나 새로 생성
-        if (characterData.customizationData.IsMale)
-            characterInstance = Instantiate(GameManager.Instance.characterPrefab_M, characterPool);
-        else
-            characterInstance = Instantiate(GameManager.Instance.characterPrefab_F, characterPool);
-
-        characterInstance.SetActive(false);
-
-        return characterInstance;
-    }
-
-    public void ApplyCustomization(GameObject characterInstance, CharacterData characterData)
-    {
-        if (characterData.customizationData.IsMale)
-            characterInstance.GetComponent<CharacterCustomization>().SetBeard(characterData.customizationData.BeardType);
-
-        characterInstance.GetComponent<CharacterCustomization>().SetHairStyle(characterData.customizationData.HairType);
-        characterInstance.GetComponent<CharacterCustomization>().SetEyebrows(characterData.customizationData.EyebrowsType);
-        characterInstance.GetComponent<CharacterCustomization>().SetEyes(characterData.customizationData.EyeType);
-        characterInstance.GetComponent<CharacterCustomization>().SetMouth(characterData.customizationData.MouthType);
-
-        //characterData.Portrait = characterInstance.GetComponent<CharacterCustomization>().CapturePortrait(); // 초상화 촬영
-    }
-
     // 캐릭터 데이터 초기화 메서드
-    public void InitializeCharacter(CharacterData characterData)
+    public void InitializeCharacter(CharacterData characterData, Camera portraitCamera = null, RenderTexture portraitRenderTexture = null)
     {
         character = characterData;
         damageHandler = new DamageHandler();
@@ -127,11 +88,14 @@ public class CharacterManager : MonoBehaviour
         EquipmentManager.UpdateSkillAvailability(character);
         character.UpdateFinalStats();
 
-        // 5) 외형 갱신(무기 등)
-        GetComponent<CharacterCustomization>()?.UpdateEquipmentAppearance(character);
-                
-        character.Portrait = Resources.Load<Texture2D>("OriginIcon/"+character.originName);
-        Debug.Log(Resources.Load<Texture2D>("OriginIcon/" + character.originName) + " " + character.originName + " 초상화 초기화");
+        // 5) 외형 / 초상화 / 애니메이터 처리
+        CharacterCustomization customization = GetComponent<CharacterCustomization>();
+        
+        if (customization != null)
+        {
+            customization.ApplyCustomization(character);
+            customization.UpdateEquipmentAppearance(character);
+        }        
 
         // 6) 스냅샷 비우기
         character.InventoryJsonSnapshot = null;

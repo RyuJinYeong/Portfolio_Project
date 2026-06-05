@@ -126,13 +126,14 @@ public static class SaveMapper
 
             // 커스터마이징
             isMale = c.customizationData?.IsMale ?? true,
-            hairType = c.customizationData?.HairType ?? 0,
-            eyebrowsType = c.customizationData?.EyebrowsType ?? 0,
-            eyeType = c.customizationData?.EyeType ?? 0,
-            mouthType = c.customizationData?.MouthType ?? 0,
-            beardType = c.customizationData?.BeardType ?? 0,
-            hairColor = c.customizationData?.HairColor ?? 0,
-            skinTone = c.customizationData?.SkinTone ?? 0,
+            genderId = c.customizationData?.GenderId ?? 1,
+            faceTypeId = c.customizationData?.FaceTypeId ?? 1,
+            hairStyleId = c.customizationData?.HairStyleId ?? 1,
+            hairColorId = c.customizationData?.HairColorId ?? 1,
+            skinColorId = c.customizationData?.SkinColorId ?? 1,
+            eyeColorId = c.customizationData?.EyeColorId ?? 1,
+            facialHairId = c.customizationData?.FacialHairId ?? 0,
+            bustSizeId = c.customizationData?.BustSizeId ?? 2,
 
             // ★ 런타임 값은 CharacterData에서
             level = c.Level,
@@ -253,13 +254,14 @@ public static class SaveMapper
             customizationData = new CustomizationData
             {
                 IsMale = dto.isMale,
-                HairType = dto.hairType,
-                EyebrowsType = dto.eyebrowsType,
-                EyeType = dto.eyeType,
-                MouthType = dto.mouthType,
-                BeardType = dto.beardType,
-                HairColor = dto.hairColor,
-                SkinTone = dto.skinTone
+                GenderId = dto.genderId <= 0 ? (dto.isMale ? 1 : 2) : dto.genderId,
+                FaceTypeId = dto.faceTypeId <= 0 ? 1 : dto.faceTypeId,
+                HairStyleId = dto.hairStyleId <= 0 ? 1 : dto.hairStyleId,
+                HairColorId = dto.hairColorId <= 0 ? 1 : dto.hairColorId,
+                SkinColorId = dto.skinColorId <= 0 ? 1 : dto.skinColorId,
+                EyeColorId = dto.eyeColorId <= 0 ? 1 : dto.eyeColorId,
+                FacialHairId = dto.facialHairId,
+                BustSizeId = dto.bustSizeId <= 0 ? 2 : dto.bustSizeId
             },
 
             BaseStats = dto.baseStats?.Copy() ?? new CharacterStats(),

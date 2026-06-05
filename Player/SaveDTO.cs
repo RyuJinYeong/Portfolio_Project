@@ -38,10 +38,16 @@ public class CharacterSaveDTO
     public int belonging;
     public int morale;
 
-    // 커스터마이징 (필요한 것만 Opt-in)
+    // 커스터마이징 - P09 ContentId 기준
     public bool isMale;
-    public int hairType, eyebrowsType, eyeType, mouthType, beardType;
-    public int hairColor, skinTone;
+    public int genderId;
+    public int faceTypeId;
+    public int hairStyleId;
+    public int hairColorId;
+    public int skinColorId;
+    public int eyeColorId;
+    public int facialHairId;
+    public int bustSizeId;
 
     // 진행/상태
     public int level;
