@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f867e165e03cc7a43a460fbf044cded6, type: 3}
+  m_Name: "1011_\uC5F4\uC0C1"
+  m_EditorClassIdentifier: 
+  id: 1011
+  statusName: "\uC5F4\uC0C1"
+  description: "\uD53C\uACA9 \uD0C0\uC218\uB9C8\uB2E4 \uC2A4\uD0DD \uBE44\uB840 \uACE0\uC815
+    \uD53C\uD574"
+  icon: {fileID: 0}
+  isDebuff: 1
+  durationType: 1
+  effectType: 2
+  maxStack: 0
+  fixedDamagePerStack: 1
+  counterPenaltyPerStack: 0
+  attackerStatWeights:
+  - stat: 1
+    weight: 0.6
+  - stat: 0
+    weight: 0.25
+  - stat: 2
+    weight: 0.15

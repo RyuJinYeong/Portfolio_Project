@@ -1,13 +1,10 @@
 using Newtonsoft.Json;
 using PlayFab;
 using PlayFab.ClientModels;
-using SoftKitty.InventoryEngine;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.TextCore.Text;
 
 public class PlayerManager : MonoBehaviour
 {
@@ -46,56 +43,6 @@ public class PlayerManager : MonoBehaviour
             return _instance;
         }
     }
-
-    public void GetSkillIconAddressesBulk(IEnumerable<string> characterIds, Action<List<string>> onDone)
-    {
-        var ids = characterIds?.Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList() ?? new List<string>();
-        if (ids.Count == 0) { onDone?.Invoke(new List<string>()); return; }
-
-        PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>
-        {
-            var keys = new HashSet<string>();
-
-            foreach (var id in ids)
-            {
-                var key = id;
-                if (result.Data == null || !result.Data.TryGetValue(key, out var rec) || string.IsNullOrEmpty(rec.Value))
-                    continue;
-
-                try
-                {
-                    var dto = JsonConvert.DeserializeObject<CharacterSaveDTO>(rec.Value);
-                    if (dto?.skills != null)
-                        foreach (var s in dto.skills) TryAddSkillIcon(s.uid, keys);
-                    if (dto?.defaultCounterSkillUid != 0)
-                        TryAddSkillIcon(dto.defaultCounterSkillUid, keys);
-                    // 장비 부여 스킬 등을 DTO에 넣었다면 여기도 추가
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"GetSkillIconAddressesBulk: parse error for {id}\n{e}");
-                }
-            }
-
-            onDone?.Invoke(keys.ToList());
-        },
-        err =>
-        {
-            Debug.LogError($"GetSkillIconAddressesBulk: PlayFab error\n{err.GenerateErrorReport()}");
-            onDone?.Invoke(new List<string>());
-        });
-    }
-
-    static void TryAddSkillIcon(int uid, HashSet<string> keys)
-    {
-        if (uid == 0) return;
-        if (ItemManager.itemDic.TryGetValue(uid, out var item) && item is SkillBase sb)
-        {
-            if (!string.IsNullOrEmpty(sb.IconAddress))
-                keys.Add(sb.IconAddress);
-        }
-    }
-
 
     // 플레이어 로그인 후 데이터를 불러오는 메서드
     public void LoadPlayerDataFromPlayFab()
@@ -243,10 +190,10 @@ public class PlayerManager : MonoBehaviour
 
     public void SaveCharacterPosition(string characterID, bool isFrontRow)
     {
-        if (_instance.currentPlayerData != null)
-        {
-            _instance.currentPlayerData.characterPositionMapping[characterID] = isFrontRow;
-            SavePlayerDataToPlayFab();
-        }
+        if (_instance.currentPlayerData == null)
+            return;
+
+        _instance.currentPlayerData.SetPosition(characterID, isFrontRow);
+        SavePlayerDataToPlayFab();
     }
 }

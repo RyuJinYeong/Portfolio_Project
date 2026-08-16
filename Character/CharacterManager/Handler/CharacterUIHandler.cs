@@ -1,9 +1,5 @@
-using SoftKitty.InventoryEngine;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using TMPro;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -22,29 +18,35 @@ public class CharacterUIHandler : MonoBehaviour
     public GameObject skillQueuePanel;
     public GameObject counterSkillQueuePanel;
     public GameObject skillIconPrefab;
-    
+
+    [Header("Optional Icons")]
+    public Texture2D concealedSkillIcon;
+
     public TextMeshProUGUI characterName;
 
     public TextMeshProUGUI hpText;
     public TextMeshProUGUI staminaText;
-    public TextMeshProUGUI mentalityText;    
+    public TextMeshProUGUI mentalityText;
+
+    public GameObject statusEffectIconPrefab;
+    public Transform statusEffectIconParent;
 
     private CharacterManager characterManager;
-    private Camera mainCamera; 
+    private Camera mainCamera;
+    private List<GameObject> activeStatusIcons = new List<GameObject>();
 
     void Awake()
-    {        
+    {
         mainCamera = Camera.main;
         characterManager = GetComponentInParent<CharacterManager>();
     }
 
     void Update()
     {
-        // 매 프레임마다 UI 캔버스를 카메라 방향으로 회전
         FaceCamera();
     }
 
-    public void UpdateUI() // 상태 변화 감지 후 CharacterManager에서 호출
+    public void UpdateUI()
     {
         UpdateHPBar();
         UpdateStaminaBar();
@@ -57,174 +59,358 @@ public class CharacterUIHandler : MonoBehaviour
 
     public void FaceCamera()
     {
-        // 현재 UI 캔버스가 카메라를 항상 바라보도록 설정
-        if (mainCamera != null)
+        if (mainCamera != null && StatusCanvas != null)
         {
-            StatusCanvas.transform.LookAt(transform.position + mainCamera.transform.rotation * Vector3.forward,
-                             mainCamera.transform.rotation * Vector3.up);
+            StatusCanvas.transform.LookAt(
+                transform.position + mainCamera.transform.rotation * Vector3.forward,
+                mainCamera.transform.rotation * Vector3.up);
         }
     }
 
-    // 스킬 큐 UI 업데이트
-    public void UpdateSkillQueueUI(List<(SkillBase skill, CharacterManager target)> queue, CharacterManager caster)
+    public void UpdateSkillQueueUI(List<SkillQueueData> queue, CharacterManager caster)
     {
-        Debug.Log(caster.character.Name +"의 Skillqueue를 기준으로 " + this.characterManager.character.Name + " UI 갱신");
-        // 기존 UI 전부 제거
-        foreach (Transform child in skillQueuePanel.transform)
-            Destroy(child.gameObject);
+        if (queue == null || caster == null || skillQueuePanel == null || skillIconPrefab == null)
+            return;
+
+        Debug.Log(caster.character.Name + "의 SkillQueue를 기준으로 " + characterManager.character.Name + " UI 갱신");
+
+        ClearChildren(skillQueuePanel.transform);
 
         for (int i = 0; i < queue.Count; i++)
         {
-            if (queue[i].target == this.characterManager)
+            SkillQueueData data = queue[i];
+
+            if (data == null || data.skill == null)
+                continue;
+
+            if (data.target != characterManager)
+                continue;
+
+            GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
+
+            ApplySkillIcon(skillIconInstance, data);
+            ApplySkillButtonData(skillIconInstance, data, i, false);
+            ApplyQueueText(skillIconInstance, data, i);
+
+            if (caster.character.IsMine)
             {
-                // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
-                GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
-                skillIconInstance.GetComponent<RawImage>().texture = queue[i].skill.icon;  // 스킬 아이콘 설정                
+                Button button = skillIconInstance.GetComponent<Button>();
 
-                var sb = skillIconInstance.GetComponent<SkillButton>();
-                if (sb != null)
+                if (button != null)
                 {
-                    sb.skill = queue[i].skill;
-                    sb.queueIndex = i; // 0부터 시작
-                }
+                    int capturedIndex = i;
 
-                // 순서 표시 (좌상단 텍스트)
-                TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
-                if (orderText != null)
-                {
-                    orderText.text = (i + 1).ToString();
-                }
-
-                if (caster.character.IsMine)
-                {
-                    // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-                    var button = skillIconInstance.GetComponent<Button>();
-                    if (button != null)
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(() =>
                     {
-                        button.onClick.AddListener(() =>
-                        {
-                            if (sb != null)
-                            {
-                                caster.combatHandler.RemoveSkillFromQueue(sb.skill, sb.queueIndex);
-                            }
-                        });
-                    }
+                        caster.combatHandler.RemoveSkillFromQueue(capturedIndex);
+                    });
                 }
             }
         }
     }
 
-    public void UpdateCounterSkillQueueUI(List<(SkillBase skill, CharacterManager target)> queue, CharacterManager caster)
+    public void UpdateCounterSkillQueueUI(List<SkillQueueData> queue, CharacterManager caster)
     {
-        Debug.Log(caster.character.Name + "의 CounterSkillqueue를 기준으로 " + this.characterManager.character.Name + " UI 갱신");
-        // 기존 UI 전부 제거
-        foreach (Transform child in counterSkillQueuePanel.transform)
-            Destroy(child.gameObject);
+        if (queue == null || caster == null || counterSkillQueuePanel == null || skillIconPrefab == null)
+            return;
 
-        // 대응 스킬 큐 업데이트
+        Debug.Log(caster.character.Name + "의 CounterSkillQueue를 기준으로 " + characterManager.character.Name + " UI 갱신");
+
+        ClearChildren(counterSkillQueuePanel.transform);
 
         for (int i = 0; i < queue.Count; i++)
         {
-            if (queue[i].target == this.characterManager)
+            SkillQueueData data = queue[i];
+
+            if (data == null || data.skill == null)
+                continue;
+
+            if (data.target != characterManager)
+                continue;
+
+            GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
+
+            ApplySkillIcon(skillIconInstance, data);
+            ApplySkillButtonData(skillIconInstance, data, i, true);
+            ApplyQueueText(skillIconInstance, data, i);
+
+            if (caster.character.IsMine)
             {
-                // 스킬 아이콘 프리팹 인스턴스화 및 부모 설정
-                GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
-                skillIconInstance.GetComponent<RawImage>().texture = queue[i].skill.icon;  // 스킬 아이콘 설정                
+                Button button = skillIconInstance.GetComponent<Button>();
 
-                var sb = skillIconInstance.GetComponent<SkillButton>();
-                if (sb != null)
+                if (button != null)
                 {
-                    sb.skill = queue[i].skill;
-                    sb.queueIndex = i; // 0부터 시작
-                }
+                    int capturedIndex = i;
+                    SkillDefinitionSO capturedSkill = data.skill;
 
-                // 순서 표시 (좌상단 텍스트)
-                TextMeshProUGUI orderText = skillIconInstance.GetComponentInChildren<TextMeshProUGUI>();
-                if (orderText != null)
-                {
-                    orderText.text = (i + 1).ToString();
-                }
-
-                if (caster.character.IsMine)
-                {
-                    // 클릭 시 CombatHandler의 스킬 제거 메서드를 호출하는 리스너 추가
-                    var button = skillIconInstance.GetComponent<Button>();
-                    if (button != null)
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(() =>
                     {
-                        button.onClick.AddListener(() =>
+                        if (caster.character.DefaultCounterSkill > 0 &&
+                            capturedSkill.uid == caster.character.DefaultCounterSkill)
                         {
-                            if (sb != null && sb.skill != caster.character.DefaultCounterSkill)
-                            {
-                                caster.combatHandler.RemoveCounterSkillFromQueue(sb.skill, sb.queueIndex);
-                            }
-                            else
-                            {
-                                Debug.Log("기본 대응 스킬은 제거할 수 없습니다: " + sb.skill.name);
-                            }
-                        });
-                    }
+                            Debug.Log("기본 대응 스킬은 제거할 수 없습니다: " + capturedSkill.skillName);
+                            return;
+                        }
+
+                        caster.combatHandler.RemoveCounterSkillFromQueue(capturedIndex);
+                    });
                 }
             }
         }
+    }
+
+    private void ClearChildren(Transform parent)
+    {
+        if (parent == null)
+            return;
+
+        foreach (Transform child in parent)
+        {
+            Destroy(child.gameObject);
+        }
+    }
+
+    private void ApplySkillIcon(GameObject skillIconInstance, SkillQueueData data)
+    {
+        if (skillIconInstance == null || data == null || data.skill == null)
+            return;
+
+        RawImage rawImage = skillIconInstance.GetComponent<RawImage>();
+
+        if (rawImage == null)
+            return;
+
+        if (ShouldShowConcealedIcon(data))
+        {
+            rawImage.texture = concealedSkillIcon;
+            return;
+        }
+
+        rawImage.texture = data.skill.icon;
+    }
+
+    private void ApplySkillButtonData(
+        GameObject skillIconInstance,
+        SkillQueueData data,
+        int queueIndex,
+        bool isCounterSkill)
+    {
+        if (skillIconInstance == null || data == null)
+            return;
+
+        SkillButton sb = skillIconInstance.GetComponent<SkillButton>();
+
+        if (sb == null)
+            return;
+
+        sb.skill = data.skill;
+        sb.queueData = data;
+        sb.queueIndex = queueIndex;
+        sb.isCounterSkill = isCounterSkill;
+    }
+
+    private void ApplyQueueText(GameObject skillIconInstance, SkillQueueData data, int queueIndex)
+    {
+        if (skillIconInstance == null || data == null)
+            return;
+
+        TextMeshProUGUI[] texts = skillIconInstance.GetComponentsInChildren<TextMeshProUGUI>();
+
+        if (texts == null || texts.Length == 0)
+            return;
+
+        texts[0].text = (queueIndex + 1).ToString();
+
+        if (texts.Length >= 2)
+        {
+            texts[1].text = GetSkillDisplayText(data);
+        }
+    }
+
+    private bool ShouldShowConcealedIcon(SkillQueueData data)
+    {
+        if (data == null)
+            return false;
+
+        if (!data.isConcealed)
+            return false;
+
+        return data.revealLevel != RevealLevel.Full;
+    }
+
+    private string GetSkillDisplayText(SkillQueueData data)
+    {
+        if (data == null || data.skill == null)
+            return string.Empty;
+
+        if (!data.isConcealed)
+            return data.skill.skillName;
+
+        switch (data.revealLevel)
+        {
+            case RevealLevel.Full:
+                return data.skill.skillName;
+
+            case RevealLevel.Partial:
+                return GetPartialSkillInfo(data.skill);
+
+            case RevealLevel.None:
+            default:
+                return "은폐";
+        }
+    }
+
+    private string GetPartialSkillInfo(SkillDefinitionSO skill)
+    {
+        if (skill == null)
+            return "은폐";
+
+        string style = GetStyleText(skill.style);
+        string power = GetPowerRankText(skill.GetTotalDamageMultiplier());
+        string speed = GetSpeedRankText(skill.activationSpeed);
+
+        return $"은폐: {style} / {power} / {speed}";
+    }
+
+    private string GetStyleText(SkillStyle style)
+    {
+        return style switch
+        {
+            SkillStyle.Strength => "힘",
+            SkillStyle.Dexterity => "기교",
+            SkillStyle.Speed => "속도",
+            _ => "-"
+        };
+    }
+
+    private string GetPowerRankText(float damageMultiplier)
+    {
+        if (damageMultiplier >= 1.5f)
+            return "고위력";
+
+        if (damageMultiplier >= 0.9f)
+            return "중위력";
+
+        return "저위력";
+    }
+
+    private string GetSpeedRankText(float activationSpeed)
+    {
+        if (activationSpeed >= 1.2f)
+            return "빠름";
+
+        if (activationSpeed >= 0.9f)
+            return "보통";
+
+        return "느림";
     }
 
     public void UpdateResourceTexts()
     {
-        hpText.text = $"{characterManager.character.CurrentHp} / {characterManager.character.FinalStats.MaxHp}";
-        staminaText.text = $"{characterManager.character.CurrentStamina} / {characterManager.character.FinalStats.MaxStamina} (+{characterManager.character.FinalStats.StaminaRecovery})";
-        mentalityText.text = $"{characterManager.character.CurrentMentality} / {characterManager.character.FinalStats.MaxMentality} (+{characterManager.character.FinalStats.MentalityRecovery})";
+        if (characterManager == null || characterManager.character == null || characterManager.character.FinalStats == null)
+            return;
+
+        if (hpText != null)
+            hpText.text = $"{characterManager.character.CurrentHp} / {characterManager.character.FinalStats.MaxHp}";
+
+        if (staminaText != null)
+            staminaText.text = $"{characterManager.character.CurrentStamina} / {characterManager.character.FinalStats.MaxStamina} (+{characterManager.character.FinalStats.StaminaRecovery})";
+
+        if (mentalityText != null)
+            mentalityText.text = $"{characterManager.character.CurrentMentality} / {characterManager.character.FinalStats.MaxMentality} (+{characterManager.character.FinalStats.MentalityRecovery})";
     }
 
     private void UpdateHPBar()
     {
-        float hpPercentage = (float)characterManager.character.CurrentHp / characterManager.character.FinalStats.MaxHp;
-        hpBar.GetComponent<Slider>().value = hpPercentage;
+        if (characterManager == null || characterManager.character == null || characterManager.character.FinalStats == null)
+            return;
+
+        if (hpBar == null)
+            return;
+
+        float hpPercentage = 0f;
+
+        if (characterManager.character.FinalStats.MaxHp > 0)
+            hpPercentage = (float)characterManager.character.CurrentHp / characterManager.character.FinalStats.MaxHp;
+
+        Slider slider = hpBar.GetComponent<Slider>();
+
+        if (slider != null)
+            slider.value = hpPercentage;
     }
 
     private void UpdateStaminaBar()
     {
-        float staminaPercentage = (float)characterManager.character.CurrentStamina / characterManager.character.FinalStats.MaxStamina;
-        staminaBar.GetComponent<Slider>().value = staminaPercentage;
+        if (characterManager == null || characterManager.character == null || characterManager.character.FinalStats == null)
+            return;
+
+        if (staminaBar == null)
+            return;
+
+        float staminaPercentage = 0f;
+
+        if (characterManager.character.FinalStats.MaxStamina > 0)
+            staminaPercentage = (float)characterManager.character.CurrentStamina / characterManager.character.FinalStats.MaxStamina;
+
+        Slider slider = staminaBar.GetComponent<Slider>();
+
+        if (slider != null)
+            slider.value = staminaPercentage;
     }
 
     private void UpdateMentalityBar()
     {
-        float mentalityPercentage = (float)characterManager.character.CurrentMentality / characterManager.character.FinalStats.MaxMentality;
-        mentalityBar.GetComponent<Slider>().value = mentalityPercentage;
+        if (characterManager == null || characterManager.character == null || characterManager.character.FinalStats == null)
+            return;
+
+        if (mentalityBar == null)
+            return;
+
+        float mentalityPercentage = 0f;
+
+        if (characterManager.character.FinalStats.MaxMentality > 0)
+            mentalityPercentage = (float)characterManager.character.CurrentMentality / characterManager.character.FinalStats.MaxMentality;
+
+        Slider slider = mentalityBar.GetComponent<Slider>();
+
+        if (slider != null)
+            slider.value = mentalityPercentage;
     }
 
-    public GameObject statusEffectIconPrefab;  // 상태이상 아이콘 프리팹
-    public Transform statusEffectIconParent;  // 상태이상 아이콘을 표시할 부모 오브젝트
-    private List<GameObject> activeStatusIcons = new List<GameObject>(); // 활성화 상태이상 아이콘
-
-    // 상태이상을 UI에 표시하는 메서드
     public void UpdateStatusEffects()
     {
         /*
-        // 기존 아이콘 초기화
         foreach (var icon in activeStatusIcons)
         {
             Destroy(icon);
         }
+
         activeStatusIcons.Clear();
 
-        // 새로운 상태이상 아이콘 생성
         foreach (var effect in activeEffects)
         {
             GameObject iconInstance = Instantiate(statusEffectIconPrefab, statusEffectIconParent);
             iconInstance.GetComponentInChildren<RawImage>().texture = effect.Icon;
-            //iconInstance.GetComponent<TooltipManager>().SetupTooltip(effect.Description);
             activeStatusIcons.Add(iconInstance);
-        }*/
+        }
+        */
     }
 
     private void UpdateTurnIcon()
     {
+        if (turnIcon == null || characterManager == null)
+            return;
+
         turnIcon.SetActive(characterManager.isPlayerTurn);
     }
 
     private void UpdateCharacterName()
     {
+        if (characterName == null || characterManager == null || characterManager.character == null)
+            return;
+
         characterName.text = characterManager.character.Name;
     }
 }

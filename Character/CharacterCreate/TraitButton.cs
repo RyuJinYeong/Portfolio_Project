@@ -1,56 +1,58 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class TraitButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+public class TraitButton : MonoBehaviour
 {
-    public TraitBase trait;
+    public TraitDefinitionSO trait;
+
+    private TraitSelectionUI selectionUI;
+    private bool isSelected;
+    private int traitCost;
+
+    public TextMeshProUGUI nameText;
+    public TextMeshProUGUI costText;
+    public TextMeshProUGUI descriptionText;
     public Button button;
-    public TextMeshProUGUI buttonText;
 
-    private TraitSelectionUI traitSelectionUI;
-    private bool isAdded;
-
-    public void Initialize(TraitBase trait, TraitSelectionUI ui, bool isAdded, int traitCost)
+    public void Initialize(
+        TraitDefinitionSO trait,
+        TraitSelectionUI selectionUI,
+        bool isSelected,
+        int traitCost)
     {
         this.trait = trait;
-        this.traitSelectionUI = ui;
-        this.isAdded = isAdded;
+        this.selectionUI = selectionUI;
+        this.isSelected = isSelected;
+        this.traitCost = traitCost;
 
-        // Ç¥±â: "{Grade} {Name} ({+/-BaseCost})"
-        int baseCost = TraitEconomy.BaseCostByGrade(trait.Grade);
-        string sign = trait.Polarity == TraitPolarity.Negative ? "+" : (baseCost > 0 ? "-" : "");
-        string grade = trait.Grade.ToString(); // F/E/D/C/B/A/S
+        if (nameText != null)
+            nameText.text = trait != null ? trait.traitName : "";
 
-        buttonText.text = $"{grade} {trait.Name} ({sign}{baseCost})";
+        if (costText != null)
+            costText.text = traitCost.ToString();
 
-        button.onClick.RemoveAllListeners();
-        button.onClick.AddListener(OnClick);
+        if (descriptionText != null)
+            descriptionText.text = trait != null ? trait.description : "";
+
+        if (button == null)
+            button = GetComponent<Button>();
+
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(OnClick);
+        }
     }
 
-    public void OnClick()
+    private void OnClick()
     {
-        if (isAdded)
-        {
-            traitSelectionUI.MoveTraitToLeft(trait);
-        }
+        if (trait == null || selectionUI == null)
+            return;
+
+        if (isSelected)
+            selectionUI.MoveTraitToLeft(trait);
         else
-        {
-            traitSelectionUI.MoveTraitToRight(trait);
-        }
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        if (TooltipManager.Instance.keywordTooltips.TryGetValue(trait.Name, out string description))
-        {
-            TooltipManager.Instance.ShowTooltip(description, Input.mousePosition);
-        }
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        TooltipManager.Instance.HideTooltip();
+            selectionUI.MoveTraitToRight(trait);
     }
 }

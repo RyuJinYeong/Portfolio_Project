@@ -114,18 +114,20 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
         // 스탯 조건 확인
         foreach (var condition in RequiredStats)
         {
-            var stats = character.FinalStats.GetStats();
+            /*var stats = character.FinalStats.GetStats();
             if (!stats.TryGetValue(condition.Key, out var val) || val < condition.Value)
-                return false;
+                return false;*/
         }
 
         // 특성 조건 확인
         foreach (var trait in RequiredTraits)
         {
+            /* 임시 주석 처리
             if (!character.Traits.Contains(trait))
             {
                 return false; // 특성 조건 미충족
             }
+            */
         }
 
         return true; // 모든 조건 충족
@@ -159,10 +161,12 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
         // 진화에 필요한 특성 조건 확인
         foreach (var trait in EvolRequiredTraits)
         {
+            /* 임시 주석 처리
             if (!character.Traits.Contains(trait))
             {
                 return false; // 특성 조건 미충족
             }
+            */
         }
 
         return true; // 모든 조건 충족
@@ -176,9 +180,11 @@ public class SkillBase : Item  // 에셋의 Item 클래스를 상속받음
         
         if (ItemManager.itemDic[nextSkillUid].Copy() is SkillBase nextSkill)
         {
+            /* 임시 주석 처리
             SkillManager.RemoveSkill(user, this);
             SkillManager.AddSkill(user, nextSkill); // 진화된 스킬로 대체
             Debug.Log($"{name} 스킬 -> {nextSkill.name}");
+            */
         }
         else
         {

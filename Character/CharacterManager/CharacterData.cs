@@ -1,184 +1,100 @@
-﻿using UnityEngine;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Linq;
-using UnityEditor.Experimental.GraphView;
-using UnityEngine.TextCore.Text;
-using SoftKitty.InventoryEngine;
-using Unity.VisualScripting.Antlr3.Runtime.Misc;
-using System.Threading.Tasks;
+using UnityEngine;
 
+[Serializable]
 public class CharacterStats // 기본 캐릭터 스탯
 {
-    #region Private 필드
-    private int strength;
-    private int dexterity;
-    private int speed;
-    private int intelligence;
-    private int wisdom;
-    private int health;
-    private int endurance;
+    #region 기본 스탯 필드
+    public int Strength; // 힘
+    public int Dexterity; // 기교
+    public int Speed; // 속도
+    public int Intelligence; // 지능
+    public int Wisdom; // 지혜
+    public int Health; // 건강
+    public int Vitality; // 활력
+    public int Endurance; // 인내
 
-    private int detection;
-    private int insight;
+    public int Detection;
+    public int Insight;
 
-    private float attackSpeed;
-    private float castSpeed;
+    public float AttackSpeed;
+    public float CastSpeed;
 
-    private float weaponAttackSpeedMultiplier;
-    private float weaponCastSpeedMultiplier;
+    public float WeaponAttackSpeedMultiplier;
+    public float WeaponCastSpeedMultiplier;
 
-    private int maxHp;
-    private int maxMentality;
-    private int maxStamina;
+    public int MaxHp;
+    public int MaxMentality;
+    public int MaxStamina;
 
-    private int staminaRecovery;
-    private int mentalityRecovery;
-    #endregion
-
-    #region 프로퍼티
-    public int Strength
-    {
-        get => strength;
-        set => strength = Mathf.Max(0, value); // 최소값 0 보장
-    }
-
-    public int Dexterity
-    {
-        get => dexterity;
-        set => dexterity = Mathf.Max(0, value);
-    }
-
-    public int Speed
-    {
-        get => speed;
-        set => speed = Mathf.Max(0, value);
-    }
-
-    public int Intelligence
-    {
-        get => intelligence;
-        set => intelligence = Mathf.Max(0, value);
-    }
-
-    public int Wisdom
-    {
-        get => wisdom;
-        set => wisdom = Mathf.Max(0, value);
-    }
-
-    public int Health
-    {
-        get => health;
-        set => health = Mathf.Max(0, value);
-    }
-
-    public int Endurance
-    {
-        get => endurance;
-        set => endurance = Mathf.Max(0, value);
-    }
-
-    public int Detection
-    {
-        get => detection;
-        set => detection = Mathf.Max(0, value);
-    }
-
-    public int Insight
-    {
-        get => insight;
-        set => insight = Mathf.Max(0, value);
-    }
-
-    public float AttackSpeed
-    {
-        get => attackSpeed;
-        set => attackSpeed = Mathf.Max(0, value);
-    }
-
-    public float CastSpeed
-    {
-        get => castSpeed;
-        set => castSpeed = Mathf.Max(0, value);
-    }
-
-    public float WeaponAttackSpeedMultiplier
-    {
-        get => weaponAttackSpeedMultiplier;
-        set => weaponAttackSpeedMultiplier = Mathf.Max(0, value);
-    }
-
-    public float WeaponCastSpeedMultiplier
-    {
-        get => weaponCastSpeedMultiplier;
-        set => weaponCastSpeedMultiplier = Mathf.Max(0, value);
-    }
-
-    public int MaxHp
-    {
-        get => maxHp;
-        set => maxHp = Mathf.Max(0, value);
-    }
-
-    public int MaxMentality
-    {
-        get => maxMentality;
-        set => maxMentality = Mathf.Max(0, value);
-    }
-
-    public int MaxStamina
-    {
-        get => maxStamina;
-        set => maxStamina = Mathf.Max(0, value);
-    }
-    public int StaminaRecovery
-    {
-        get => staminaRecovery;
-        set => staminaRecovery = Mathf.Max(0, value);
-    }
-
-    public int MentalityRecovery
-    {
-        get => mentalityRecovery;
-        set => mentalityRecovery = Mathf.Max(0, value);
-    }
+    public int StaminaRecovery;
+    public int MentalityRecovery;
     #endregion
 
     #region 속성별저항력 ( 백분위 )
 
-    public int FireResistance { get; set; }
-    public int WaterResistance { get; set; }
-    public int EarthResistance { get; set; }
-    public int WindResistance { get; set; }
-    public int PierceResistance { get; set; }
-    public int SlashResistance { get; set; }
-    public int SmashResistance { get; set; }
-
-    // 필요에 따라 속성 추가...
+    public int FireResistance;
+    public int IceResistance;
+    public int LightningResistance;
+    public int PierceResistance;
+    public int SlashResistance;
+    public int SmashResistance;
 
     #endregion
 
     #region 속성별 특화 ( 백분위 )
 
-    public int FireAffinity { get; set; } // 불 속성 특화
-    public int WaterAffinity { get; set; } // 물 속성 특화
-    public int EarthAffinity { get; set; } // 땅 속성 특화
-    public int WindAffinity { get; set; } // 바람 속성 특화
-    public int PierceAffinity { get; set; } // 관통 특화
-    public int SlashAffinity { get; set; } // 참격 특화
-    public int SmashAffinity { get; set; } // 타격 특화
+    public int FireAffinity; // 불 속성 특화
+    public int IceAffinity; // 물 속성 특화
+    public int LightningAffinity; // 땅 속성 특화
+    public int PierceAffinity; // 관통 특화
+    public int SlashAffinity; // 참격 특화
+    public int SmashAffinity; // 타격 특화
 
     #endregion
 
 
     #region 공격력/방어력
-    public uint PhysicalAttack { get; set; } = 0;
-    public uint MagicalAttack { get; set; } = 0;
-    public int PhysicalDefense { get; set; } = 0;
-    public int MagicalDefense { get; set; } = 0;
+    public int PhysicalAttack  = 0;
+    public int MagicalAttack  = 0;
+    public int PhysicalDefense = 0;
+    public int MagicalDefense = 0;
     #endregion
+
+    public void ClampNonNegative()
+    {
+        Strength = Mathf.Max(0, Strength);
+        Dexterity = Mathf.Max(0, Dexterity);
+        Speed = Mathf.Max(0, Speed);
+        Intelligence = Mathf.Max(0, Intelligence);
+        Wisdom = Mathf.Max(0, Wisdom);
+        Health = Mathf.Max(0, Health);
+        Vitality = Mathf.Max(0, Vitality);
+        Endurance = Mathf.Max(0, Endurance);
+
+        Detection = Mathf.Max(0, Detection);
+        Insight = Mathf.Max(0, Insight);
+
+        AttackSpeed = Mathf.Max(0, AttackSpeed);
+        CastSpeed = Mathf.Max(0, CastSpeed);
+        WeaponAttackSpeedMultiplier = Mathf.Max(0, WeaponAttackSpeedMultiplier);
+        WeaponCastSpeedMultiplier = Mathf.Max(0, WeaponCastSpeedMultiplier);
+
+        MaxHp = Mathf.Max(0, MaxHp);
+        MaxMentality = Mathf.Max(0, MaxMentality);
+        MaxStamina = Mathf.Max(0, MaxStamina);
+
+        StaminaRecovery = Mathf.Max(0, StaminaRecovery);
+        MentalityRecovery = Mathf.Max(0, MentalityRecovery);
+
+        PhysicalAttack = Mathf.Max(0, PhysicalAttack);
+        MagicalAttack = Mathf.Max(0, MagicalAttack);
+        PhysicalDefense = Mathf.Max(0, PhysicalDefense);
+        MagicalDefense = Mathf.Max(0, MagicalDefense);
+    }
 
 
     #region 생성자
@@ -187,7 +103,7 @@ public class CharacterStats // 기본 캐릭터 스탯
 
     }
 
-    public CharacterStats(int str, int dex, int spd, int intl, int wis, int hth, int end)
+    public CharacterStats(int str, int dex, int spd, int intl, int wis, int hth, int end, int vit)
     {
         Strength = str;
         Dexterity = dex;
@@ -196,6 +112,7 @@ public class CharacterStats // 기본 캐릭터 스탯
         Wisdom = wis;
         Health = hth;
         Endurance = end;
+        Vitality = vit;
     }
     #endregion
 
@@ -214,6 +131,7 @@ public class CharacterStats // 기본 캐릭터 스탯
             Wisdom = a.Wisdom + b.Wisdom,
             Health = a.Health + b.Health,
             Endurance = a.Endurance + b.Endurance,
+            Vitality = a.Vitality + b.Vitality,
             Detection = a.Detection + b.Detection,
             Insight = a.Insight + b.Insight,
             MaxMentality = a.MaxMentality + b.MaxMentality,
@@ -222,9 +140,8 @@ public class CharacterStats // 기본 캐릭터 스탯
             MentalityRecovery = a.MentalityRecovery + b.MentalityRecovery,
             MaxHp = a.MaxHp + b.MaxHp,
             FireResistance = a.FireResistance + b.FireResistance,
-            WaterResistance = a.WaterResistance + b.WaterResistance,
-            EarthResistance = a.EarthResistance + b.EarthResistance,
-            WindResistance = a.WindResistance + b.WindResistance,
+            IceResistance = a.IceResistance + b.IceResistance,
+            LightningResistance = a.LightningResistance + b.LightningResistance,
             PierceResistance = a.PierceResistance + b.PierceResistance,
             SlashResistance = a.SlashResistance + b.SlashResistance,
             SmashResistance = a.SmashResistance + b.SmashResistance,
@@ -237,9 +154,8 @@ public class CharacterStats // 기본 캐릭터 스탯
             WeaponAttackSpeedMultiplier = a.WeaponAttackSpeedMultiplier + b.WeaponAttackSpeedMultiplier,
             WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier + b.WeaponCastSpeedMultiplier,
             FireAffinity = a.FireAffinity + b.FireAffinity,
-            WaterAffinity = a.WaterAffinity + b.WaterAffinity,
-            EarthAffinity = a.EarthAffinity + b.EarthAffinity,
-            WindAffinity = a.WindAffinity + b.WindAffinity,
+            IceAffinity = a.IceAffinity + b.IceAffinity,
+            LightningAffinity = a.LightningAffinity + b.LightningAffinity,
             PierceAffinity = a.PierceAffinity + b.PierceAffinity,
             SlashAffinity = a.SlashAffinity + b.SlashAffinity,
             SmashAffinity = a.SmashAffinity + b.SmashAffinity
@@ -259,6 +175,7 @@ public class CharacterStats // 기본 캐릭터 스탯
             Intelligence = a.Intelligence - b.Intelligence,
             Wisdom = a.Wisdom - b.Wisdom,
             Health = a.Health - b.Health,
+            Vitality = a.Vitality - b.Vitality,
             Endurance = a.Endurance - b.Endurance,
             Detection = a.Detection - b.Detection,
             Insight = a.Insight - b.Insight,
@@ -268,9 +185,8 @@ public class CharacterStats // 기본 캐릭터 스탯
             MentalityRecovery = a.MentalityRecovery - b.MentalityRecovery,
             MaxHp = a.MaxHp - b.MaxHp,
             FireResistance = a.FireResistance - b.FireResistance,
-            WaterResistance = a.WaterResistance - b.WaterResistance,
-            EarthResistance = a.EarthResistance - b.EarthResistance,
-            WindResistance = a.WindResistance - b.WindResistance,
+            IceResistance = a.IceResistance - b.IceResistance,
+            LightningResistance = a.LightningResistance - b.LightningResistance,
             PierceResistance = a.PierceResistance - b.PierceResistance,
             SlashResistance = a.SlashResistance - b.SlashResistance,
             SmashResistance = a.SmashResistance - b.SmashResistance,
@@ -283,9 +199,8 @@ public class CharacterStats // 기본 캐릭터 스탯
             WeaponAttackSpeedMultiplier = a.WeaponAttackSpeedMultiplier - b.WeaponAttackSpeedMultiplier,
             WeaponCastSpeedMultiplier = a.WeaponCastSpeedMultiplier - b.WeaponCastSpeedMultiplier,
             FireAffinity = a.FireAffinity - b.FireAffinity,
-            WaterAffinity = a.WaterAffinity - b.WaterAffinity,
-            EarthAffinity = a.EarthAffinity - b.EarthAffinity,
-            WindAffinity = a.WindAffinity - b.WindAffinity,
+            IceAffinity = a.IceAffinity - b.IceAffinity,
+            LightningAffinity = a.LightningAffinity - b.LightningAffinity,
             PierceAffinity = a.PierceAffinity - b.PierceAffinity,
             SlashAffinity = a.SlashAffinity - b.SlashAffinity,
             SmashAffinity = a.SmashAffinity - b.SmashAffinity
@@ -293,87 +208,61 @@ public class CharacterStats // 기본 캐릭터 스탯
     }
     #endregion
 
-    #region Stats -> Dictionary 메서드
-    public Dictionary<string, float> GetStats()
+    #region 특성 등급별 능력치 증가 적용을 위한 시프트 연산자 메서드
+
+    public CharacterStats ShiftOperator(int shift)
     {
-        Dictionary<string, float> stats = new Dictionary<string, float>();
+        int multiplier = 1 << Mathf.Max(0, shift);
 
-        if (Strength != 0) stats.Add("Strength", Strength);
-        if (Dexterity != 0) stats.Add("Dexterity", Dexterity);
-        if (Speed != 0) stats.Add("Speed", Speed);
-        if (Intelligence != 0) stats.Add("Intelligence", Intelligence);
-        if (Wisdom != 0) stats.Add("Wisdom", Wisdom);
-        if (Health != 0) stats.Add("Health", Health);
-        if (Endurance != 0) stats.Add("Endurance", Endurance);
-        if (Detection != 0) stats.Add("Detection", Detection);
-        if (Insight != 0) stats.Add("Insight", Insight);
-        if (AttackSpeed != 0) stats.Add("Attack Speed", AttackSpeed);
-        if (CastSpeed != 0) stats.Add("Cast Speed", CastSpeed);
-        if (WeaponAttackSpeedMultiplier != 0) stats.Add("Weapon Attack Speed Multiplier", WeaponAttackSpeedMultiplier);
-        if (WeaponCastSpeedMultiplier != 0) stats.Add("Weapon Cast Speed Multiplier", WeaponCastSpeedMultiplier);
-        if (MaxHp != 0) stats.Add("Max HP", MaxHp);
-        if (MaxMentality != 0) stats.Add("Max Mentality", MaxMentality);
-        if (MaxStamina != 0) stats.Add("Max Stamina", MaxStamina);
-        if (StaminaRecovery != 0) stats.Add("Stamina Recovery", StaminaRecovery);
-        if (MentalityRecovery != 0) stats.Add("Mentality Recovery", MentalityRecovery);
+        return new CharacterStats
+        {
+            Strength = Strength * multiplier,
+            Dexterity = Dexterity * multiplier,
+            Speed = Speed * multiplier,
+            Intelligence = Intelligence * multiplier,
+            Wisdom = Wisdom * multiplier,
+            Health = Health * multiplier,
+            Vitality = Vitality * multiplier,
+            Endurance = Endurance * multiplier,
 
-        // 속성별 저항력
-        if (FireResistance != 0) stats.Add("Fire Resistance", FireResistance);
-        if (WaterResistance != 0) stats.Add("Water Resistance", WaterResistance);
-        if (EarthResistance != 0) stats.Add("Earth Resistance", EarthResistance);
-        if (WindResistance != 0) stats.Add("Wind Resistance", WindResistance);
-        if (PierceResistance != 0) stats.Add("Pierce Resistance", PierceResistance);
-        if (SlashResistance != 0) stats.Add("Slash Resistance", SlashResistance);
-        if (SmashResistance != 0) stats.Add("Smash Resistance", SmashResistance);
+            Detection = Detection * multiplier,
+            Insight = Insight * multiplier,
 
-        // 속성별 특화
-        if (FireAffinity != 0) stats.Add("Fire Affinity", FireAffinity);
-        if (WaterAffinity != 0) stats.Add("Water Affinity", WaterAffinity);
-        if (EarthAffinity != 0) stats.Add("Earth Affinity", EarthAffinity);
-        if (WindAffinity != 0) stats.Add("Wind Affinity", WindAffinity);
-        if (PierceAffinity != 0) stats.Add("Pierce Affinity", PierceAffinity);
-        if (SlashAffinity != 0) stats.Add("Slash Affinity", SlashAffinity);
-        if (SmashAffinity != 0) stats.Add("Smash Affinity", SmashAffinity);
+            MaxHp = MaxHp * multiplier,
+            MaxMentality = MaxMentality * multiplier,
+            MaxStamina = MaxStamina * multiplier,
 
-        // 공격력/방어력
-        if (PhysicalAttack != 0) stats.Add("Physical Attack", PhysicalAttack);
-        if (MagicalAttack != 0) stats.Add("Magical Attack", MagicalAttack);
-        if (PhysicalDefense != 0) stats.Add("Physical Defense", PhysicalDefense);
-        if (MagicalDefense != 0) stats.Add("Magical Defense", MagicalDefense);
+            StaminaRecovery = StaminaRecovery * multiplier,
+            MentalityRecovery = MentalityRecovery * multiplier,
 
-        return stats;
+            PhysicalAttack = PhysicalAttack * multiplier,
+            MagicalAttack = MagicalAttack * multiplier,
+            PhysicalDefense = PhysicalDefense * multiplier,
+            MagicalDefense = MagicalDefense * multiplier,
+
+            FireResistance = FireResistance * multiplier,
+            IceResistance = IceResistance * multiplier,
+            LightningResistance = LightningResistance * multiplier,
+
+            PierceResistance = PierceResistance * multiplier,
+            SlashResistance = SlashResistance * multiplier,
+            SmashResistance = SmashResistance * multiplier,
+
+            FireAffinity = FireAffinity * multiplier,
+            IceAffinity = IceAffinity * multiplier,
+            LightningAffinity = LightningAffinity * multiplier,
+
+            PierceAffinity = PierceAffinity * multiplier,
+            SlashAffinity = SlashAffinity * multiplier,
+            SmashAffinity = SmashAffinity * multiplier,
+
+            AttackSpeed = AttackSpeed * multiplier,
+            CastSpeed = CastSpeed * multiplier,
+            WeaponAttackSpeedMultiplier = WeaponAttackSpeedMultiplier * multiplier,
+            WeaponCastSpeedMultiplier = WeaponCastSpeedMultiplier * multiplier
+        };
     }
 
-    public Dictionary<string, float> GetBasicStats()
-    {
-        Dictionary<string, float> basicStats = new Dictionary<string, float>();
-
-        if (Strength != 0) basicStats.Add("Strength", Strength);
-        if (Dexterity != 0) basicStats.Add("Dexterity", Dexterity);
-        if (Speed != 0) basicStats.Add("Speed", Speed);
-        if (Intelligence != 0) basicStats.Add("Intelligence", Intelligence);
-        if (Wisdom != 0) basicStats.Add("Wisdom", Wisdom);
-        if (Health != 0) basicStats.Add("Health", Health);
-        if (Endurance != 0) basicStats.Add("Endurance", Endurance);
-        if (Detection != 0) basicStats.Add("Detection", Detection);
-        if (Insight != 0) basicStats.Add("Insight", Insight);
-        if (AttackSpeed != 0) basicStats.Add("Attack Speed", AttackSpeed);
-        if (CastSpeed != 0) basicStats.Add("Cast Speed", CastSpeed);
-        if (WeaponAttackSpeedMultiplier != 0) basicStats.Add("Weapon Attack Speed Multiplier", WeaponAttackSpeedMultiplier);
-        if (WeaponCastSpeedMultiplier != 0) basicStats.Add("Weapon Cast Speed Multiplier", WeaponCastSpeedMultiplier);
-        if (MaxHp != 0) basicStats.Add("Max HP", MaxHp);
-        if (MaxMentality != 0) basicStats.Add("Max Mentality", MaxMentality);
-        if (MaxStamina != 0) basicStats.Add("Max Stamina", MaxStamina);
-        if (StaminaRecovery != 0) basicStats.Add("Stamina Recovery", StaminaRecovery);
-        if (MentalityRecovery != 0) basicStats.Add("Mentality Recovery", MentalityRecovery);
-
-        // 공격력/방어력
-        if (PhysicalAttack != 0) basicStats.Add("Physical Attack", PhysicalAttack);
-        if (MagicalAttack != 0) basicStats.Add("Magical Attack", MagicalAttack);
-        if (PhysicalDefense != 0) basicStats.Add("Physical Defense", PhysicalDefense);
-        if (MagicalDefense != 0) basicStats.Add("Magical Defense", MagicalDefense);
-        return basicStats;
-    }
     #endregion
 
     #region DeepCopy 메서드
@@ -386,6 +275,7 @@ public class CharacterStats // 기본 캐릭터 스탯
             Speed = this.Speed,
             Intelligence = this.Intelligence,
             Wisdom = this.Wisdom,
+            Vitality = this.Vitality,
             Health = this.Health,
             Endurance = this.Endurance,
             Detection = this.Detection,
@@ -400,16 +290,14 @@ public class CharacterStats // 기본 캐릭터 스탯
             StaminaRecovery = this.StaminaRecovery,
             MentalityRecovery = this.MentalityRecovery,
             FireResistance = this.FireResistance,
-            WaterResistance = this.WaterResistance,
-            EarthResistance = this.EarthResistance,
-            WindResistance = this.WindResistance,
+            IceResistance = this.IceResistance,
+            LightningResistance = this.LightningResistance,            
             PierceResistance = this.PierceResistance,
             SlashResistance = this.SlashResistance,
             SmashResistance = this.SmashResistance,
             FireAffinity = this.FireAffinity,
-            WaterAffinity = this.WaterAffinity,
-            EarthAffinity = this.EarthAffinity,
-            WindAffinity = this.WindAffinity,
+            IceAffinity = this.IceAffinity,
+            LightningAffinity = this.LightningAffinity,
             PierceAffinity = this.PierceAffinity,
             SlashAffinity = this.SlashAffinity,
             SmashAffinity = this.SmashAffinity,
@@ -422,6 +310,88 @@ public class CharacterStats // 기본 캐릭터 스탯
     #endregion
 }
 
+[Serializable] // 특수 스탯 클래스 - 전투, 유틸, 전투 지속 관련 특수 스탯
+public class CharacterSpecialStats
+{
+    [Header("전투")]
+    [Tooltip("공격 대성공 확률. 15면 15%")]
+    public int CriticalChance;
+    [Tooltip("공격 대성공 피해 배율. 150이면 1.5배")]
+    public int CriticalDamageBonus;
+
+    public int StatusResistance; // 공용 상태이상 저항력
+
+    [Header("유틸")]
+    public int MapDetectionRange;
+    public int TrapDetectionBonus;
+    public int EventInsightBonus;
+
+    [Header("전투 지속")]
+    public int KillHpRecovery;
+    public int KillStaminaRecovery;
+    public int KillMentalityRecovery;
+
+    public static CharacterSpecialStats operator +(CharacterSpecialStats a, CharacterSpecialStats b)
+    {
+        if (a == null) a = new CharacterSpecialStats();
+        if (b == null) b = new CharacterSpecialStats();
+
+        return new CharacterSpecialStats
+        {
+            CriticalChance = a.CriticalChance + b.CriticalChance,
+            CriticalDamageBonus = a.CriticalDamageBonus + b.CriticalDamageBonus,
+            StatusResistance = a.StatusResistance + b.StatusResistance,
+
+            MapDetectionRange = a.MapDetectionRange + b.MapDetectionRange,
+            TrapDetectionBonus = a.TrapDetectionBonus + b.TrapDetectionBonus,
+            EventInsightBonus = a.EventInsightBonus + b.EventInsightBonus,
+
+            KillHpRecovery = a.KillHpRecovery + b.KillHpRecovery,
+            KillStaminaRecovery = a.KillStaminaRecovery + b.KillStaminaRecovery,
+            KillMentalityRecovery = a.KillMentalityRecovery + b.KillMentalityRecovery
+        };
+    }
+
+    public CharacterSpecialStats ShiftOperator(int shift)
+    {
+        int multiplier = 1 << Mathf.Max(0, shift);
+
+        return new CharacterSpecialStats
+        {
+            CriticalChance = CriticalChance * multiplier,
+            CriticalDamageBonus = CriticalDamageBonus * multiplier,
+            StatusResistance = StatusResistance * multiplier,
+
+            MapDetectionRange = MapDetectionRange * multiplier,
+            TrapDetectionBonus = TrapDetectionBonus * multiplier,
+            EventInsightBonus = EventInsightBonus * multiplier,
+
+            KillHpRecovery = KillHpRecovery * multiplier,
+            KillStaminaRecovery = KillStaminaRecovery * multiplier,
+            KillMentalityRecovery = KillMentalityRecovery * multiplier
+        };
+    }
+
+    public CharacterSpecialStats Copy()
+    {
+        return new CharacterSpecialStats
+        {
+            CriticalChance = CriticalChance,
+            CriticalDamageBonus = CriticalDamageBonus,
+            StatusResistance = StatusResistance,
+
+            MapDetectionRange = MapDetectionRange,
+            TrapDetectionBonus = TrapDetectionBonus,
+            EventInsightBonus = EventInsightBonus,
+
+            KillHpRecovery = KillHpRecovery,
+            KillStaminaRecovery = KillStaminaRecovery,
+            KillMentalityRecovery = KillMentalityRecovery
+        };
+    }
+}
+
+//커스터마이징 데이터 클래스
 public class CustomizationData
 {
     public bool IsMale { get; set; } = true;
@@ -453,7 +423,7 @@ public class CustomizationData
 
 public class CharacterData
 {
-    public Origin origin; // 출신지
+    public int originId; // 출신지
     public string originName; // 출신지 명
 
     public Personality personality = Personality.Simple; // 성향
@@ -464,21 +434,25 @@ public class CharacterData
     public string ID; // 캐릭터 식별을 위한 고유 ID
     public string Name; // 캐릭터 이름 - 중복 허용
 
-    [JsonIgnore] // JSON 직렬화 시 무시 - Sprite는 DB 공간 낭비가 심해서 인게임에서 처리
-    public Texture2D Portrait; // 캐릭터 초상화 - 게임 실행시 게임씬에서 렌더이미지를 촬영하여 할당 - 렌더 이미지는 보류하고 출신지별 구분 아이콘 넣기
+    [JsonIgnore] // JSON 직렬화 무시 - 초상화는 인게임에서 처리
+    public Texture2D Portrait; // 캐릭터 초상화 - 게임 실행시 게임씬에서 렌더이미지를 촬영하여 할당
 
     public CustomizationData customizationData; // 캐릭터 커스터마이징 데이터 - 이 데이터를 기반으로 생성된 베이스 캐릭터에 커스터마이징 적용
     public CharacterType Type {  get; set; } = CharacterType.Character;
+
+    public CharacterStats OriginBaseStats { get; set; } = new CharacterStats(); // 출신지/성장 기준 원본 스탯
+    public CharacterSpecialStats OriginSpecialStats { get; set; } = new CharacterSpecialStats(); // 특성 적용 전 원본 특수 스탯
 
     public CharacterStats BaseStats { get; set; } // 기본 스탯 + 특성으로 증감된 스탯
     public CharacterStats ModifiedStats { get; set; } = new CharacterStats(); // 증감 스탯 - 장비, 버프 등으로 변화한 스탯
     public CharacterStats FinalStats { get; set; } // 최종 스탯
 
-    [JsonIgnore]
-    public CharacterStats tempStats = new CharacterStats(); // 임시스탯
+    public CharacterSpecialStats BaseSpecialStats { get; set; } = new CharacterSpecialStats(); // OriginSpecialStats + 특성
+    public CharacterSpecialStats ModifiedSpecialStats { get; set; } = new CharacterSpecialStats(); // 장비, 버프, 디버프 특수 스탯
+    public CharacterSpecialStats FinalSpecialStats { get; set; } = new CharacterSpecialStats(); // 최종 특수 스탯
 
     [JsonIgnore]
-    public List<Attribute> updatedAttributes;
+    public CharacterStats tempStats = new CharacterStats(); // 임시스탯
 
     public float PhysicalDamageMultiplier { get; set; } = 1.0f; // 물리 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
     public float MagicalDamageMultiplier { get; set; } = 1.0f; // 마법 데미지 배율 - 특성, 상태이상 등으로 변화 (기본 1.0f) 
@@ -491,44 +465,27 @@ public class CharacterData
     public int PhysicalArmor { get; set; } // 물리 방어도
     public int MagicalArmor { get; set; } // 마법 방어도
 
+
     // 캐릭터가 보유하고 있는 스킬과 특성 리스트
-    public List<TraitBase> Traits { get; set; }// 캐릭터의 특성 목록
-    public List<SkillBase> Skills { get; set; }// 습득한 스킬 목록
-    public SkillBase DefaultCounterSkill { get; set; }// 기본 대응 스킬
+
+    public List<TraitRuntimeData> Traits { get; set; } = new List<TraitRuntimeData>(); // 캐릭터의 특성 목록
+    public List<SkillRuntimeData> Skills { get; set; } = new List<SkillRuntimeData>(); // 습득한 스킬 목록
+
+
+    public int DefaultCounterSkill { get; set; } // 기본 대응 스킬
 
     // 캐릭터에 적용되어있는 상태이상
-    public List<StatusEffect> StatusEffects { get; set; } // 적용중인 상태이상 목록
+    public List<StatusEffectRuntimeData> StatusEffects { get; set; } = new(); // 적용중인 상태이상 목록
 
     public List<SkillAttribute> AvailableAttributes { get; set; } = new List<SkillAttribute>(); // 캐릭터가 장착한 무기의 세부 속성 리스트
 
     // 장비로 인해 습득한 스킬과 특성 리스트
-    public List<TraitBase> EquipmentTraits { get; set; }
-    public List<SkillBase> EquipmentSkills { get; set; }
-
-
-    // 런타임 임시 스냅샷(JSON). 로컬 바인딩용.
-    [Newtonsoft.Json.JsonIgnore] public string InventoryJsonSnapshot;
-    [Newtonsoft.Json.JsonIgnore] public string EquipmentJsonSnapshot;
-
-    // 런타임 홀더(프리팹 컴포넌트) 참조
-    //캐릭터 인벤토리, 장비창 관리
-    [Newtonsoft.Json.JsonIgnore] public InventoryHolder CharacterInventory;
-    [Newtonsoft.Json.JsonIgnore] public InventoryHolder CharacterEquipment;   
-    
+    public List<TraitRuntimeData> EquipmentTraitRuntimes { get; set; } = new List<TraitRuntimeData>(); // 장비로 인해 적용된 특성 런타임 데이터
 
     //캐릭터의 장비
-    public Equipment Helmet { get; set; }
-    public Equipment Armor { get; set; }
-    public Equipment Gloves { get; set; }
-    public Equipment Shoes { get; set; }
-    public Equipment Cape { get; set; }
-    public Equipment Ring1 { get; set; }   
-    public Equipment Ring2 { get; set; }
-    public Equipment Necklace { get; set; }
-    public Equipment Weapon { get; set; }
-    public Equipment SubWeapon { get; set; }
+    public EquipmentSlotData EquipmentSlots { get; set; } = new EquipmentSlotData();
 
-    
+
     public int Level { get; set; }
     public int Exp { get; set; }
 
@@ -547,181 +504,479 @@ public class CharacterData
         }
     }
 
-   
-    public Equipment GetEquipmentByType(EquipmentType type)
+
+    #region 장비 관련 유틸리티 메서드 - 런타임 장비 조회 + 정의 SO 데이터 원본 조회
+
+    public EquipmentRuntimeData GetEquipmentRuntime(int itemUid, string instanceId)
     {
-        List<Equipment> EquippedItems = (List<Equipment>)GetEquipments();
-        foreach (var equipment in EquippedItems)
+        return EquipmentRuntimeResolver.Resolve(itemUid, instanceId);
+    }
+
+    public EquipmentRuntimeData GetHelmetRuntime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.helmetUid, EquipmentSlots.helmetInstanceId);
+    }
+
+    public EquipmentRuntimeData GetArmorRuntime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.armorUid, EquipmentSlots.armorInstanceId);
+    }
+
+    public EquipmentRuntimeData GetGlovesRuntime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.glovesUid, EquipmentSlots.glovesInstanceId);
+    }
+
+    public EquipmentRuntimeData GetShoesRuntime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.shoesUid, EquipmentSlots.shoesInstanceId);
+    }
+
+    public EquipmentRuntimeData GetRing1Runtime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.ring1Uid, EquipmentSlots.ring1InstanceId);
+    }
+
+    public EquipmentRuntimeData GetRing2Runtime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.ring2Uid, EquipmentSlots.ring2InstanceId);
+    }
+
+    public EquipmentRuntimeData GetNecklaceRuntime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.necklaceUid, EquipmentSlots.necklaceInstanceId);
+    }
+
+    public EquipmentRuntimeData GetMainWeaponRuntime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.weaponUid, EquipmentSlots.weaponInstanceId);
+    }
+
+    public EquipmentRuntimeData GetSubWeaponRuntime()
+    {
+        return GetEquipmentRuntime(EquipmentSlots.subWeaponUid, EquipmentSlots.subWeaponInstanceId);
+    }
+
+    public List<EquipmentRuntimeData> GetEquipmentRuntimes()
+    {
+        List<EquipmentRuntimeData> result = new List<EquipmentRuntimeData>();
+
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.helmetUid, EquipmentSlots.helmetInstanceId);
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.armorUid, EquipmentSlots.armorInstanceId);
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.glovesUid, EquipmentSlots.glovesInstanceId);
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.shoesUid, EquipmentSlots.shoesInstanceId);
+
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.ring1Uid, EquipmentSlots.ring1InstanceId);
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.ring2Uid, EquipmentSlots.ring2InstanceId);
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.necklaceUid, EquipmentSlots.necklaceInstanceId);
+
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.weaponUid, EquipmentSlots.weaponInstanceId);
+        AddEquipmentRuntimeIfValid(result, EquipmentSlots.subWeaponUid, EquipmentSlots.subWeaponInstanceId);
+
+        return result;
+    }
+
+    private void AddEquipmentRuntimeIfValid(List<EquipmentRuntimeData> list, int uid, string instanceId)
+    {
+        EquipmentRuntimeData equipment = GetEquipmentRuntime(uid, instanceId);
+
+        if (equipment != null)
+            list.Add(equipment);
+    }
+
+    public EquipmentDefinitionSO GetEquipmentDefinition(int uid)
+    {
+        if (uid <= 0 || GameDataRegistry.Instance == null)
+            return null;
+
+        return GameDataRegistry.Instance.GetEquipment(uid);
+    }
+
+    public EquipmentDefinitionSO GetHelmet()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.helmetUid);
+    }
+
+    public EquipmentDefinitionSO GetArmor()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.armorUid);
+    }
+
+    public EquipmentDefinitionSO GetGloves()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.glovesUid);
+    }
+
+    public EquipmentDefinitionSO GetShoes()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.shoesUid);
+    }
+
+    public EquipmentDefinitionSO GetRing1()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.ring1Uid);
+    }
+
+    public EquipmentDefinitionSO GetRing2()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.ring2Uid);
+    }
+
+    public EquipmentDefinitionSO GetNecklace()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.necklaceUid);
+    }
+
+    public WeaponDefinitionSO GetMainWeapon()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.weaponUid) as WeaponDefinitionSO;
+    }
+
+    public WeaponDefinitionSO GetSubWeapon()
+    {
+        return GetEquipmentDefinition(EquipmentSlots.subWeaponUid) as WeaponDefinitionSO;
+    }
+
+    public List<EquipmentDefinitionSO> GetEquipments()
+    {
+        List<EquipmentDefinitionSO> result = new List<EquipmentDefinitionSO>();
+
+        AddEquipmentIfValid(result, EquipmentSlots.helmetUid);
+        AddEquipmentIfValid(result, EquipmentSlots.armorUid);
+        AddEquipmentIfValid(result, EquipmentSlots.glovesUid);
+        AddEquipmentIfValid(result, EquipmentSlots.shoesUid);
+        AddEquipmentIfValid(result, EquipmentSlots.ring1Uid);
+        AddEquipmentIfValid(result, EquipmentSlots.ring2Uid);
+        AddEquipmentIfValid(result, EquipmentSlots.necklaceUid);
+        AddEquipmentIfValid(result, EquipmentSlots.weaponUid);
+        AddEquipmentIfValid(result, EquipmentSlots.subWeaponUid);
+
+        return result;
+    }
+
+    private void AddEquipmentIfValid(List<EquipmentDefinitionSO> list, int uid)
+    {
+        EquipmentDefinitionSO equipment = GetEquipmentDefinition(uid);
+
+        if (equipment != null)
+            list.Add(equipment);
+    }
+
+    #endregion
+
+    public bool HasTrait(int traitId)
+    {
+        foreach (TraitRuntimeData runtime in GetAllTraitRuntimes())
         {
-            if (equipment != null && equipment.EquipType == type)
+            if (runtime.traitId == traitId)
+                return true;
+        }
+
+        return false;
+    }
+
+    public bool HasCharacterTrait(int traitId) // 장비 특성 제외하고 캐릭터 특성만 확인
+    {
+        if (Traits == null)
+            return false;
+
+        return Traits.Any(t => t != null && t.traitId == traitId);
+    }
+
+    public bool HasTraitFlag(TraitSpecialFlag flag)
+    {
+        foreach (TraitRuntimeData runtime in GetAllTraitRuntimes())
+        {
+            TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(runtime.traitId);
+
+            if (def == null || def.specialFlags == null)
+                continue;
+
+            if (def.specialFlags.Contains(flag))
+                return true;
+        }
+
+        return false;
+    }
+
+    public IEnumerable<TraitRuntimeData> GetAllTraitRuntimes()
+    {
+        if (Traits != null)
+        {
+            foreach (TraitRuntimeData trait in Traits)
             {
-                return equipment;
+                if (trait != null)
+                    yield return trait;
             }
         }
-        return null; // 해당 타입의 장비가 장착되지 않은 경우 null 반환
-    }
 
-    // 장비 리스트를 반환하는 메서드 - 캐릭터의 장착중인 모든 장비 순회를 위한 메서드
-    public IEnumerable<Equipment> GetEquipments()
-    {
-        return new List<Equipment> { Helmet, Armor, Gloves, Shoes, Ring1, Ring2, Cape, Necklace, Weapon, SubWeapon };
-    }
-
-    // 스킬 중복 체크 함수
-    public bool IsSkillUnique(SkillBase skill, Equipment excludeEquipment = null)
-    {
-        return GetEquipments().All(e => e == null || !(e is IHasSkill hasSkills && hasSkills.Skills.Contains(skill)) || e == excludeEquipment);
-    }    
-
-    // 특성 중복 체크 함수
-    public bool IsTraitUnique(TraitBase trait, Equipment excludeEquipment = null)
-    {
-        return GetEquipments().All(e => e == null || !(e is IHasTrait hasTraits && hasTraits.Traits.Contains(trait)) || e == excludeEquipment);
+        if (EquipmentTraitRuntimes != null)
+        {
+            foreach (TraitRuntimeData trait in EquipmentTraitRuntimes)
+            {
+                if (trait != null)
+                    yield return trait;
+            }
+        }
     }
 
     // 무기 착용 가능 여부
-    public bool CanEquipMainWeapon(Weapon weapon)
+    public bool CanEquipMainWeapon(WeaponDefinitionSO weapon)
     {
-        foreach (TraitBase trait in Traits)
+        if (weapon == null)
+            return true;
+
+        if (HasTraitFlag(TraitSpecialFlag.OneArmed) &&
+            weapon.weaponTags != null &&
+            weapon.weaponTags.Contains(WeaponTag.TwoHanded))
         {
-            if (trait is OneArmedTrait && (weapon.WeaponTags.Contains(WeaponTag.TwoHanded)))
-            {
-                return false;
-            }
+            return false;
         }
+
         return true;
     }
 
     public bool CanEquipSubWeapon()
     {
-        foreach (TraitBase trait in Traits)
-        {
-            if (trait is OneArmedTrait)
-            {
-                return false;
-            }
-        }
-        return true;
+        return !HasTraitFlag(TraitSpecialFlag.OneArmed);
     }
 
-    //모든 특성 효과 제거
+    // 모든 특성 효과 제거
     public void RemoveAllTraits(CharacterManager manager)
     {
-        // 1단계: % 연산 특성 적용
-        foreach (var trait in Traits)
-        {
-            if (trait.IsPercentage) 
-            {
-                trait.RemoveTrait(manager);
-            }
-        }
+        BaseStats = OriginBaseStats != null ? OriginBaseStats.Copy() : new CharacterStats();
+        BaseSpecialStats = OriginSpecialStats != null ? OriginSpecialStats.Copy() : new CharacterSpecialStats();
+    }
 
-        // 2단계: 고정값 연산 적용
-        foreach (var trait in Traits)
+    // 모든 특성 효과 적용
+    public void ApplyAllTraits(CharacterManager manager)
+    {
+        if (BaseStats == null)
+            BaseStats = OriginBaseStats != null ? OriginBaseStats.Copy() : new CharacterStats();
+
+        if (BaseSpecialStats == null)
+            BaseSpecialStats = OriginSpecialStats != null ? OriginSpecialStats.Copy() : new CharacterSpecialStats();
+
+        ApplyTraitPass(false);
+        ApplyTraitPass(true);
+
+        BaseStats.ClampNonNegative();
+    }
+
+    // 특성 적용 패스
+    void ApplyTraitPass(bool percentage)
+    {
+        foreach (TraitRuntimeData runtime in GetAllTraitRuntimes())
         {
-            if (!trait.IsPercentage) 
+            TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(runtime.traitId);
+
+            if (def == null)
+                continue;
+
+            if (def.isPercentage != percentage)
+                continue;
+
+            int shift = TraitGradeUtility.GetGradeShift(runtime, def);
+
+            CharacterStats statDelta = def.statDelta != null
+                ? def.statDelta.ShiftOperator(shift)
+                : new CharacterStats();
+
+            CharacterSpecialStats specialDelta = def.specialStatDelta != null
+                ? def.specialStatDelta.ShiftOperator(shift)
+                : new CharacterSpecialStats();
+
+            if (percentage)
+                ApplyPercentageStats(BaseStats, statDelta);
+            else
+                BaseStats += statDelta;
+
+            BaseSpecialStats += specialDelta;
+
+            if (CanApplyConditionalTrait(def))
             {
-                trait.RemoveTrait(manager);
+                CharacterStats conditionalStatDelta = def.conditionalStatDelta != null
+                    ? def.conditionalStatDelta.ShiftOperator(shift)
+                    : new CharacterStats();
+
+                CharacterSpecialStats conditionalSpecialDelta = def.conditionalSpecialStatDelta != null
+                    ? def.conditionalSpecialStatDelta.ShiftOperator(shift)
+                    : new CharacterSpecialStats();
+
+                if (percentage)
+                    ApplyPercentageStats(BaseStats, conditionalStatDelta);
+                else
+                    BaseStats += conditionalStatDelta;
+
+                BaseSpecialStats += conditionalSpecialDelta;
             }
         }
     }
 
-    //모든 특성 효과 적용
-    public void ApplyAllTraits(CharacterManager manager)
+    bool CanApplyConditionalTrait(TraitDefinitionSO def)
     {
-        // 1단계: 고정값 연산 및 기타 특성 적용
-        foreach (var trait in Traits)
-        {
-            if (!trait.IsPercentage) 
-            {
-                trait.ApplyTrait(manager);
-            }
-        }
+        if (def == null)
+            return false;
 
-        // 2단계: % 연산 특성 적용
-        foreach (var trait in Traits)
-        {
-            if (trait.IsPercentage) 
-            {
-                trait.ApplyTrait(manager);
-            }
-        }
+        if (!def.hasRequiredWeaponCondition)
+            return false;
+
+        WeaponDefinitionSO weapon = GetMainWeapon();
+
+        if (weapon == null)
+            return false;
+
+        return weapon.weaponType == def.requiredWeaponType;
+    }
+
+    // % 연산을 진행할 특성용 스탯 적용 메서드
+    void ApplyPercentageStats(CharacterStats target, CharacterStats percent)
+    {
+        if (target == null || percent == null)
+            return;
+
+        target.Strength += Mathf.RoundToInt(target.Strength * percent.Strength / 100f);
+        target.Dexterity += Mathf.RoundToInt(target.Dexterity * percent.Dexterity / 100f);
+        target.Speed += Mathf.RoundToInt(target.Speed * percent.Speed / 100f);
+        target.Intelligence += Mathf.RoundToInt(target.Intelligence * percent.Intelligence / 100f);
+        target.Wisdom += Mathf.RoundToInt(target.Wisdom * percent.Wisdom / 100f);
+        target.Health += Mathf.RoundToInt(target.Health * percent.Health / 100f);
+        target.Endurance += Mathf.RoundToInt(target.Endurance * percent.Endurance / 100f);
+        target.Vitality += Mathf.RoundToInt(target.Vitality * percent.Vitality / 100f);
+
+        target.Detection += Mathf.RoundToInt(target.Detection * percent.Detection / 100f);
+        target.Insight += Mathf.RoundToInt(target.Insight * percent.Insight / 100f);
+
+        target.MaxHp += Mathf.RoundToInt(target.MaxHp * percent.MaxHp / 100f);
+        target.MaxMentality += Mathf.RoundToInt(target.MaxMentality * percent.MaxMentality / 100f);
+        target.MaxStamina += Mathf.RoundToInt(target.MaxStamina * percent.MaxStamina / 100f);
+
+        target.StaminaRecovery += Mathf.RoundToInt(target.StaminaRecovery * percent.StaminaRecovery / 100f);
+        target.MentalityRecovery += Mathf.RoundToInt(target.MentalityRecovery * percent.MentalityRecovery / 100f);
+
+        target.PhysicalAttack += Mathf.RoundToInt(target.PhysicalAttack * percent.PhysicalAttack / 100f);
+        target.MagicalAttack += Mathf.RoundToInt(target.MagicalAttack * percent.MagicalAttack / 100f);
+        target.PhysicalDefense += Mathf.RoundToInt(target.PhysicalDefense * percent.PhysicalDefense / 100f);
+        target.MagicalDefense += Mathf.RoundToInt(target.MagicalDefense * percent.MagicalDefense / 100f);
+
+        target.FireResistance += Mathf.RoundToInt(target.FireResistance * percent.FireResistance / 100f);
+        target.IceResistance += Mathf.RoundToInt(target.IceResistance * percent.IceResistance / 100f);
+        target.LightningResistance += Mathf.RoundToInt(target.LightningResistance * percent.LightningResistance / 100f);
+
+        target.PierceResistance += Mathf.RoundToInt(target.PierceResistance * percent.PierceResistance / 100f);
+        target.SlashResistance += Mathf.RoundToInt(target.SlashResistance * percent.SlashResistance / 100f);
+        target.SmashResistance += Mathf.RoundToInt(target.SmashResistance * percent.SmashResistance / 100f);
+
+        target.FireAffinity += Mathf.RoundToInt(target.FireAffinity * percent.FireAffinity / 100f);
+        target.IceAffinity += Mathf.RoundToInt(target.IceAffinity * percent.IceAffinity / 100f);
+        target.LightningAffinity += Mathf.RoundToInt(target.LightningAffinity * percent.LightningAffinity / 100f);
+
+        target.PierceAffinity += Mathf.RoundToInt(target.PierceAffinity * percent.PierceAffinity / 100f);
+        target.SlashAffinity += Mathf.RoundToInt(target.SlashAffinity * percent.SlashAffinity / 100f);
+        target.SmashAffinity += Mathf.RoundToInt(target.SmashAffinity * percent.SmashAffinity / 100f);
+
+        target.AttackSpeed += target.AttackSpeed * percent.AttackSpeed / 100f;
+        target.CastSpeed += target.CastSpeed * percent.CastSpeed / 100f;
+        target.WeaponAttackSpeedMultiplier += target.WeaponAttackSpeedMultiplier * percent.WeaponAttackSpeedMultiplier / 100f;
+        target.WeaponCastSpeedMultiplier += target.WeaponCastSpeedMultiplier * percent.WeaponCastSpeedMultiplier / 100f;
     }
 
     #region 생성자 오버로딩 구현부
-    public CharacterData(CharacterStats baseStats) // 베이스 스탯을 받아서 나머지 값을 초기화하는 생성자.
+    public CharacterData(CharacterStats baseStats)
     {
-        BaseStats = baseStats;
+        OriginBaseStats = baseStats != null ? baseStats.Copy() : new CharacterStats();
+        OriginSpecialStats = new CharacterSpecialStats();
+
+        BaseStats = OriginBaseStats.Copy();
+        BaseSpecialStats = OriginSpecialStats.Copy();
+
         ModifiedStats = new CharacterStats();
+        ModifiedSpecialStats = new CharacterSpecialStats();
+
         FinalStats = new CharacterStats();
-        Traits = new List<TraitBase>();
-        Skills = new List<SkillBase>();
+        FinalSpecialStats = new CharacterSpecialStats();
+
+        Traits = new List<TraitRuntimeData>();
+        Skills = new List<SkillRuntimeData>();
 
         UpdateFinalStats();
     }
 
-    public CharacterData() // 기본생성자
+    public CharacterData()
     {
-        BaseStats = new CharacterStats();
+        OriginBaseStats = new CharacterStats();
+        OriginSpecialStats = new CharacterSpecialStats();
+
+        BaseStats = OriginBaseStats.Copy();
+        BaseSpecialStats = OriginSpecialStats.Copy();
+
         ModifiedStats = new CharacterStats();
+        ModifiedSpecialStats = new CharacterSpecialStats();
+
         FinalStats = new CharacterStats();
-        Traits = new List<TraitBase>();
-        Skills = new List<SkillBase>();
-    }
+        FinalSpecialStats = new CharacterSpecialStats();
 
-    //출신지별 캐릭터 생성을 위한 생성자
-    public CharacterData(Origin origin, string originName, CharacterStats baseStats, Equipment helmet, Equipment armor, Equipment gloves, Equipment shoes, Equipment weapon, Equipment subWeapon, List<TraitBase> traits, List<SkillBase> skills, SkillBase defaultCounterSkill)
-    {
-        this.origin = origin;
-        this.originName = originName;
-        BaseStats = baseStats;
-        Traits = traits;
-        Skills = skills;
-        Helmet = helmet;
-        Armor = armor;
-        Gloves = gloves;
-        Shoes = shoes;
-        Weapon = weapon;
-        SubWeapon = subWeapon;
-        DefaultCounterSkill = defaultCounterSkill;
-
-        Level = 1;
+        Traits = new List<TraitRuntimeData>();
+        Skills = new List<SkillRuntimeData>();
     }
     #endregion    
 
-    public void UpdateFinalStats() // 최종 스탯 계산 - 장비 탈착, 특성 추가 혹은 삭제, 버프 획득 등의 상황에 호출해줘야함
+    // 최종 스탯 계산 - 장비 탈착, 특성 추가 혹은 삭제, 버프 획득 등의 상황에 호출해줘야함
+    public void UpdateFinalStats()
     {
-        FinalStats = BaseStats + ModifiedStats; // 연산자 오버로딩으로 Class단위 연산 수행        
+        FinalStats = BaseStats + ModifiedStats;
         tempStats = FinalStats;
 
-        // 기타 스탯 계산        
         FinalStats = CalcStat(tempStats);
+        FinalStats.ClampNonNegative();
 
-        // 최종 스탯을 업데이트한 후, Attribute로 변환하여 필요한 곳에서 사용할 수 있도록 동기화
-        updatedAttributes = StatsConverter.ConvertStatsToAttributes(FinalStats);
+        UpdateFinalSpecialStats();
+
+        ClampRuntimeResources();
+    }
+
+    void UpdateFinalSpecialStats()
+    {
+        FinalSpecialStats = BaseSpecialStats + ModifiedSpecialStats;
+
+        if (FinalStats == null)
+            return;
+
+        FinalSpecialStats.MapDetectionRange += FinalStats.Detection / 10;
+        FinalSpecialStats.EventInsightBonus += FinalStats.Insight / 10;
+
+        FinalSpecialStats.CriticalChance += 15;
+        FinalSpecialStats.CriticalDamageBonus += 150;
+        FinalSpecialStats.CriticalChance += FinalStats.Dexterity / 20;
+        FinalSpecialStats.CriticalDamageBonus += FinalStats.Strength / 10;
+
+        FinalSpecialStats.StatusResistance += Mathf.RoundToInt(
+            FinalStats.Health * 0.5f +
+            FinalStats.Endurance * 0.5f);
     }
 
     public CharacterStats CalcStat(CharacterStats stats)
     {
-        // 중간 값을 저장하는 변수
+        WeaponDefinitionSO mainWeapon = GetMainWeapon();
+        WeaponDefinitionSO subWeapon = GetSubWeapon();
 
         int baseMaxMentality = stats.MaxMentality + stats.Wisdom / 5 + 1;
         int baseMaxStamina = stats.MaxStamina + stats.Speed / 5 + 1;
 
-        int baseStaminaRecovery = stats.StaminaRecovery + stats.Health / 10 + 1;
+        int baseStaminaRecovery = stats.StaminaRecovery + stats.Vitality / 10 + 1;
         int baseMentalityRecovery = stats.MentalityRecovery + stats.Intelligence / 10 + 1;
         int basePhysicalDefense = stats.PhysicalDefense + stats.Endurance / 5;
         int baseMagicalDefense = stats.MagicalDefense + stats.Endurance / 5;
-        uint basePhysicalAttack = stats.PhysicalAttack;
-        uint baseMagicalAttack = stats.MagicalAttack + (uint)stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
+        int basePhysicalAttack = stats.PhysicalAttack;
+        int baseMagicalAttack = stats.MagicalAttack + stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
         int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));
         int baseInsight =  stats.Insight + (int)(stats.Wisdom * ((double)(stats.Wisdom / 10.0)) + stats.Intelligence * ((double)(stats.Intelligence / 10.0)));
-        int baseMaxHp = 15 + Level * 5 + stats.Health * 3 + stats.MaxHp;
+        int baseMaxHp = 15 + Level * 5 + stats.Vitality * 2 + stats.Health * 3 + stats.MaxHp;
         float baseAtkSpd = (1.0f + stats.Speed * 0.01f); // 기본 속도 1.0 + 속도 스탯 * 0.01
-        if (Weapon != null)
-        {
-            baseAtkSpd *= Weapon.StatModifiers.WeaponAttackSpeedMultiplier; // * 무기 속도 배율
-        }
+
+        if (mainWeapon != null && mainWeapon.statModifiers != null)
+            baseAtkSpd *= mainWeapon.statModifiers.WeaponAttackSpeedMultiplier; // 장착중인 무기 공격속도 배율 적용
+
         float baseCastSpd;
 
         if (stats.WeaponCastSpeedMultiplier == 0) // 장착중인 무기가 시전속도 능력치가 없을 경우
@@ -734,34 +989,32 @@ public class CharacterData
         }
 
         // 장착중인 무기 카테고리 구분 후 해당 스탯 적용
-        if (this.Weapon is Weapon heavyWeapon && heavyWeapon.WeaponCategory == WeaponCategory.HeavyWeapon)
+        if (mainWeapon != null && mainWeapon.weaponCategory == WeaponCategory.HeavyWeapon)
         {
-            basePhysicalAttack += (uint)stats.Strength;
+            basePhysicalAttack += stats.Strength;
         }
-        else if (this.Weapon is Weapon lightWeapon && lightWeapon.WeaponCategory == WeaponCategory.LightWeapon)
+        else if (mainWeapon != null && mainWeapon.weaponCategory == WeaponCategory.LightWeapon)
         {
-            if (stats.Strength > stats.Dexterity)
-                basePhysicalAttack += (uint)stats.Strength;
-            else
-                basePhysicalAttack += (uint)stats.Dexterity;
+            basePhysicalAttack += stats.Strength > stats.Dexterity
+                ? stats.Strength
+                : stats.Dexterity;
         }
-        else if (this.Weapon == null && this.SubWeapon != null)
+        else if (mainWeapon == null && subWeapon != null)
         {
-            if (this.SubWeapon is Weapon hvWeapon && hvWeapon.WeaponCategory == WeaponCategory.HeavyWeapon)
+            if (subWeapon.weaponCategory == WeaponCategory.HeavyWeapon)
             {
-                basePhysicalAttack += (uint)stats.Strength;
+                basePhysicalAttack += stats.Strength;
             }
-            else if (this.SubWeapon is Weapon ltWeapon && ltWeapon.WeaponCategory == WeaponCategory.LightWeapon)
+            else if (subWeapon.weaponCategory == WeaponCategory.LightWeapon)
             {
-                if (stats.Strength > stats.Dexterity)
-                    basePhysicalAttack += (uint)stats.Strength;
-                else
-                    basePhysicalAttack += (uint)stats.Dexterity;
+                basePhysicalAttack += stats.Strength > stats.Dexterity
+                    ? stats.Strength
+                    : stats.Dexterity;
             }
         }
-        else if(this.Weapon == null && this.SubWeapon == null)
+        else
         {
-            basePhysicalAttack += (uint)stats.Strength;
+            basePhysicalAttack += stats.Strength;
         }
 
         // 새로운 값으로 업데이트

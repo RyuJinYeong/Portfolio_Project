@@ -1,9 +1,5 @@
 using System.Runtime.Serialization;
 
-public enum TraitGrade : int { F = 0, E = 1, D = 2, C = 3, B = 4, A = 5, S = 6 }
-public enum TraitPolarity : int { Positive = 0, Negative = 1, Mixed = 2 }
-
-
 public abstract class TraitBase
 {
     public abstract string Name { get; }

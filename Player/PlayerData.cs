@@ -1,20 +1,32 @@
-using SoftKitty.InventoryEngine;
 using System;
 using System.Collections.Generic;
 
 [Serializable]
-public class PositionEntry { public string characterId; public bool isFront; }
-
-public class PlayerData // 플레이어 계정 정보
+public class PositionEntry
 {
-    // 플레이어의 닉네임
+    public string characterId;
+    public bool isFront;
+}
+
+public class PlayerData
+{
+    // 플레이어의 닉네임 - 용병단 이름
     public string playerName;
+
     // 계정 레벨 - 레벨에 따라 파티 구성 인원수가 확장되고 추가 기능이 해금됨
     public int level;
-    // 플레이어의 골드
+
     public int gold;
-    // 플레이어의 창고 아이템 목록
-    public InventoryHolder storage = new InventoryHolder();
+
+    // 계정 전체 공유 창고
+    public List<InventorySlotData> accountStorage = new();
+
+    // 현재 원정대/파티 단위 창고
+    public List<InventorySlotData> expeditionStorage = new();
+
+    // 생성 장비 인스턴스 저장소
+    public List<GeneratedEquipmentData> generatedEquipments = new();
+
     // 보유한 캐릭터 ID 목록
     public List<string> characterIds = new List<string>();
 
@@ -22,11 +34,59 @@ public class PlayerData // 플레이어 계정 정보
     public string currentStage = "Town";
     public List<string> activeCharacterIds = new List<string>();
 
-    // 저장용(네이티브 Dictionary대신)
+    // 포지션 저장용
     public List<PositionEntry> positions = new();
 
-    // 런타임 캐시
-    [Newtonsoft.Json.JsonIgnore]
-    // 캐릭터 위치 정보
-    public Dictionary<string, bool> characterPositionMapping = new Dictionary<string, bool>(); // true for front row, false for back row
+    public bool TryGetPosition(string characterId, out bool isFront)
+    {
+        isFront = false;
+
+        if (string.IsNullOrEmpty(characterId) || positions == null)
+            return false;
+
+        PositionEntry entry = positions.Find(p => p != null && p.characterId == characterId);
+
+        if (entry == null)
+            return false;
+
+        isFront = entry.isFront;
+        return true;
+    }
+
+    public bool IsFrontPosition(string characterId)
+    {
+        return TryGetPosition(characterId, out bool isFront) && isFront;
+    }
+
+    public void SetPosition(string characterId, bool isFront)
+    {
+        if (string.IsNullOrEmpty(characterId))
+            return;
+
+        if (positions == null)
+            positions = new List<PositionEntry>();
+
+        PositionEntry entry = positions.Find(p => p != null && p.characterId == characterId);
+
+        if (entry == null)
+        {
+            positions.Add(new PositionEntry
+            {
+                characterId = characterId,
+                isFront = isFront
+            });
+
+            return;
+        }
+
+        entry.isFront = isFront;
+    }
+
+    public void RemovePosition(string characterId)
+    {
+        if (string.IsNullOrEmpty(characterId) || positions == null)
+            return;
+
+        positions.RemoveAll(p => p == null || p.characterId == characterId);
+    }
 }

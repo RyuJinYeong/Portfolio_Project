@@ -50,24 +50,6 @@ public class CharacterManager : MonoBehaviour
         damageHandler = new DamageHandler();
         statHandler = new StatHandler();
 
-        // 1) 프리팹의 홀더 컴포넌트를 캐릭터 필드에 연결
-        InventoryHolder[] holders = GetComponents<InventoryHolder>();
-        foreach (var holder in holders)
-        {
-            if (holder.Type == InventoryHolder.HolderType.PlayerInventory)
-                character.CharacterInventory = holder;
-            else if (holder.Type == InventoryHolder.HolderType.PlayerEquipment)
-                character.CharacterEquipment = holder;
-        }
-
-        // 2) 저장해 둔 스냅샷(JSON) → 실제 홀더로 복원 (순서: 연결 후 Import)
-        if (!string.IsNullOrEmpty(character.InventoryJsonSnapshot))
-            InventorySerializer.ImportJson(character.CharacterInventory, character.InventoryJsonSnapshot);
-
-        if (!string.IsNullOrEmpty(character.EquipmentJsonSnapshot))
-            InventorySerializer.ImportJson(character.CharacterEquipment, character.EquipmentJsonSnapshot);
-
-
         /*
         // 3) 장비 효과 적용(EquipmentHolder의 장비를 실제 캐릭터에 Equip) ( 중복 적용으로 인해 주석처리 )
         if (character.CharacterEquipment != null)
@@ -95,21 +77,20 @@ public class CharacterManager : MonoBehaviour
         {
             customization.ApplyCustomization(character);
             customization.UpdateEquipmentAppearance(character);
-        }        
+        }
 
-        // 6) 스냅샷 비우기
-        character.InventoryJsonSnapshot = null;
-        character.EquipmentJsonSnapshot = null;
-
-        // 7) UI 갱신
+        // 6) UI 갱신
         UpdateCharacterUI();
     }
 
-    public void SetDefaultCounterSkill(SkillBase skill)
+    public void SetDefaultCounterSkill(SkillDefinitionSO skill)
     {
-        if (skill.StaminaCost + skill.MentalCost == 1)
+        if (skill == null)
+            return;
+
+        if (skill.staminaCost + skill.mentalCost <= 1)
         {
-            character.DefaultCounterSkill = skill;
+            character.DefaultCounterSkill = skill.uid;
         }
         else
         {
@@ -133,13 +114,13 @@ public class CharacterManager : MonoBehaviour
     }
 
     // 스킬 선택 시 CombatHandler로 전달
-    public void SelectSkill(SkillBase skill, CharacterManager target)
+    public void SelectSkill(SkillDefinitionSO skill, CharacterManager target, bool isConcealed = false)
     {
-        combatHandler.SelectSkill(skill, target);
+        combatHandler.SelectSkill(skill, target, isConcealed);
     }
 
     // 대응 스킬 선택 시 CombatHandler로 전달
-    public void SelectCounterSkill(SkillBase skill, CharacterManager target)
+    public void SelectCounterSkill(SkillDefinitionSO skill, CharacterManager target)
     {
         combatHandler.SelectCounterSkill(skill, target);
     }
@@ -159,7 +140,7 @@ public class CharacterManager : MonoBehaviour
     }
 
     //스킬큐 Getter 구현 - 명시적 접근제어
-    public List<(SkillBase skill, CharacterManager target)> GetSkillQueue()
+    public List<SkillQueueData> GetSkillQueue()
     {
         return combatHandler.GetSkillQueue();
     }

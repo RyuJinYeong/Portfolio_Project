@@ -75,17 +75,13 @@ public class DamageHandler
                 resistance = stats.FireResistance;
                 affinityBonus = stats.FireAffinity;
                 break;
-            case SkillAttribute.Water:
-                resistance = stats.WaterResistance;
-                affinityBonus = stats.WaterAffinity;
+            case SkillAttribute.Ice:
+                resistance = stats.IceResistance;
+                affinityBonus = stats.IceAffinity;
                 break;
-            case SkillAttribute.Earth:
-                resistance = stats.EarthResistance;
-                affinityBonus = stats.EarthAffinity;
-                break;
-            case SkillAttribute.Wind:
-                resistance = stats.WindResistance;
-                affinityBonus = stats.WindAffinity;
+            case SkillAttribute.Lightning:
+                resistance = stats.LightningResistance;
+                affinityBonus = stats.LightningAffinity;
                 break;
             case SkillAttribute.Slash:
                 resistance = stats.SlashResistance;

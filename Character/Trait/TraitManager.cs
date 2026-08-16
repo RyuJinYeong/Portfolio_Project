@@ -1,55 +1,84 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public static class TraitManager
 {
-    public static void AddTrait(CharacterManager manager, TraitBase trait)
+    public static void AddTrait(CharacterManager manager, int traitId)
     {
-        var exist = manager.character.Traits.FirstOrDefault(t => t.Id == trait.Id);
+        if (manager == null || manager.character == null)
+            return;
 
+        CharacterData character = manager.character;
+        TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(traitId);
 
-        manager.character.RemoveAllTraits(manager);//특성 효과 전체 제거
-
-        if (exist != null)
+        if (def == null)
         {
-            // 이미 존재하는 특성인 경우 레벨업
-            exist.Level += 1;
-        }
-        else
-        {
-            // 새로운 특성인 경우 추가
-            manager.character.Traits.Add(trait);
+            Debug.LogWarning($"존재하지 않는 특성 ID입니다: {traitId}");
+            return;
         }
 
-        manager.character.ApplyAllTraits(manager);// 특성 추가 후 바로 적용
+        character.RemoveAllTraits(manager);
 
-        manager.character.UpdateFinalStats(); // 특성 적용 결과로 변화한 스탯을 최종 스탯에 적용
+        TraitGradeUtility.AddTrait(
+            character.Traits,
+            def,
+            def.defaultAcquireGrade);
+
+        ValidateEquipmentsAfterTraitChanged(manager);
+
+        EquipmentManager.RebuildEquipmentStats(character);
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
+
+        character.ApplyAllTraits(manager);
+        character.UpdateFinalStats();
     }
 
-    public static void RemoveTrait(CharacterManager manager, TraitBase trait)
+    public static void RemoveTrait(CharacterManager manager, int traitId)
     {
-        var exist = manager.character.Traits.FirstOrDefault(t => t.Id == trait.Id);
+        if (manager == null || manager.character == null)
+            return;
 
-        manager.character.RemoveAllTraits(manager); // 캐릭터에 적용된 특성 해제
+        CharacterData character = manager.character;
+        TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(traitId);
 
-        if (exist != null)
+        if (def == null)
         {
-            if(exist.Level <= 1)
-            {
-                // 레벨이 1 이하인 경우 특성 제거
-                manager.character.Traits.Remove(trait);
-            }
-            else
-            {
-                // 레벨이 1 초과인 경우 레벨다운
-                exist.Level -= 1;
-            }                
+            Debug.LogWarning($"존재하지 않는 특성 ID입니다: {traitId}");
+            return;
         }
 
-        manager.character.ApplyAllTraits(manager);  // 특성 제거 혹은 레벨 다운 후 모든 특성 새로 적용
+        character.RemoveAllTraits(manager);
 
-        manager.character.UpdateFinalStats(); // 특성 제거 후 변화한 스탯을 최종 스탯에 적용
+        TraitGradeUtility.RemoveTrait(
+            character.Traits,
+            def,
+            def.defaultAcquireGrade);
+
+        ValidateEquipmentsAfterTraitChanged(manager);
+
+        EquipmentManager.RebuildEquipmentStats(character);
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
+
+        character.ApplyAllTraits(manager);
+        character.UpdateFinalStats();
+    }
+
+    static void ValidateEquipmentsAfterTraitChanged(CharacterManager manager)
+    {
+        if (manager == null || manager.character == null)
+            return;
+
+        CharacterData character = manager.character;
+
+        WeaponDefinitionSO mainWeapon = character.GetMainWeapon();
+
+        if (mainWeapon != null && !character.CanEquipMainWeapon(mainWeapon))
+            EquipmentManager.Unequip(manager, EquipmentType.Weapon, 1);
+
+        WeaponDefinitionSO subWeapon = character.GetSubWeapon();
+
+        if (subWeapon != null && !character.CanEquipSubWeapon())
+            EquipmentManager.Unequip(manager, EquipmentType.SubWeapon, 1);
     }
 }

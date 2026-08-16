@@ -1,6 +1,8 @@
 using SoftKitty.InventoryEngine;
 using System.Collections.Generic;
 
+
+/*
 public static class CharacterOrigin
 {
     public static Dictionary<string, CharacterData> GetOriginData()
@@ -202,3 +204,4 @@ public static class CharacterOrigin
         };
     }
 }
+*/

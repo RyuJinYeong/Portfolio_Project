@@ -1,9 +1,9 @@
-﻿using UnityEngine;
-using UnityEngine.SceneManagement;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using SoftKitty.InventoryEngine;
-using System;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -21,8 +21,6 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        DatabaseBootstrapper.EnsureInitialized();
-
         if (Instance == null)
         { 
             Instance = this;
@@ -92,39 +90,20 @@ public class GameManager : MonoBehaviour
     IEnumerator CoSwitchStage(string stageType)
     {
         var pd = PlayerManager.Instance.GetCurrentPlayerData();
-        if (pd == null) yield break;
+        if (pd == null)
+            yield break;
 
-        // 이전/다음 그룹 계산 (그룹=스테이지명)
-        string oldGroup = pd.currentStage; // 캡처
-        string nextGroup = stageType;
-
-        // 스테이지 상태 업데이트
         pd.currentStage = stageType;
 
-        // 아이콘 캐시: 이전 그룹 정리 → 이번 스테이지 프리로드
-        if (!string.IsNullOrEmpty(oldGroup) && oldGroup != nextGroup)
-            IconStore.ClearGroup(oldGroup);
-
-        // 어떤 캐릭터들의 스킬을 프리로드할지 스테이지 정책으로 결정
-        var targetIds = StagePreloadPolicy.GetPreloadCharacterIds(pd, stageType);
-
-        // 아이콘 주소 수집 → 프리로드
-        List<string> keys = null;
-        bool done = false;
-        PlayerManager.Instance.GetSkillIconAddressesBulk(targetIds, list => { keys = list ?? new List<string>(); done = true; });
-        while (!done) yield return null;
-
-        // 배경(스테이지) 토글
         StageManager.Instance.SetActiveStage(stageType);
 
-        // 마을이면 유닛 정리, 전투면 스폰
         if (stageType == "Town")
         {
             ClearSpawnedUnits();
             yield break;
         }
 
-        SpawnSortie(pd); // 스폰 로직
+        SpawnSortie(pd);
     }
 
     void ClearSpawnedUnits()
@@ -142,45 +121,50 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // 포메이션 로직 재사용
-        var map = pd.characterPositionMapping;
-        int front = 0, back = 0;
-        foreach (var id in pd.activeCharacterIds)
-            if (map.TryGetValue(id, out var isFront)) { if (isFront) front++; else back++; }
+        int front = 0;
+        int back = 0;
 
-        var allySpawns = SpawnPointManager.Instance.GetAllySpawnPoints(front, back);
-        var enemySpawns = SpawnPointManager.Instance.GetEnemySpawnPoints(front, back);
-
-        int fIdx = 0, bIdx = 0;
-
-        foreach (var cid in pd.activeCharacterIds)
+        foreach (string id in pd.activeCharacterIds)
         {
-            PlayerManager.Instance.LoadCharacter(cid, ch =>
+            if (!pd.TryGetPosition(id, out bool isFront))
+                continue;
+
+            if (isFront)
+                front++;
+            else
+                back++;
+        }
+
+        Transform[] allySpawns = SpawnPointManager.Instance.GetAllySpawnPoints(front, back);
+
+        int fIdx = 0;
+        int bIdx = 0;
+
+        foreach (string cid in pd.activeCharacterIds)
+        {
+            string characterId = cid;
+
+            PlayerManager.Instance.LoadCharacter(characterId, ch =>
             {
-                if (ch == null) return;
+                if (ch == null)
+                    return;
 
-                // 혹시 누락된 경우 캐시에서 세팅
-                if (ch.Skills != null) foreach (var s in ch.Skills) s.EnsureIconFromCache();
-                if (ch.DefaultCounterSkill != null) ch.DefaultCounterSkill.EnsureIconFromCache();
+                bool isFront = pd.TryGetPosition(characterId, out bool f) && f;
 
-                bool isFront = map.TryGetValue(cid, out var f) && f;
-                var spawn = isFront ? allySpawns[fIdx++] : allySpawns[front + bIdx++];
+                int spawnIndex = isFront
+                    ? fIdx++
+                    : front + bIdx++;
 
+                if (spawnIndex < 0 || spawnIndex >= allySpawns.Length)
+                {
+                    Debug.LogError($"Spawn index out of range. characterId: {characterId}, index: {spawnIndex}, spawnCount: {allySpawns.Length}");
+                    return;
+                }
+
+                Transform spawn = allySpawns[spawnIndex];
                 SpawnCharacter(ch, spawn);
             });
         }
-    }
-
-    // 필요 시, 새 적/상인 등장할 때 추가 아이콘 온디맨드
-    public IEnumerator PreloadExtraStageIcons(IEnumerable<int> skillUids)
-    {
-        var keys = new List<string>();
-        foreach (var uid in skillUids)
-            if (ItemManager.itemDic.TryGetValue(uid, out var it) && it is SkillBase sb && !string.IsNullOrEmpty(sb.IconAddress))
-                keys.Add(sb.IconAddress);
-
-        if (keys.Count > 0)
-            yield return IconStore.Preload(keys, "Stage");
     }
 
     public void ShowStageSelectionUI()
@@ -197,44 +181,22 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator CoAfterSceneLoaded(string stage)
     {
-        // 한 프레임 대기
         yield return null;
 
-
-        // 오브젝트 풀링
         bool done = false;
         CharacterPoolManager.Instance.BuildPoolFromPlayerData(() => done = true);
-        while (!done) yield return null;
 
+        while (!done)
+            yield return null;
 
-        // 아이콘 프리로드
-        var pd = PlayerManager.Instance.GetCurrentPlayerData();
-        var targetIds = StagePreloadPolicy.GetPreloadCharacterIds(pd, stage);
-
-        List<string> keys = null;
-        bool addrDone = false;
-        PlayerManager.Instance.GetSkillIconAddressesBulk(targetIds, list => { keys = list ?? new List<string>(); addrDone = true; });
-        while (!addrDone) yield return null;
-
-        if (keys != null && keys.Count > 0)
-        {         
-            yield return IconStore.Preload(keys, stage);         
-        }
-
-        foreach (var cm in CharacterPoolManager.Instance.All())
-        {
-            IconFixer.FixAllIcons(cm.character);
-        }
-
-        // 풀 보장 후 게임씬 셋업
         StartCoroutine(SetupGameScene(stage));
     }
 
     public IEnumerator SetupGameScene(string stage)
     {
-        yield return new WaitForSeconds(1); // 씬 로드 시간 대기
-        
-        var playerData = PlayerManager.Instance.GetCurrentPlayerData();
+        yield return new WaitForSeconds(1);
+
+        PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
 
         if (playerData == null)
         {
@@ -244,7 +206,9 @@ public class GameManager : MonoBehaviour
 
         playerData.currentStage = stage;
 
-        if (string.IsNullOrEmpty(playerData.currentStage) || playerData.activeCharacterIds == null || playerData.activeCharacterIds.Count == 0)
+        if (string.IsNullOrEmpty(playerData.currentStage) ||
+            playerData.activeCharacterIds == null ||
+            playerData.activeCharacterIds.Count == 0)
         {
             Debug.LogWarning("No active characters or current stage is null.");
             yield break;
@@ -254,56 +218,58 @@ public class GameManager : MonoBehaviour
 
         allCharacters.Clear();
 
-        var characterPositionMapping = playerData.characterPositionMapping;
-        var activeCharacterIds = playerData.activeCharacterIds;
+        List<string> activeCharacterIds = playerData.activeCharacterIds;
 
         int frontCount = 0;
         int backCount = 0;
 
-        int pending = activeCharacterIds.Count;
-
-        foreach (var characterId in activeCharacterIds)
+        foreach (string characterId in activeCharacterIds)
         {
-            if (characterPositionMapping.ContainsKey(characterId))
-            {
-                if (characterPositionMapping[characterId])
-                {
-                    frontCount++;
-                }
-                else
-                {
-                    backCount++;
-                }
-            }
+            if (!playerData.TryGetPosition(characterId, out bool isFront))
+                continue;
+
+            if (isFront)
+                frontCount++;
+            else
+                backCount++;
         }
 
-        var allySpawnPoints = SpawnPointManager.Instance.GetAllySpawnPoints(frontCount, backCount);
-        var enemySpawnPoints = SpawnPointManager.Instance.GetEnemySpawnPoints(frontCount, backCount);
+        Transform[] allySpawnPoints = SpawnPointManager.Instance.GetAllySpawnPoints(frontCount, backCount);
 
         int frontIndex = 0;
         int backIndex = 0;
+        int pending = activeCharacterIds.Count;
 
-        foreach (var characterId in activeCharacterIds)
+        foreach (string id in activeCharacterIds)
         {
+            string characterId = id;
+
             PlayerManager.Instance.LoadCharacter(characterId, characterData =>
             {
                 try
                 {
-                    if (characterData != null)
-                    {
-                        Transform point;
-                        if (characterPositionMapping[characterId])
-                            point = allySpawnPoints[frontIndex++];
-                        else
-                            point = allySpawnPoints[backIndex++ + frontCount];
+                    if (characterData == null)
+                        return;
 
-                        SpawnCharacter(characterData, point);
+                    bool isFront = playerData.TryGetPosition(characterId, out bool frontPosition) && frontPosition;
+
+                    int spawnIndex = isFront
+                        ? frontIndex++
+                        : frontCount + backIndex++;
+
+                    if (spawnIndex < 0 || spawnIndex >= allySpawnPoints.Length)
+                    {
+                        Debug.LogError($"Spawn index out of range. characterId: {characterId}, index: {spawnIndex}, spawnCount: {allySpawnPoints.Length}");
+                        return;
                     }
+
+                    Transform point = allySpawnPoints[spawnIndex];
+                    SpawnCharacter(characterData, point);
                 }
                 finally
                 {
                     pending--;
-                    // 전원 처리되면 Turn 시작 신호 
+
                     if (pending == 0)
                         SignalRosterReady();
                 }
@@ -312,8 +278,6 @@ public class GameManager : MonoBehaviour
     }
 
 
-
-    
     // 아군 스폰 메서드 - 아군과 적군 스폰 메서드를 분리하지 말고 하나로 통합하고 isMine 변수를 통해서 아군 적군 여부를 구분, 캐릭터 매니저를 매개변수로 전달 받기.
     private void SpawnCharacter(CharacterData characterData, Transform spawnPoint)
     {

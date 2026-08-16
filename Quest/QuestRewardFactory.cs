@@ -63,3 +63,26 @@ public static class QuestRewardFactory
         return r;
     }
 }
+
+public static class EquipmentRewardFactory
+{
+    public static InventorySlotData CreateEquipmentSlot(EquipmentDefinitionSO baseEquipment, EquipmentRarity rarity)
+    {
+        if (baseEquipment == null)
+            return null;
+
+        GeneratedEquipmentData generated = EquipmentGenerator.Generate(baseEquipment, rarity);
+
+        if (generated == null)
+            return null;
+
+        EquipmentInstanceRepository.AddToPlayer(generated);
+
+        return new InventorySlotData
+        {
+            itemUid = baseEquipment.uid,
+            count = 1,
+            equipmentInstanceId = generated.instanceId
+        };
+    }
+}

@@ -247,36 +247,40 @@ public class UIManager : MonoBehaviour
 
     public void UpdateSkillTransparency(CharacterManager characterManager)
     {
+        if (characterManager == null || characterManager.character == null)
+            return;
+
         foreach (GameObject button in hotbarButtons)
         {
-            // 버튼의 RawImage 컴포넌트와 연결된 스킬의 아이콘을 비교하여 해당 스킬 찾기
-            RawImage buttonImage = button.GetComponent<RawImage>();
-            if (buttonImage != null && buttonImage.enabled)
+            if (button == null)
+                continue;
+
+            SkillButton skillButton = button.GetComponent<SkillButton>();
+            if (skillButton == null || skillButton.skill == null)
+                continue;
+
+            SkillDefinitionSO linkedSkill = skillButton.skill;
+
+            bool canUseSkill =
+                characterManager.character.CurrentStamina >= linkedSkill.staminaCost &&
+                characterManager.character.CurrentMentality >= linkedSkill.mentalCost;
+
+            bool inactive = !characterManager.isPlayerTurn || !canUseSkill;
+
+            if (characterManager == TurnManager.Instance.defenseCharacter)
             {
-                SkillBase linkedSkill = characterManager.character.Skills.FirstOrDefault(skill => skill.icon == buttonImage.texture);
-                if (linkedSkill != null)
-                {
-                    // 리소스가 충분한지 체크
-                    bool canUseSkill = characterManager.character.CurrentStamina >= linkedSkill.StaminaCost &&
-                                       characterManager.character.CurrentMentality >= linkedSkill.MentalCost;
-
-                    // 현재 턴이 아니거나 리소스가 부족할 경우 스킬 사용 불가로 표시
-                    bool Inactive = !characterManager.isPlayerTurn || !canUseSkill;
-                    if(characterManager == TurnManager.Instance.defenseCharacter) // 방어캐릭터일 경우 턴 관련 부분 스킵 후 리소스 소모량만 계산
-                    {
-                        Inactive = !canUseSkill;
-                    }
-
-                    // 버튼의 CanvasGroup을 통해 투명도 설정
-                    CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
-                    if (canvasGroup == null)
-                    {
-                        canvasGroup = button.AddComponent<CanvasGroup>(); // CanvasGroup이 없을 경우 추가
-                    }
-
-                    canvasGroup.alpha = Inactive ? 0.3f : 1.0f;  // 리소스가 부족할 경우 투명도를 낮춤
-                }
+                inactive = !canUseSkill;
             }
+
+            CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+                canvasGroup = button.AddComponent<CanvasGroup>();
+
+            canvasGroup.alpha = inactive ? 0.3f : 1.0f;
+
+            Button uiButton = button.GetComponent<Button>();
+            if (uiButton != null)
+                uiButton.interactable = !inactive;
         }
     }
 
@@ -340,132 +344,170 @@ public class UIManager : MonoBehaviour
     // 핫바 스킬 업데이트 메서드
     public void UpdateHotbarSkills(CharacterManager characterManager)
     {
-        // 모든 핫바 버튼과 RawImage를 비활성화
-        foreach (var button in hotbarButtons)
-        {
-            button.GetComponent<SkillButton>().skill = null;
-            button.GetComponent<Button>().interactable = false; // 버튼 비활성화
-            button.GetComponent<RawImage>().enabled = false;    // 이미지 비활성화            
+        if (characterManager == null || characterManager.character == null)
+            return;
 
-            // 코스트 텍스트 초기화
-            TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
-            if (costText != null)
-            {
-                costText.text = ""; // 리소스 소모량 텍스트 초기화
-            }
+        ClearHotbarButtons();
 
-            // 코스트 프레임 - Bind 이미지 초기화
-            Image[] images = button.GetComponentsInChildren<Image>();
-
-            Image costFrameImage = images[1];
-
-            if (costFrameImage != null)
-            {
-                costFrameImage.color = new Color(1f, 1f, 1f, 1f); // 기본 색상 (흰색, 투명도 1)
-            }
-        }
-
-        // 사용 가능한 스킬이 있는 경우 핫바에 표시
         int hotbarIndex = 0;
 
-        foreach (SkillBase skill in characterManager.character.Skills)
+        foreach (SkillRuntimeData runtime in characterManager.character.Skills)
         {
-            if (characterManager.combatHandler.isDefenseCharacter) // 선택된 캐릭터가 방어 캐릭터일 경우
+            if (runtime == null)
+                continue;
+
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(runtime.skillUid);
+
+            if (skill == null)
+                continue;
+
+            if (!runtime.quickSlot || !runtime.canUse)
+                continue;
+
+            bool showAsCounter = characterManager.combatHandler.isDefenseCharacter;
+
+            if (showAsCounter)
             {
-                if (skill.QuickSlot && skill.CanUse && skill.IsCounterSkill)
-                {
-                    if (hotbarIndex < hotbarButtons.Length) // 핫바 슬롯이 남아있는 경우
-                    {
-                        GameObject button = hotbarButtons[hotbarIndex];
-
-                        button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
-                        button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
-                        button.GetComponent<SkillButton>().skill = skill;
-                        if (characterManager.combatHandler.isDefenseCharacter)
-                        {
-                            button.GetComponent<Button>().interactable = true;    // 버튼 활성화
-
-                            // 버튼 클릭 시 스킬 사용 처리
-                            button.GetComponent<Button>().onClick.RemoveAllListeners(); // 기존 리스너 제거
-                            button.GetComponent<Button>().onClick.AddListener(() =>
-                            {
-                                characterTargeting.StartTargeting(skill); // 스킬 타겟팅 시작
-                            });
-                        }
-
-                        // 리소스 소모량 표시
-                        TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
-                        Image[] images = button.GetComponentsInChildren<Image>();
-                        if (costText != null)
-                        {
-                            Image costFrameImage = images[1];
-                            if (skill.Type == SkillType.Physical)
-                            {
-                                costText.text = $"{skill.StaminaCost}";
-                                costText.color = new Color(1f, 0.5f, 0f); // 주황색 (지구력)
-                                costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f); // 부모 이미지 색상 변경 (주황 계열)
-                            }
-                            else if (skill.Type == SkillType.Magical)
-                            {
-                                costText.text = $"{skill.MentalCost}";
-                                costText.color = new Color(0f, 0.5f, 1f); // 파란색 (정신력)
-                                costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f); // 부모 이미지 색상 변경 (파란 계열)
-                            }
-                        }
-
-                        hotbarIndex++; // 다음 핫바 슬롯으로 이동
-                    }
-                }
+                if (!skill.isCounterSkill)
+                    continue;
             }
-            else if (skill.QuickSlot && skill.CanUse && !skill.IsCounterSkill) // 사용 가능한 공격 스킬 + 선택 대상이 방어캐릭터가 아닐 경우
+            else
             {
-                if (hotbarIndex < hotbarButtons.Length) // 핫바 슬롯이 남아있는 경우
-                {
-                    GameObject button = hotbarButtons[hotbarIndex];
-
-                    button.GetComponent<RawImage>().texture = skill.icon; // Texture2D로 아이콘 설정
-                    button.GetComponent<RawImage>().enabled = true;       // 아이콘 표시
-                    button.GetComponent<SkillButton>().skill = skill;
-
-                    if (characterManager.isPlayerTurn)
-                    {
-                        button.GetComponent<Button>().interactable = true;    // 버튼 활성화
-
-                        // 버튼 클릭 시 스킬 사용 처리
-                        button.GetComponent<Button>().onClick.RemoveAllListeners(); // 기존 리스너 제거
-                        button.GetComponent<Button>().onClick.AddListener(() =>
-                        {
-                            characterTargeting.StartTargeting(skill); // 스킬 타겟팅 시작
-                        });
-                    }
-
-                    // 리소스 소모량 표시
-                    TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
-                    Image[] images = button.GetComponentsInChildren<Image>();
-                    if (costText != null)
-                    {
-                        Image costFrameImage = images[1];
-                        if (skill.Type == SkillType.Physical)
-                        {
-                            costText.text = $"{skill.StaminaCost}";
-                            costText.color = new Color(1f, 0.5f, 0f); // 주황색 (지구력)
-                            costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f); // 부모 이미지 색상 변경 (주황 계열)
-                        }
-                        else if (skill.Type == SkillType.Magical)
-                        {
-                            costText.text = $"{skill.MentalCost}";
-                            costText.color = new Color(0f, 0.5f, 1f); // 파란색 (정신력)
-                            costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f); // 부모 이미지 색상 변경 (파란 계열)
-                        }
-                    }
-
-                    hotbarIndex++; // 다음 핫바 슬롯으로 이동
-                }
+                if (skill.isCounterSkill)
+                    continue;
             }
-            
+
+            if (hotbarIndex >= hotbarButtons.Length)
+                break;
+
+            BindHotbarButton(hotbarButtons[hotbarIndex], characterManager, skill, showAsCounter);
+
+            hotbarIndex++;
         }
 
         UpdateSkillTransparency(characterManager);
+    }
+
+    private void ClearHotbarButtons()
+    {
+        foreach (var buttonObj in hotbarButtons)
+        {
+            if (buttonObj == null)
+                continue;
+
+            SkillButton skillButton = buttonObj.GetComponent<SkillButton>();
+            if (skillButton != null)
+            {
+                skillButton.skill = null;
+                skillButton.queueData = null;
+                skillButton.queueIndex = -1;
+                skillButton.isCounterSkill = false;
+            }
+
+            Button button = buttonObj.GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.RemoveAllListeners();
+                button.interactable = false;
+            }
+
+            RawImage rawImage = buttonObj.GetComponent<RawImage>();
+            if (rawImage != null)
+            {
+                rawImage.texture = null;
+                rawImage.enabled = false;
+            }
+
+            TextMeshProUGUI costText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+            if (costText != null)
+                costText.text = "";
+
+            Image[] images = buttonObj.GetComponentsInChildren<Image>();
+            if (images != null && images.Length > 1)
+            {
+                Image costFrameImage = images[1];
+                if (costFrameImage != null)
+                    costFrameImage.color = new Color(1f, 1f, 1f, 1f);
+            }
+
+            CanvasGroup canvasGroup = buttonObj.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+                canvasGroup.alpha = 1f;
+        }
+    }
+
+    private void BindHotbarButton(
+    GameObject buttonObj,
+    CharacterManager characterManager,
+    SkillDefinitionSO skill,
+    bool isCounterSkill)
+    {
+        if (buttonObj == null || characterManager == null || skill == null)
+            return;
+
+        RawImage rawImage = buttonObj.GetComponent<RawImage>();
+        if (rawImage != null)
+        {
+            rawImage.texture = skill.icon;
+            rawImage.enabled = true;
+        }
+
+        SkillButton skillButton = buttonObj.GetComponent<SkillButton>();
+        if (skillButton != null)
+        {
+            skillButton.skill = skill;
+            skillButton.queueData = null;
+            skillButton.queueIndex = -1;
+            skillButton.isCounterSkill = isCounterSkill;
+        }
+
+        Button button = buttonObj.GetComponent<Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+
+            button.interactable = true;
+            button.onClick.AddListener(() =>
+            {
+                characterTargeting.StartTargeting(skill);
+            });
+        }
+
+        ApplySkillCostUI(buttonObj, skill);
+    }
+
+    private void ApplySkillCostUI(GameObject buttonObj, SkillDefinitionSO skill)
+    {
+        if (buttonObj == null || skill == null)
+            return;
+
+        TextMeshProUGUI costText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+        Image[] images = buttonObj.GetComponentsInChildren<Image>();
+
+        if (costText == null)
+            return;
+
+        Image costFrameImage = null;
+
+        if (images != null && images.Length > 1)
+            costFrameImage = images[1];
+
+        if (skill.type == SkillType.Physical)
+        {
+            costText.text = $"{skill.staminaCost}";
+            costText.color = new Color(1f, 0.5f, 0f);
+
+            if (costFrameImage != null)
+                costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f);
+        }
+        else if (skill.type == SkillType.Magical)
+        {
+            costText.text = $"{skill.mentalCost}";
+            costText.color = new Color(0f, 0.5f, 1f);
+
+            if (costFrameImage != null)
+                costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f);
+        }
     }
 
     #region 카운터 스킬 패널 조작
@@ -473,39 +515,35 @@ public class UIManager : MonoBehaviour
     // 방어 대상과 방어자를 기반으로 패널을 초기화 - 방어대상 선택 시 호출
     public void UpdateCounterSkillPanel(CharacterManager defender, CharacterManager target)
     {
-        // 기존 자식들 초기화
         ClearCounterSkillPanel();
 
-        // 현재 공격자의 스킬 큐를 가져옴
         CharacterManager attacker = TurnManager.Instance.currentCharacter;
-        List<(SkillBase skill, CharacterManager target)> atkSkillQueue = attacker.combatHandler.GetSkillQueue();
-        
-        // 방어자와 방어대상을 타겟으로 하는 스킬들만 추출하여 새로운 큐 구성
-        List<(SkillBase skill, CharacterManager target)> filteredSkillQueue = atkSkillQueue.Where(item => item.target == defender || item.target == target).ToList(); // 리스트로 변환하여 순서를 유지
-        
-        // 자기 자신을 방어하는 경우
+
+        if (attacker == null || defender == null || target == null)
+            return;
+
+        attacker.combatHandler.ResolveConcealForSkillQueue();
+
+        List<SkillQueueData> atkSkillQueue = attacker.combatHandler.GetSkillQueue();
+
+        List<SkillQueueData> filteredSkillQueue = atkSkillQueue
+            .Where(item => item != null && (item.target == defender || item.target == target))
+            .ToList();
+
         if (defender == target)
         {
-            // 하나의 프레임으로 표시
             AddSkillFrame(defender, filteredSkillQueue);
         }
         else
-        {   
-            // **각 캐릭터를 향한 공격이 있는지 개별적으로 체크
+        {
             bool hasDefenderAttack = filteredSkillQueue.Any(item => item.target == defender);
             bool hasTargetAttack = filteredSkillQueue.Any(item => item.target == target);
 
-            // 방어자에게 향하는 공격이 있다면 패널 생성
             if (hasDefenderAttack)
-            {
                 AddSkillFrame(defender, filteredSkillQueue);
-            }
 
-            // 방어 대상에게 향하는 공격이 있다면 패널 생성
             if (hasTargetAttack)
-            {
                 AddSkillFrame(target, filteredSkillQueue);
-            }
         }
     }
     // 패널 초기화 (기존 자식 오브젝트 삭제)
@@ -518,70 +556,77 @@ public class UIManager : MonoBehaviour
     }
 
     // 스킬 큐 프레임 추가
-    private void AddSkillFrame(CharacterManager owner, List<(SkillBase skill, CharacterManager target)> skillQueue)
+    private void AddSkillFrame(CharacterManager owner, List<SkillQueueData> skillQueue)
     {
-        // 프레임 생성
         GameObject frame = Instantiate(skillQueueFramePrefab, counterSkillPanel);
 
-        // 프레임의 제목 설정
         TextMeshProUGUI titleText = frame.GetComponentInChildren<TextMeshProUGUI>();
         if (titleText != null)
         {
             titleText.text = "=> " + owner.character.Name;
         }
 
-        // 실제 스킬 아이콘을 배치할 Panel 객체 찾기
         Transform skillPanel = frame.transform.Find("SkillPanel");
         if (skillPanel == null)
         {
-            Debug.LogWarning($"SkillPanel을 찾을 수 없습니다. Prefab 구조 확인 필요.");
+            Debug.LogWarning("SkillPanel을 찾을 수 없습니다. Prefab 구조 확인 필요.");
             return;
         }
 
-        // 순번을 재매기면서 스킬 아이콘 추가
+        int orderNumber = 1;
+
         for (int i = 0; i < skillQueue.Count; i++)
         {
-            // 현재 공격자의 스킬 큐에서 owner를 타겟으로 하는 것만 필터링
             if (skillQueue[i].target == owner)
-                AddSkillIcon(skillPanel, skillQueue[i].skill, owner, i + 1); // 순번 부여하여 추가
+            {
+                AddSkillIcon(skillPanel, skillQueue[i], owner, orderNumber);
+                orderNumber++;
+            }
         }
     }
 
     // 스킬 아이콘 추가 (공격스킬)
-    private void AddSkillIcon(Transform parent, SkillBase skill, CharacterManager owner, int orderNumber)
+    private void AddSkillIcon(
+    Transform parent,
+    SkillQueueData attackQueueData,
+    CharacterManager owner,
+    int orderNumber)
     {
+        if (parent == null || attackQueueData == null || attackQueueData.skill == null)
+            return;
+
         CharacterManager defenseCharacter = TurnManager.Instance.defenseCharacter;
 
+        if (defenseCharacter == null)
+            return;
+
         GameObject skillQueueIcon = Instantiate(skillIconPrefab, parent);
+
         GameObject atkSkillIcon = skillQueueIcon.transform.GetChild(0).gameObject;
         GameObject defSkillIcon = skillQueueIcon.transform.GetChild(2).gameObject;
 
-        // 공격 스킬 아이콘
-        atkSkillIcon.GetComponent<SkillButton>().skill = skill;
-        var atkIconImage = atkSkillIcon.GetComponent<RawImage>();
-        if (atkIconImage && skill.icon) atkIconImage.texture = skill.icon;
+        ApplyAttackSkillIcon(atkSkillIcon, attackQueueData);
 
-        // ▼▼▼ 여기부터 "해당 슬롯에 현재 등록된 대응 스킬"을 조회하여 사용 ▼▼▼
         int idx0 = orderNumber - 1;
-        var counterQueue = defenseCharacter.combatHandler.GetCounterSkillQueue();
-        SkillBase counterToShow = defenseCharacter.character.DefaultCounterSkill;
+
+        List<SkillQueueData> counterQueue = defenseCharacter.combatHandler.GetCounterSkillQueue();
+
+        SkillDefinitionSO counterToShow = GetDefaultCounterSkill(defenseCharacter);
 
         if (idx0 >= 0 && idx0 < counterQueue.Count && counterQueue[idx0].skill != null)
         {
             counterToShow = counterQueue[idx0].skill;
         }
 
-        defSkillIcon.GetComponent<SkillButton>().skill = counterToShow;
-        var defIconImage = defSkillIcon.GetComponent<RawImage>();
-        if (defIconImage && counterToShow.icon) defIconImage.texture = counterToShow.icon;
-        // ▲▲▲ 현재 등록된 대응 스킬 반영 끝
+        ApplyCounterSkillIcon(defSkillIcon, counterToShow, idx0);
 
-        // 순번 표시
-        var orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
-        if (orderText) orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
+        TextMeshProUGUI orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
+        if (orderText != null)
+        {
+            orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
+        }
 
-        // 버튼 리스너
-        var button = defSkillIcon.GetComponent<Button>();
+        Button button = defSkillIcon.GetComponent<Button>();
         if (button != null)
         {
             button.onClick.RemoveAllListeners();
@@ -592,18 +637,72 @@ public class UIManager : MonoBehaviour
 
                 if (tgt.isDefenseSkillTargeting)
                 {
-                    // 새 대응 스킬로 교체
                     defenseCharacter.combatHandler.SetOrResetCounterSkill(idx0Local, tgt.selectedSkill);
                     tgt.StopTargeting();
                 }
                 else
                 {
-                    // 기본 대응 스킬로 리셋
                     defenseCharacter.combatHandler.SetOrResetCounterSkill(idx0Local, null);
                 }
             });
         }
     }
+
+    private void ApplyAttackSkillIcon(GameObject iconObj, SkillQueueData data)
+    {
+        if (iconObj == null || data == null || data.skill == null)
+            return;
+
+        SkillButton skillButton = iconObj.GetComponent<SkillButton>();
+        if (skillButton != null)
+        {
+            skillButton.skill = data.skill;
+            skillButton.queueData = data;
+            skillButton.queueIndex = data.order - 1;
+            skillButton.isCounterSkill = false;
+        }
+
+        RawImage rawImage = iconObj.GetComponent<RawImage>();
+        if (rawImage != null)
+        {
+            if (data.isConcealed && data.revealLevel != RevealLevel.Full)
+                rawImage.texture = null;
+            else
+                rawImage.texture = data.skill.icon;
+        }
+    }
+
+    private void ApplyCounterSkillIcon(GameObject iconObj, SkillDefinitionSO skill, int queueIndex)
+    {
+        if (iconObj == null)
+            return;
+
+        SkillButton skillButton = iconObj.GetComponent<SkillButton>();
+        if (skillButton != null)
+        {
+            skillButton.skill = skill;
+            skillButton.queueData = null;
+            skillButton.queueIndex = queueIndex;
+            skillButton.isCounterSkill = true;
+        }
+
+        RawImage rawImage = iconObj.GetComponent<RawImage>();
+        if (rawImage != null)
+        {
+            rawImage.texture = skill != null ? skill.icon : null;
+        }
+    }
+    private SkillDefinitionSO GetDefaultCounterSkill(CharacterManager characterManager)
+    {
+        if (characterManager == null || characterManager.character == null)
+            return null;
+
+        if (characterManager.character.DefaultCounterSkill <= 0)
+            return null;
+
+        return GameDataRegistry.Instance.GetSkill(characterManager.character.DefaultCounterSkill);
+    }
+
 
     #endregion 
 

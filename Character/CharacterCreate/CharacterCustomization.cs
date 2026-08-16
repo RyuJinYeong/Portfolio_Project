@@ -1,7 +1,6 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using SoftKitty.InventoryEngine;
 using P09.Modular.Humanoid.Data;
 
 public class CharacterCustomization : MonoBehaviour
@@ -37,10 +36,6 @@ public class CharacterCustomization : MonoBehaviour
     public GameObject[] axes;
     public GameObject[] hammers;
     public GameObject[] twoHandedWeapons;
-
-    [Header("Portrait - 추후 구현")]
-    public RenderTexture portraitRenderTexture;
-    public Camera portraitCamera;
 
     [Header("Runtime")]
     public bool isMale = true;
@@ -458,10 +453,7 @@ public class CharacterCustomization : MonoBehaviour
     public void UpdateEquipmentAppearance(CharacterData characterData)
     {
         UpdateWeaponAppearance(characterData);
-
-        // 방어구/헬멧은 추후 구현
-        // UpdateArmorAppearance(characterData);
-        // UpdateHelmetAppearance(characterData);
+        UpdateArmorAppearance(characterData);
     }
 
     public void UpdateWeaponAppearance(CharacterData characterData)
@@ -471,24 +463,205 @@ public class CharacterCustomization : MonoBehaviour
         if (characterData == null)
             return;
 
+        EquipmentRuntimeData mainEquipment = characterData.GetMainWeaponRuntime();
+        EquipmentRuntimeData subEquipment = characterData.GetSubWeaponRuntime();
+
+        WeaponDefinitionSO mainWeapon = mainEquipment != null
+            ? mainEquipment.definition as WeaponDefinitionSO
+            : null;
+
+        WeaponDefinitionSO subWeapon = subEquipment != null
+            ? subEquipment.definition as WeaponDefinitionSO
+            : null;
+
         bool mainWeaponIsTwoHanded = false;
 
-        if (characterData.Weapon is Weapon mainWeapon)
+        if (mainWeapon != null)
         {
-            mainWeaponIsTwoHanded = mainWeapon.WeaponTags.Contains(WeaponTag.TwoHanded);
+            mainWeaponIsTwoHanded =
+                mainWeapon.weaponTags != null &&
+                mainWeapon.weaponTags.Contains(WeaponTag.TwoHanded);
 
-            if (mainWeaponIsTwoHanded)
-                ActivateTwoHandedWeapon(mainWeapon.WeaponType);
-            else
-                ActivateMainWeapon(mainWeapon.WeaponType);
+            bool activatedByVisualKey = ActivateWeaponByVisualKey(mainEquipment);
+
+            if (!activatedByVisualKey)
+            {
+                if (mainWeaponIsTwoHanded)
+                    ActivateTwoHandedWeapon(mainWeapon.weaponType);
+                else
+                    ActivateMainWeapon(mainWeapon.weaponType);
+            }
         }
 
         if (mainWeaponIsTwoHanded)
             return;
 
-        if (characterData.SubWeapon is Weapon subWeapon)
+        if (subWeapon != null)
         {
-            ActivateSubWeapon(subWeapon.WeaponType);
+            bool activatedByVisualKey = ActivateWeaponByVisualKey(subEquipment);
+
+            if (!activatedByVisualKey)
+                ActivateSubWeapon(subWeapon.weaponType);
+        }
+    }
+
+    private void UpdateArmorAppearance(CharacterData characterData)
+    {
+        DeactivateAllArmorVisuals();
+
+        if (characterData == null)
+            return;
+
+        ActivateArmorPart(characterData.GetHelmet(), "Head");
+
+        ActivateArmorPart(characterData.GetArmor(), "Chest");
+        ActivateArmorPart(characterData.GetArmor(), "Waist");
+
+        ActivateArmorPart(characterData.GetGloves(), "Arm");
+
+        ActivateArmorPart(characterData.GetShoes(), "Leg");
+    }
+
+    private void ActivateArmorPart(EquipmentDefinitionSO equipment, string partSuffix)
+    {
+        if (equipment == null)
+            return;
+
+        if (string.IsNullOrEmpty(equipment.visualKey))
+            return;
+
+        string parentName = NormalizeArmorVisualKey(equipment.visualKey);
+
+        Transform armorRoot = FindChildRecursive(modelRoot, parentName);
+
+        if (armorRoot == null)
+        {
+            Debug.LogWarning($"방어구 외형 부모를 찾지 못했습니다: {parentName}");
+            return;
+        }
+
+        armorRoot.gameObject.SetActive(true);
+
+        for (int i = 0; i < armorRoot.childCount; i++)
+        {
+            Transform child = armorRoot.GetChild(i);
+
+            if (child == null)
+                continue;
+
+            if (child.name.EndsWith("_" + partSuffix))
+            {
+                child.gameObject.SetActive(true);
+                return;
+            }
+        }
+
+        Debug.LogWarning($"방어구 파츠를 찾지 못했습니다: {parentName} / {partSuffix}");
+    }
+
+    private void DeactivateAllArmorVisuals()
+    {
+        if (modelRoot == null)
+            return;
+
+        Transform[] allChildren = modelRoot.GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform child in allChildren)
+        {
+            if (child == null)
+                continue;
+
+            if (IsArmorPartObject(child.name))
+                child.gameObject.SetActive(false);
+        }
+    }
+
+    private bool IsArmorPartObject(string objectName)
+    {
+        if (string.IsNullOrEmpty(objectName))
+            return false;
+
+        return objectName.Contains("_Armor_") &&
+               (objectName.EndsWith("_Arm") ||
+                objectName.EndsWith("_Chest") ||
+                objectName.EndsWith("_Head") ||
+                objectName.EndsWith("_Leg") ||
+                objectName.EndsWith("_Waist"));
+    }
+
+    private string NormalizeArmorVisualKey(string visualKey)
+    {
+        if (string.IsNullOrEmpty(visualKey))
+            return "";
+
+        if (visualKey.StartsWith("Armor_"))
+            return visualKey;
+
+        if (visualKey.StartsWith("armor_"))
+            return "Armor_" + visualKey.Substring("armor_".Length);
+
+        return visualKey;
+    }
+
+    private Transform FindChildRecursive(Transform root, string targetName)
+    {
+        if (root == null)
+            return null;
+
+        if (root.name == targetName)
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindChildRecursive(root.GetChild(i), targetName);
+
+            if (found != null)
+                return found;
+        }
+
+        return null;
+    }
+
+    private bool ActivateWeaponByVisualKey(EquipmentRuntimeData equipment)
+    {
+        if (equipment == null)
+            return false;
+
+        if (string.IsNullOrEmpty(equipment.visualKey))
+            return false;
+
+        if (weaponRoot == null)
+            return false;
+
+        Transform weaponVisual = FindChildRecursive(weaponRoot, equipment.visualKey);
+
+        if (weaponVisual == null)
+        {
+            Debug.LogWarning($"무기 외형을 찾지 못했습니다: {equipment.visualKey}");
+            return false;
+        }
+
+        ActivateSelfAndParentsUntil(weaponVisual, weaponRoot);
+        weaponVisual.gameObject.SetActive(true);
+
+        return true;
+    }
+
+    private void ActivateSelfAndParentsUntil(Transform target, Transform stopRoot)
+    {
+        if (target == null)
+            return;
+
+        Transform current = target;
+
+        while (current != null)
+        {
+            current.gameObject.SetActive(true);
+
+            if (current == stopRoot)
+                break;
+
+            current = current.parent;
         }
     }
 

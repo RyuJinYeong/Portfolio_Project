@@ -1,18 +1,36 @@
-using UnityEngine.EventSystems;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class SkillButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    public SkillBase skill;  // 연결된 스킬 객체
-    public int queueIndex = -1; // 스킬 큐에서의 인덱스 (기본값은 -1로 비활성화 의미)
+    public SkillDefinitionSO skill;
+    public SkillQueueData queueData;
+
+    public int queueIndex = -1;
+    public bool isCounterSkill;
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        TooltipManager.Instance.ShowTooltip(skill, Input.mousePosition);
+        if (TooltipManager.Instance == null)
+            return;
+
+        if (queueData != null)
+        {
+            TooltipManager.Instance.ShowTooltip(queueData, Input.mousePosition);
+            return;
+        }
+
+        if (skill != null)
+        {
+            TooltipManager.Instance.ShowTooltip(skill, Input.mousePosition);
+        }
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        TooltipManager.Instance.HideTooltip();    
+        if (TooltipManager.Instance == null)
+            return;
+
+        TooltipManager.Instance.HideTooltip();
     }
 }

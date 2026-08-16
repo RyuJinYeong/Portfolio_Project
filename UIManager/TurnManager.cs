@@ -267,24 +267,15 @@ public class TurnManager : MonoBehaviour
         }        
     }
 
-    private void ApplyStatusEffectsToAll() // 모든 캐릭터에게 상태이상 일괄적용
+    private void ApplyStatusEffectsToAll()
     {
         foreach (var characterManager in allCharacters)
         {
-            if (characterManager.character.StatusEffects != null)
-            {
-                foreach (var statusEffect in characterManager.character.StatusEffects.ToList())
-                {
-                    statusEffect.ApplyEffect(characterManager); // 매턴 지속형 상태이상 효과 적용
-                    statusEffect.ReduceTurn(); // 상태이상의 남은 지속 턴 감소
+            if (characterManager == null || characterManager.character == null)
+                continue;
 
-                    if (statusEffect.IsExpired()) // 해당 상태이상의 남은 턴이 0일 경우
-                    {
-                        statusEffect.OnExpire(characterManager); // 효과 적용 해제
-                        characterManager.character.StatusEffects.Remove(statusEffect); // 리스트에서 상태이상 제거
-                    }
-                }
-            }
+            StatusEffectProcessor.ApplyTurnEffects(characterManager);
+            StatusEffectProcessor.ReduceDurations(characterManager.character);
 
             characterManager.UpdateCharacterUI();
         }

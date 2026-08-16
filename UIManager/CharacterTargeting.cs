@@ -9,18 +9,20 @@ public class CharacterTargeting : MonoBehaviour
     private Camera mainCamera;
     private CharacterManager selectedCharacter;
     private CharacterManager selectedTarget;
-    public SkillBase selectedSkill;
+
+    public SkillDefinitionSO selectedSkill;
+
     private bool isTargeting = false;
     public bool isDefenseSkillTargeting = false;
-    private bool isDefenseCharacterTargeting = false;  // 방어 타겟팅 상태 플래그
+    private bool isDefenseCharacterTargeting = false;
 
-    public int curveResolution = 50;  // 곡선의 변곡점 수
+    public int curveResolution = 50;
 
     public Color hoverOutlineColor = Color.red;
     public Color selectedOutlineColor = Color.white;
 
-    private Outline currentHoverOutline;  // 마우스 커서가 가리키는 캐릭터의 외곽선
-    private Outline selectedCharacterOutline;  // 현재 선택된 캐릭터의 외곽선
+    private Outline currentHoverOutline;
+    private Outline selectedCharacterOutline;
 
     void Start()
     {
@@ -30,64 +32,44 @@ public class CharacterTargeting : MonoBehaviour
 
     void Update()
     {
-        //if (PlayerManager.Instance.GetCurrentPlayerData().currentStage != "Town" || PlayerManager.Instance.GetCurrentPlayerData().currentStage != null)
-        //{
-            // 마우스 커서가 올라간 캐릭터에 외곽선 적용
-            HandleHoverOutline();
+        HandleHoverOutline();
 
+        if (!isTargeting &&
+            !isDefenseCharacterTargeting &&
+            Input.GetMouseButtonDown(0) &&
+            !EventSystem.current.IsPointerOverGameObject())
+        {
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 
-            if (!isTargeting && !isDefenseCharacterTargeting && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+            if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-                if (Physics.Raycast(ray, out RaycastHit hit))
+                if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
                 {
-                    if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
-                    {
-                        SelectCharacter(characterManager);
-                    }
+                    SelectCharacter(characterManager);
                 }
             }
+        }
 
-            if (isTargeting)
-            {
-                if (isDefenseSkillTargeting)
-                    HandleDefenseSkillTargeting();
-                else
-                    HandleSkillTargeting();
-            }
+        if (isTargeting)
+        {
+            if (isDefenseSkillTargeting)
+                HandleDefenseSkillTargeting();
+            else
+                HandleSkillTargeting();
+        }
 
-            if (isDefenseCharacterTargeting)
-            {
-                HandleDefenseTargeting();
-            }
-        //}
+        if (isDefenseCharacterTargeting)
+        {
+            HandleDefenseTargeting();
+        }
     }
 
-    // 기존 타겟팅 로직 - 공격 스킬
     private void HandleSkillTargeting()
     {
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit))
-            {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
-                {
-                    SelectTarget(targetCharacter);
-                }
-            }
-        }
-        else
-        {
-            UpdateBezierCurve();
-        }
-    }
-    // 방어스킬 타겟팅
-    private void HandleDefenseSkillTargeting()
-    {
-        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
-        {
-            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
                 if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
@@ -102,12 +84,32 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
-    // 방어캐릭터 타겟팅 로직
+    private void HandleDefenseSkillTargeting()
+    {
+        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        {
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(ray, out RaycastHit hit))
+            {
+                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
+                {
+                    SelectTarget(targetCharacter);
+                }
+            }
+        }
+        else
+        {
+            UpdateBezierCurve();
+        }
+    }
+
     private void HandleDefenseTargeting()
     {
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
                 if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
@@ -122,45 +124,46 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
-    //인벤토리 열람
     public void OpenPlayerInventory()
     {
-        if (selectedCharacter.character.IsMine)
-            selectedCharacter.character.CharacterInventory.OpenWindow();
-        Debug.Log(selectedCharacter.character.CharacterInventory);
-                //ItemManager.PlayerInventoryHolder.OpenWindow();
+        //CharacterInventory.OpenWindow();
+
+        Debug.Log("원정대 창고 열람");
     }
 
     public void OpenPlayerEquipment()
     {
-        if (selectedCharacter.character.IsMine)
+        /*
+        if (selectedCharacter != null && selectedCharacter.character.IsMine)
             selectedCharacter.character.CharacterEquipment.OpenWindow();
-        //ItemManager.PlayerEquipmentHolder.OpenWindow();
+        */
     }
+
     public void OpenSkills()
     {
-        if (selectedCharacter.character.IsMine)
-            ItemManager.PlayerInventoryHolder.OpenWindowByName("Skills", "Skills"); //An example to use "Hidden Items" to achive "Skills" management.
+        if (selectedCharacter != null && selectedCharacter.character.IsMine)
+            ItemManager.PlayerInventoryHolder.OpenWindowByName("Skills", "Skills");
     }
 
     private void HandleHoverOutline()
     {
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
         if (Physics.Raycast(ray, out RaycastHit hit))
         {
             if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
             {
-                // 현재 선택된 캐릭터와 동일한 캐릭터에 커서가 있을 경우에는 외곽선을 업데이트하지 않음
                 if (selectedCharacter == characterManager)
                     return;
 
-                // 기존 커서 외곽선을 지워준다
-                if (currentHoverOutline != null && currentHoverOutline != characterManager.GetComponent<Outline>())
+                if (currentHoverOutline != null &&
+                    currentHoverOutline != characterManager.GetComponent<Outline>())
                 {
                     currentHoverOutline.enabled = false;
                 }
 
                 currentHoverOutline = characterManager.GetComponent<Outline>();
+
                 if (currentHoverOutline != null)
                 {
                     currentHoverOutline.OutlineColor = hoverOutlineColor;
@@ -169,7 +172,6 @@ public class CharacterTargeting : MonoBehaviour
             }
             else
             {
-                // 커서가 다른 곳을 가리키면 외곽선을 제거
                 if (currentHoverOutline != null)
                 {
                     currentHoverOutline.enabled = false;
@@ -182,20 +184,22 @@ public class CharacterTargeting : MonoBehaviour
     private void ChangeCursor(string cursorType)
     {
         Texture2D cursorTexture = Resources.Load<Texture2D>($"Cursor/Cursor_{cursorType}");
+
+        if (cursorTexture == null)
+            return;
+
         Vector2 cursorHotspot = new Vector2(cursorTexture.width * 0.3f, 0);
-        Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);        
+        Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);
     }
 
     public void SelectCharacter(CharacterManager characterManager)
     {
-        // 타겟팅 상태에서는 선택된 캐릭터를 변경하지 않음
         if (isTargeting || isDefenseCharacterTargeting)
         {
             ChangeCursor("Basic");
             return;
         }
 
-        // 기존 선택된 캐릭터 외곽선 해제
         if (selectedCharacterOutline != null)
         {
             selectedCharacterOutline.enabled = false;
@@ -206,64 +210,68 @@ public class CharacterTargeting : MonoBehaviour
 
         if (selectedCharacter.character.IsMine)
         {
-            // Player Inventory Holder 선택된 아군 캐릭터로 교체
-            ItemManager.PlayerInventoryHolder = selectedCharacter.character.CharacterInventory;
+            /*
             ItemManager.PlayerEquipmentHolder = selectedCharacter.character.CharacterEquipment;
             HoverInformation.SetCompareHolder(selectedCharacter.character.CharacterEquipment);
+            */
         }
 
-        // 선택된 캐릭터 외곽선 적용
         selectedCharacterOutline = selectedCharacter.GetComponent<Outline>();
+
         if (selectedCharacterOutline != null)
         {
             selectedCharacterOutline.OutlineColor = selectedOutlineColor;
             selectedCharacterOutline.enabled = true;
         }
 
-        // 커서 외곽선이 동일한 캐릭터를 가리키고 있으면 제거
         if (currentHoverOutline == selectedCharacterOutline)
         {
             currentHoverOutline = null;
         }
     }
 
-    public void StartTargeting(SkillBase skill)
+    public void StartTargeting(SkillDefinitionSO skill)
     {
-        if (selectedCharacter == null) return;
+        if (selectedCharacter == null || skill == null)
+            return;
 
         selectedSkill = skill;
 
-        if (selectedSkill.IsCounterSkill)
+        if (selectedSkill.isCounterSkill)
         {
-            // 커서를 방어 스킬용으로 변경
             ChangeCursor("Deff");
             isTargeting = true;
             isDefenseSkillTargeting = true;
-            // 방어타겟팅 로직 구현 필요. - 0225 구현중
+            lineRenderer.enabled = true;
         }
-        else if (selectedSkill.IsRangedSkill)
+        else if (selectedSkill.isRangedSkill)
         {
-            // 커서를 원거리 스킬용으로 변경
             ChangeCursor("Shoot");
             isTargeting = true;
-            // 원거리 타겟팅 로직 구현 필요
+            isDefenseSkillTargeting = false;
+            lineRenderer.enabled = true;
         }
-        else if (!selectedSkill.IsRangedSkill)
-        {            
+        else
+        {
             ChangeCursor("Attack");
             isTargeting = true;
+            isDefenseSkillTargeting = false;
             lineRenderer.enabled = true;
-        }        
+        }
     }
 
     void UpdateBezierCurve()
     {
-        if (selectedCharacter == null)
+        if (selectedCharacter == null || lineRenderer == null || mainCamera == null)
             return;
 
         Vector3 startPosition = selectedCharacter.transform.position + Vector3.up * 1;
-        // 마우스 위치를 월드 좌표로 변환
-        Vector3 mousePosition = mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, mainCamera.transform.position.y - selectedCharacter.transform.position.y));
+
+        Vector3 mousePosition = mainCamera.ScreenToWorldPoint(
+            new Vector3(
+                Input.mousePosition.x,
+                Input.mousePosition.y,
+                mainCamera.transform.position.y - selectedCharacter.transform.position.y));
 
         Vector3 controlPoint = (startPosition + mousePosition) / 2;
         controlPoint.y += 2.0f;
@@ -280,16 +288,19 @@ public class CharacterTargeting : MonoBehaviour
 
     public void SelectTarget(CharacterManager target)
     {
+        if (selectedCharacter == null || selectedSkill == null || target == null)
+            return;
+
         selectedTarget = target;
         isTargeting = false;
 
-        // 베지어 곡선 업데이트
         Vector3 startPosition = selectedCharacter.transform.position + Vector3.up * 1;
         Vector3 targetPosition = target.transform.position + Vector3.up * 1;
         Vector3 controlPoint = (startPosition + targetPosition) / 2;
         controlPoint.y += 2.0f;
 
         lineRenderer.positionCount = curveResolution;
+
         for (int i = 0; i < curveResolution; i++)
         {
             float t = i / (float)(curveResolution - 1);
@@ -297,57 +308,60 @@ public class CharacterTargeting : MonoBehaviour
             lineRenderer.SetPosition(i, curvePoint);
         }
 
-        // 스킬 실행 큐에 추가
-        if(selectedSkill.IsCounterSkill)
+        if (selectedSkill.isCounterSkill)
             selectedCharacter.SelectCounterSkill(selectedSkill, target);
         else
             selectedCharacter.SelectSkill(selectedSkill, target);
+
         ChangeCursor("Basic");
     }
 
     public void StartDefenseCharacterTargeting(CharacterManager defenseCharacter)
     {
-        if (defenseCharacter == null) return;
+        if (defenseCharacter == null)
+            return;
 
         isDefenseCharacterTargeting = true;
         lineRenderer.enabled = true;
 
-        selectedCharacter = defenseCharacter;  // 방어 캐릭터 지정
-        ChangeCursor("Deff");  // 방어 커서로 변경
+        selectedCharacter = defenseCharacter;
+        ChangeCursor("Deff");
+
         Debug.Log($"{defenseCharacter.character.Name}의 방어 대상 타겟팅을 시작합니다.");
 
-        // 라인 렌더러 초기화
         UpdateBezierCurve();
     }
 
     private void SelectDefenseTarget(CharacterManager target)
     {
-        // 방어 캐릭터와 방어 대상은 같은 진영이어야 함
+        if (target == null || selectedCharacter == null)
+            return;
+
         if (target.character.IsMine == selectedCharacter.character.IsMine)
         {
             selectedTarget = target;
             isDefenseCharacterTargeting = false;
 
-            // 베지어 곡선으로 방어 관계 표시
             UpdateBezierCurve();
+
             Debug.Log($"{selectedCharacter.character.Name}가 {target.character.Name}을 방어합니다.");
 
-            // 방어 캐릭터에 방어 대상을 설정
             selectedCharacter.combatHandler.SetDefenseTarget(target);
             StopTargeting();
 
-            // 방어 스킬 UI 출력
             UIManager.Instance.UpdateHotbarSkills(selectedCharacter);
         }
     }
 
-
-    // 타겟팅 종료 메서드
     public void StopTargeting()
     {
         isTargeting = false;
-        isDefenseCharacterTargeting = false;  // 방어캐릭터 타겟팅도 종료
-        lineRenderer.enabled = false;
+        isDefenseSkillTargeting = false;
+        isDefenseCharacterTargeting = false;
+
+        if (lineRenderer != null)
+            lineRenderer.enabled = false;
+
         ChangeCursor("Basic");
     }
 
@@ -357,9 +371,9 @@ public class CharacterTargeting : MonoBehaviour
         float tt = t * t;
         float uu = u * u;
 
-        Vector3 point = uu * p0; // (1-t)^2 * p0
-        point += 2 * u * t * p1; // 2 * (1-t) * t * p1
-        point += tt * p2;        // t^2 * p2
+        Vector3 point = uu * p0;
+        point += 2 * u * t * p1;
+        point += tt * p2;
 
         return point;
     }

@@ -1,4 +1,3 @@
-using SoftKitty.InventoryEngine;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -32,46 +31,54 @@ public class CharacterCreation : MonoBehaviour
     [Header("Trait Point")]
     public int traitPoint = 5;
 
-    private string selectedOrigin;
-    private Dictionary<string, CharacterData> originDataDictionary;
+    private OriginDefinitionSO selectedOrigin;
+    private readonly List<OriginDefinitionSO> originList = new();
 
-    public void Awake()
+    private void Awake()
     {
-        DatabaseBootstrapper.EnsureInitialized();
-        ResetCharacterCreationState();
-
-        originDataDictionary = CharacterOrigin.GetOriginData();
         traitSelectionUI = GetComponent<TraitSelectionUI>();
 
+        LoadOrigins();
         PopulateDropdown();
 
-        originDropdown.onValueChanged.RemoveAllListeners();
-        originDropdown.onValueChanged.AddListener(delegate { OnDropdownValueChanged(originDropdown); });
+        if (originDropdown != null)
+        {
+            originDropdown.onValueChanged.RemoveAllListeners();
+            originDropdown.onValueChanged.AddListener(delegate { OnDropdownValueChanged(originDropdown); });
 
-        originDropdown.value = 0;
-        selectedOrigin = originDropdown.options[0].text;
+            if (originList.Count > 0)
+            {
+                originDropdown.value = 0;
+                selectedOrigin = originList[0];
+            }
+        }
 
         if (CustomInfo != null)
             CustomInfo.isMale = true;
 
-        ApplyTraitPointByOriginIndex(originDropdown.value);
-
-        if (traitSelectionUI != null)
-            traitSelectionUI.SetTraitPoints(traitPoint);
-
-        UpdateSelectedOriginInfo();
+        ResetCharacterCreationState();
         OpenCustomizationPanel();
     }
 
     public CharacterManager GetCharacterManager()
     {
-        if (CustomInfo != null && CustomInfo.isMale)
-            return CustomInfo.character_M.GetComponent<CharacterManager>();
+        if (CustomInfo == null)
+            return characterManager;
 
-        return CustomInfo.character_F.GetComponent<CharacterManager>();
+        if (CustomInfo.isMale)
+        {
+            if (CustomInfo.character_M != null)
+                return CustomInfo.character_M.GetComponent<CharacterManager>();
+        }
+
+        if (CustomInfo.character_F != null)
+            return CustomInfo.character_F.GetComponent<CharacterManager>();
+
+        return characterManager;
     }
 
     #region Step Flow
+
     public void OpenCustomizationPanel()
     {
         if (customizationPanel != null)
@@ -97,29 +104,24 @@ public class CharacterCreation : MonoBehaviour
         ResetCharacterCreationState();
         gameObject.SetActive(false);
     }
+
     private void ResetCharacterCreationState()
     {
-        // 1. 커스터마이징 데이터 초기화
         if (CustomInfo != null)
-        {
             CustomInfo.ResetCustomization();
-        }
 
-        // 2. 이름 입력 초기화
         if (characterNameInput != null)
-        {
             characterNameInput.text = "";
-        }
 
-        // 3. 출신지 드롭다운 초기화
-        if (originDropdown != null && originDropdown.options.Count > 0)
+        if (originList.Count > 0)
         {
-            originDropdown.value = 0;
-            selectedOrigin = originDropdown.options[0].text;
+            selectedOrigin = originList[0];
+
+            if (originDropdown != null)
+                originDropdown.value = 0;
         }
 
-        // 4. 특성 선택 초기화
-        ApplyTraitPointByOriginIndex(originDropdown != null ? originDropdown.value : 0);
+        ApplyTraitPointBySelectedOrigin();
 
         if (traitSelectionUI != null)
         {
@@ -127,31 +129,72 @@ public class CharacterCreation : MonoBehaviour
             traitSelectionUI.SetTraitPoints(traitPoint);
         }
 
-        // 5. 생성창 첫 화면으로 복귀
-        OpenCustomizationPanel();
-
-        // 6. 프리뷰 캐릭터도 기본 출신지 기준으로 다시 세팅
         RefreshCharacterBySelectedOrigin(false);
+        UpdateSelectedOriginInfo();
+        UIupdate();
     }
 
     #endregion
 
     #region Origin / Setup
 
-    void PopulateDropdown()
+    private void LoadOrigins()
     {
+        originList.Clear();
+
+        if (GameDataRegistry.Instance == null)
+        {
+            Debug.LogError("GameDataRegistry.Instance가 없습니다. 씬에 GameDataRegistry 오브젝트가 필요합니다.");
+            return;
+        }
+
+        List<OriginDefinitionSO> origins = GameDataRegistry.Instance.GetAllOrigins();
+
+        if (origins == null)
+            return;
+
+        foreach (OriginDefinitionSO origin in origins)
+        {
+            if (origin == null)
+                continue;
+
+            originList.Add(origin);
+        }
+    }
+
+    private void PopulateDropdown()
+    {
+        if (originDropdown == null)
+            return;
+
         originDropdown.ClearOptions();
 
-        List<string> options = new List<string>(originDataDictionary.Keys);
+        List<string> options = new List<string>();
+
+        foreach (OriginDefinitionSO origin in originList)
+        {
+            if (origin == null)
+                continue;
+
+            options.Add(origin.originName);
+        }
+
         originDropdown.AddOptions(options);
     }
 
-    void OnDropdownValueChanged(TMP_Dropdown dropdown)
+    private void OnDropdownValueChanged(TMP_Dropdown dropdown)
     {
-        int index = dropdown.value;
-        selectedOrigin = originDropdown.options[index].text;
+        if (dropdown == null)
+            return;
 
-        ApplyTraitPointByOriginIndex(index);
+        int index = dropdown.value;
+
+        if (index < 0 || index >= originList.Count)
+            return;
+
+        selectedOrigin = originList[index];
+
+        ApplyTraitPointBySelectedOrigin();
 
         if (traitSelectionUI != null)
         {
@@ -163,9 +206,9 @@ public class CharacterCreation : MonoBehaviour
         RefreshCharacterBySelectedOrigin(false);
     }
 
-    private void ApplyTraitPointByOriginIndex(int index)
+    private void ApplyTraitPointBySelectedOrigin()
     {
-        traitPoint = index == 6 ? 10 : 5;
+        traitPoint = selectedOrigin != null ? selectedOrigin.traitPoint : 5;
 
         if (traitPointText != null)
             traitPointText.text = traitPoint.ToString();
@@ -173,17 +216,18 @@ public class CharacterCreation : MonoBehaviour
 
     private void RefreshCharacterBySelectedOrigin(bool resetTraitSelection)
     {
-        if (string.IsNullOrEmpty(selectedOrigin))
-            return;
-
-        if (!originDataDictionary.TryGetValue(selectedOrigin, out CharacterData originData))
+        if (selectedOrigin == null)
             return;
 
         characterManager = GetCharacterManager();
+
         if (characterManager == null)
             return;
 
-        CharacterData newCharacter = DeepCopy.DeepCopyCharacter(originData);
+        CharacterData newCharacter = selectedOrigin.CreateCharacterData();
+
+        if (newCharacter == null)
+            return;
 
         if (CustomInfo != null)
         {
@@ -210,25 +254,22 @@ public class CharacterCreation : MonoBehaviour
         if (characterManager == null || characterManager.character == null)
             return;
 
-        var customization = characterManager.GetComponent<CharacterCustomization>();
+        CharacterData character = characterManager.character;
+
+        CharacterCustomization customization = characterManager.GetComponent<CharacterCustomization>();
         if (customization != null)
         {
-            customization.ApplyCustomization(characterManager.character);
-            customization.UpdateEquipmentAppearance(characterManager.character);
+            customization.ApplyCustomization(character);
+            customization.UpdateEquipmentAppearance(character);
         }
 
-        // 기존 마법사 랜덤 원소 적성 처리 유지.
-        // 단, 나중에는 생성 확정 시점으로 옮기는 것을 추천.
-        if (selectedOrigin == "마법사" &&
-            characterManager.character.Traits != null &&
-            characterManager.character.Traits.Count > 0 &&
-            characterManager.character.Traits[0] is BasicElementalAptitudeTrait)
-        {
-            characterManager.character.Traits[0].ApplyTrait(characterManager);
-        }
+        EquipmentManager.RebuildEquipmentStats(character);
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
 
-        characterManager.character.ApplyAllTraits(characterManager);
-        characterManager.character.UpdateFinalStats();
+        character.RemoveAllTraits(characterManager);
+        character.ApplyAllTraits(characterManager);
+        character.UpdateFinalStats();
 
         UpdateSelectedOriginInfo();
     }
@@ -238,17 +279,7 @@ public class CharacterCreation : MonoBehaviour
         if (traitSelectionUI != null)
             traitPoint = traitSelectionUI.availableTraitPoints;
 
-        if (baseTraits != null)
-        {
-            for (int i = 0; i < baseTraits.Length; i++)
-                baseTraits[i].text = "";
-
-            if (characterManager != null && characterManager.character.Traits != null)
-            {
-                for (int i = 0; i < characterManager.character.Traits.Count && i < baseTraits.Length; i++)
-                    baseTraits[i].text = characterManager.character.Traits[i].Name;
-            }
-        }
+        UpdateTraitListUI();
 
         if (traitPointText != null)
             traitPointText.text = traitPoint.ToString();
@@ -256,18 +287,88 @@ public class CharacterCreation : MonoBehaviour
         UpdateStatsUI();
     }
 
-    void UpdateSelectedOriginInfo()
+    private void UpdateTraitListUI()
     {
-        if (selectedOriginInfo != null && !string.IsNullOrEmpty(selectedOrigin))
-            selectedOriginInfo.text = $"{selectedOrigin}\n";
+        if (baseTraits == null)
+            return;
+
+        for (int i = 0; i < baseTraits.Length; i++)
+            baseTraits[i].text = "";
+
+        if (characterManager == null ||
+            characterManager.character == null ||
+            characterManager.character.Traits == null)
+        {
+            return;
+        }
+
+        List<TraitRuntimeData> traits = characterManager.character.Traits;
+
+        for (int i = 0; i < traits.Count && i < baseTraits.Length; i++)
+        {
+            TraitRuntimeData runtime = traits[i];
+
+            if (runtime == null)
+                continue;
+
+            TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(runtime.traitId);
+
+            if (def == null)
+                continue;
+
+            TraitGrade currentGrade = TraitGradeUtility.GetGrade(runtime.point);
+            baseTraits[i].text = $"{def.traitName} ({currentGrade})";
+        }
     }
 
-    void UpdateStatsUI()
+    private void UpdateSelectedOriginInfo()
+    {
+        if (selectedOriginInfo == null)
+            return;
+
+        if (selectedOrigin == null)
+        {
+            selectedOriginInfo.text = "";
+            ClearOriginImage();
+            return;
+        }
+
+        selectedOriginInfo.text = $"{selectedOrigin.originName}";
+
+        UpdateOriginImage();
+    }
+
+    private void UpdateOriginImage()
+    {
+        if (originImage == null)
+            return;
+
+        originImage.sprite = null;
+
+        if (selectedOrigin == null || selectedOrigin.icon == null)
+            return;
+
+        Texture2D icon = selectedOrigin.icon;
+
+        originImage.sprite = Sprite.Create(
+            icon,
+            new Rect(0, 0, icon.width, icon.height),
+            new Vector2(0.5f, 0.5f));
+    }
+
+    private void ClearOriginImage()
+    {
+        if (originImage != null)
+            originImage.sprite = null;
+    }
+
+    private void UpdateStatsUI()
     {
         if (characterManager == null || characterManager.character == null)
             return;
 
         CharacterStats stats = characterManager.character.FinalStats;
+
         if (stats == null || baseStats == null || baseStats.Length < 10)
             return;
 
@@ -291,14 +392,15 @@ public class CharacterCreation : MonoBehaviour
     {
         PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
 
-        playerData.currentStage = "Town";
+        if (playerData != null)
+            playerData.currentStage = "Town";
 
         GameManager.Instance.LoadGameScene("Town");
     }
 
     public void OnCreateCharacterButtonPressed()
     {
-        if (string.IsNullOrEmpty(characterNameInput.text))
+        if (characterNameInput == null || string.IsNullOrEmpty(characterNameInput.text))
         {
             Debug.LogWarning("Character name is required!");
 
@@ -316,86 +418,56 @@ public class CharacterCreation : MonoBehaviour
             return;
         }
 
-        characterManager.character.customizationData = CustomInfo.customizationInfo;
-        characterManager.character.customizationData.IsMale = CustomInfo.isMale;
-        characterManager.character.customizationData.SyncGenderFromBool();
+        CharacterData character = characterManager.character;
 
-        BindHoldersToCharacterData();
-        SeedOriginEquipmentsIntoHolders();
+        if (CustomInfo != null)
+        {
+            character.customizationData = CustomInfo.customizationInfo;
+            character.customizationData.IsMale = CustomInfo.isMale;
+            character.customizationData.SyncGenderFromBool();
+        }
 
-        UpdateEquipmentEffect();
+        character.Name = characterNameInput.text;
+        character.IsMine = true;
 
-        characterManager.character.Name = characterNameInput.text;
-        characterManager.character.IsMine = true;
-        characterManager.character.UpdateFinalStats();
+        FinalizeCharacterBeforeSave(character);
 
-        characterManager.character.CurrentHp = characterManager.character.FinalStats.MaxHp;
-        characterManager.character.CurrentStamina = characterManager.character.FinalStats.MaxStamina;
-        characterManager.character.CurrentMentality = characterManager.character.FinalStats.MaxMentality;
-
-        PlayerManager._instance.CreateCharacter(characterManager.character);
-        PlayerManager._instance.AddCharacterID(characterManager.character.ID);
-        PlayerManager._instance.SaveCharacterPosition(characterManager.character.ID, false);
+        PlayerManager.Instance.CreateCharacter(character);
+        PlayerManager.Instance.AddCharacterID(character.ID);
+        PlayerManager.Instance.SaveCharacterPosition(character.ID, false);
 
         PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
 
-        if (playerData.activeCharacterIds == null)
-            playerData.activeCharacterIds = new List<string>();
+        if (playerData != null)
+        {
+            if (playerData.activeCharacterIds == null)
+                playerData.activeCharacterIds = new List<string>();
 
-        playerData.activeCharacterIds.Add(characterManager.character.ID);
-        playerData.currentStage = "Town";
+            playerData.activeCharacterIds.Add(character.ID);
+            playerData.currentStage = "Town";
+        }
 
         Debug.Log("Character created and saved!");
 
         GameManager.Instance.LoadGameScene("Town");
     }
 
-    public void UpdateEquipmentEffect()
+    private void FinalizeCharacterBeforeSave(CharacterData character)
     {
-        List<Equipment> equips = (List<Equipment>)characterManager.character.GetEquipments();
+        if (character == null)
+            return;
 
-        foreach (Equipment equip in equips)
-        {
-            if (equip != null)
-                equip.Equip(characterManager.character);
-        }
-    }
+        EquipmentManager.RebuildEquipmentStats(character);
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
 
-    void BindHoldersToCharacterData()
-    {
-        var inv = default(InventoryHolder);
-        var eq = default(InventoryHolder);
+        character.RemoveAllTraits(characterManager);
+        character.ApplyAllTraits(characterManager);
+        character.UpdateFinalStats();
 
-        var holders = characterManager.GetComponents<InventoryHolder>();
-        foreach (var h in holders)
-        {
-            if (h.Type == InventoryHolder.HolderType.PlayerInventory)
-                inv = h;
-            else if (h.Type == InventoryHolder.HolderType.PlayerEquipment)
-                eq = h;
-        }
-
-        characterManager.character.CharacterInventory = inv;
-        characterManager.character.CharacterEquipment = eq;
-    }
-
-    void SeedOriginEquipmentsIntoHolders()
-    {
-        var eqHolder = characterManager.character.CharacterEquipment;
-        if (eqHolder == null) return;
-
-        var equips = (List<Equipment>)characterManager.character.GetEquipments();
-        if (equips == null) return;
-
-        foreach (var equipment in equips)
-        {
-            if (equipment == null) continue;
-
-            eqHolder.AddItem(equipment, 1);
-
-            var changed = new Dictionary<Item, int> { { equipment, 1 } };
-            eqHolder.ItemChanged(changed);
-        }
+        character.CurrentHp = character.FinalStats.MaxHp;
+        character.CurrentStamina = character.FinalStats.MaxStamina;
+        character.CurrentMentality = character.FinalStats.MaxMentality;
     }
 
     #endregion

@@ -1,245 +1,287 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public static class EquipmentManager
 {
-    public static void Equip(CharacterManager manager, Equipment equipment)
+    public static void Equip(CharacterManager manager, InventorySlotData slot)
     {
+        if (manager == null || manager.character == null || slot == null)
+            return;
+
+        Equip(manager, slot.itemUid, slot.equipmentInstanceId);
+    }
+
+    public static void Equip(CharacterManager manager, int itemUid, string instanceId = null)
+    {
+        if (manager == null || manager.character == null)
+            return;
+
+        EquipmentDefinitionSO equipment = GameDataRegistry.Instance.GetEquipment(itemUid);
+
+        if (equipment == null)
+            return;
+
         CharacterData character = manager.character;
 
-        if (equipment.EquipType == EquipmentType.Weapon && equipment is Weapon wMain)
+        if (equipment is WeaponDefinitionSO weapon)
         {
-            if (!character.CanEquipMainWeapon(wMain))
+            if (equipment.equipType == EquipmentType.Weapon && !character.CanEquipMainWeapon(weapon))
             {
                 Debug.Log("장착 불가능한 주무기입니다.");
                 return;
             }
-        }
-        else if (equipment.EquipType == EquipmentType.SubWeapon)
-        {
-            if (!character.CanEquipSubWeapon())
+
+            if (equipment.equipType == EquipmentType.SubWeapon && !character.CanEquipSubWeapon())
             {
                 Debug.Log("장착 불가능한 보조무기입니다.");
                 return;
             }
         }
 
-        character.RemoveAllTraits(manager); // 캐릭터의 모든 특성 적용 해제
-        switch (equipment.EquipType)
-        {
-            case EquipmentType.Helmet:
-                if (character.Helmet != null)
-                    character.Helmet.Unequip(character);
-                character.Helmet = equipment;                
-                break;
+        SetEquipmentSlot(character.EquipmentSlots, equipment.equipType, itemUid, instanceId);
 
-            case EquipmentType.Armor:
-                if (character.Armor != null)
-                    character.Armor.Unequip(character);
-                character.Armor = equipment;
-                break;
-
-            case EquipmentType.Gloves:
-                if (character.Gloves != null)
-                    character.Gloves.Unequip(character);
-                character.Gloves = equipment;
-                break;
-
-            case EquipmentType.Shoes:
-                if (character.Shoes != null)
-                    character.Shoes.Unequip(character);
-                character.Shoes = equipment;
-                break;
-
-            case EquipmentType.Cape:
-                if (character.Cape != null)
-                    character.Cape.Unequip(character);
-                character.Cape = equipment;
-                break;
-
-            case EquipmentType.Ring:
-                if (character.Ring1 == null)
-                {
-                    character.Ring1 = equipment;
-                }
-                else if (character.Ring2 == null)
-                {
-                    character.Ring2 = equipment;
-                }
-                else
-                {
-                    character.Ring2.Unequip(character);
-                    character.Ring2 = equipment;
-                }
-                break;
-
-            case EquipmentType.Necklace:
-                if (character.Necklace != null)
-                    character.Necklace.Unequip(character);
-                character.Necklace = equipment;
-                break;
-
-            case EquipmentType.Weapon:
-                if (character.Weapon != null)
-                    character.Weapon.Unequip(character);
-                character.Weapon = equipment;
-                break;
-
-            case EquipmentType.SubWeapon:
-                if (character.SubWeapon != null)
-                    character.SubWeapon.Unequip(character);
-                character.SubWeapon = equipment;
-                break;
-        }
-
-        equipment.Equip(character); // 해당 장비 착용으로 증감된 능력치 캐릭터에 적용
-
-        // 사용 가능한 속성 및 스킬 업데이트
-        UpdateAvailableAttributes(character);
-        UpdateSkillAvailability(character);
-
-        character.ApplyAllTraits(manager);  // 캐릭터의 모든 특성 적용
-        character.UpdateFinalStats();
-
-        manager.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(manager.character);
+        RecalculateAfterEquipmentChanged(manager);
     }
 
-    public static void Unequip(CharacterManager manager, EquipmentType equipType, int slotIndex = 1, bool suppressTraitRecalc = false)
+    public static void Unequip(CharacterManager manager, EquipmentType equipType, int slotIndex = 1)
+    {
+        if (manager == null || manager.character == null)
+            return;
+
+        ClearSlot(manager.character.EquipmentSlots, equipType, slotIndex);
+
+        RecalculateAfterEquipmentChanged(manager);
+    }
+
+    private static void RecalculateAfterEquipmentChanged(CharacterManager manager)
     {
         CharacterData character = manager.character;
 
-        if (!suppressTraitRecalc)
-            character.RemoveAllTraits(manager); // 캐릭터의 모든 특성 적용 해제
+        RebuildEquipmentStats(character);
+        UpdateAvailableAttributes(character);
+        UpdateSkillAvailability(character);
 
+        character.RemoveAllTraits(manager);
+        character.ApplyAllTraits(manager);
+        character.UpdateFinalStats();
 
-        Equipment equipment = null;
+        CharacterCustomization customization = manager.GetComponent<CharacterCustomization>();
+
+        if (customization != null)
+            customization.UpdateEquipmentAppearance(character);
+    }
+
+    public static void SetEquipmentSlot(
+    EquipmentSlotData slots,
+    EquipmentType equipType,
+    int itemUid,
+    string instanceId)
+    {
+        if (slots == null)
+            return;
 
         switch (equipType)
         {
             case EquipmentType.Helmet:
-                equipment = character.Helmet;
-                character.Helmet = null;
+                slots.helmetUid = itemUid;
+                slots.helmetInstanceId = instanceId;
                 break;
 
             case EquipmentType.Armor:
-                equipment = character.Armor;
-                character.Armor = null;
+                slots.armorUid = itemUid;
+                slots.armorInstanceId = instanceId;
                 break;
 
             case EquipmentType.Gloves:
-                equipment = character.Gloves;
-                character.Gloves = null;
+                slots.glovesUid = itemUid;
+                slots.glovesInstanceId = instanceId;
                 break;
 
             case EquipmentType.Shoes:
-                equipment = character.Shoes;
-                character.Shoes = null;
+                slots.shoesUid = itemUid;
+                slots.shoesInstanceId = instanceId;
                 break;
 
-            case EquipmentType.Cape:
-                equipment = character.Cape;
-                character.Cape = null;
+            case EquipmentType.Ring:
+                if (slots.ring1Uid == 0)
+                {
+                    slots.ring1Uid = itemUid;
+                    slots.ring1InstanceId = instanceId;
+                }
+                else
+                {
+                    slots.ring2Uid = itemUid;
+                    slots.ring2InstanceId = instanceId;
+                }
+                break;
+
+            case EquipmentType.Necklace:
+                slots.necklaceUid = itemUid;
+                slots.necklaceInstanceId = instanceId;
+                break;
+
+            case EquipmentType.Weapon:
+                slots.weaponUid = itemUid;
+                slots.weaponInstanceId = instanceId;
+                break;
+
+            case EquipmentType.SubWeapon:
+                slots.subWeaponUid = itemUid;
+                slots.subWeaponInstanceId = instanceId;
+                break;
+        }
+    }
+
+    private static void ClearSlot(EquipmentSlotData slots, EquipmentType equipType, int slotIndex)
+    {
+        if (slots == null)
+            return;
+
+        switch (equipType)
+        {
+            case EquipmentType.Helmet:
+                slots.helmetUid = 0;
+                slots.helmetInstanceId = null;
+                break;
+
+            case EquipmentType.Armor:
+                slots.armorUid = 0;
+                slots.armorInstanceId = null;
+                break;
+
+            case EquipmentType.Gloves:
+                slots.glovesUid = 0;
+                slots.glovesInstanceId = null;
+                break;
+
+            case EquipmentType.Shoes:
+                slots.shoesUid = 0;
+                slots.shoesInstanceId = null;
                 break;
 
             case EquipmentType.Ring:
                 if (slotIndex == 1)
                 {
-                    equipment = character.Ring1;
-                    character.Ring1 = null;
+                    slots.ring1Uid = 0;
+                    slots.ring1InstanceId = null;
                 }
                 else
                 {
-                    equipment = character.Ring2;
-                    character.Ring2 = null;
+                    slots.ring2Uid = 0;
+                    slots.ring2InstanceId = null;
                 }
                 break;
+
             case EquipmentType.Necklace:
-                equipment = character.Necklace;
-                character.Necklace = null;
+                slots.necklaceUid = 0;
+                slots.necklaceInstanceId = null;
                 break;
 
             case EquipmentType.Weapon:
-                equipment = character.Weapon;
-                character.Weapon = null;
+                slots.weaponUid = 0;
+                slots.weaponInstanceId = null;
                 break;
 
             case EquipmentType.SubWeapon:
-                equipment = character.SubWeapon;
-                character.SubWeapon = null;
+                slots.subWeaponUid = 0;
+                slots.subWeaponInstanceId = null;
                 break;
         }
-        
-        if (equipment != null) // 장착 해제 요청이 들어온 부위의 장비가 제대로 장착되어있을 경우
-        {
-            // 사용 가능한 속성 및 스킬 업데이트
-            UpdateAvailableAttributes(character);
-            UpdateSkillAvailability(character);
-
-            equipment.Unequip(character); // 해당 장비로 증감된 능력치 캐릭터에 적용 해제
-        }
-
-        if (!suppressTraitRecalc)
-        {
-            character.ApplyAllTraits(manager);
-            character.UpdateFinalStats();
-        }
-
-        manager.GetComponent<CharacterCustomization>().UpdateEquipmentAppearance(manager.character);
     }
 
+    public static void RebuildEquipmentStats(CharacterData character)
+    {
+        if (character == null)
+            return;
 
-    //장비와 스킬 관련 속성 구분 구현부
+        character.ModifiedStats = new CharacterStats();
+        character.ModifiedSpecialStats = new CharacterSpecialStats();
+
+        if (character.EquipmentTraitRuntimes == null)
+            character.EquipmentTraitRuntimes = new List<TraitRuntimeData>();
+        else
+            character.EquipmentTraitRuntimes.Clear();
+
+        List<EquipmentRuntimeData> equipments = character.GetEquipmentRuntimes();
+
+        foreach (EquipmentRuntimeData equipment in equipments)
+        {
+            if (equipment == null)
+                continue;
+
+            if (equipment.statModifiers != null)
+                character.ModifiedStats += equipment.statModifiers;
+
+            if (equipment.specialStatModifiers != null)
+                character.ModifiedSpecialStats += equipment.specialStatModifiers;
+
+            AddEquipmentTraits(character, equipment);
+        }
+    }
+
+    private static void AddEquipmentTraits(CharacterData character, EquipmentRuntimeData equipment)
+    {
+        if (character == null || equipment == null || equipment.grantedTraitIds == null)
+            return;
+
+        foreach (int traitId in equipment.grantedTraitIds)
+        {
+            TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(traitId);
+
+            if (def == null)
+                continue;
+
+            character.EquipmentTraitRuntimes.Add(new TraitRuntimeData
+            {
+                traitId = traitId,
+                point = TraitGradeUtility.GetGradeValue(def.defaultAcquireGrade)
+            });
+        }
+    }
+
     public static void UpdateAvailableAttributes(CharacterData character)
     {
-        // 캐릭터가 장착한 주무기 및 보조무기에 따라 사용 가능한 속성 업데이트
+        if (character == null)
+            return;
+
+        if (character.AvailableAttributes == null)
+            character.AvailableAttributes = new List<SkillAttribute>();
+
         character.AvailableAttributes.Clear();
 
-        if (character.Weapon is Weapon mainWeapon)
-        {
-            character.AvailableAttributes.AddRange(mainWeapon.Attribute);
-        }
+        WeaponDefinitionSO mainWeapon = character.GetMainWeapon();
+        WeaponDefinitionSO subWeapon = character.GetSubWeapon();
 
-        if (character.SubWeapon is Weapon subWeapon)
-        {
-            character.AvailableAttributes.AddRange(subWeapon.Attribute);
-        }
+        if (mainWeapon != null && mainWeapon.attributes != null)
+            character.AvailableAttributes.AddRange(mainWeapon.attributes);
+
+        if (subWeapon != null && subWeapon.attributes != null)
+            character.AvailableAttributes.AddRange(subWeapon.attributes);
     }
 
-    //스킬 사용 가능 여부
     public static void UpdateSkillAvailability(CharacterData character)
     {
-        foreach (var skill in character.Skills)
+        if (character == null || character.Skills == null)
+            return;
+
+        foreach (SkillRuntimeData runtime in character.Skills)
         {
-            if (skill.Type == SkillType.Physical && !skill.IsCounterSkill)
+            if (runtime == null)
+                continue;
+
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(runtime.skillUid);
+
+            if (skill == null)
             {
-                skill.CanUse = character.AvailableAttributes.Contains(skill.Attribute);
-                if(skill.IsBowSkill && character.Weapon is Weapon weapon && weapon.WeaponType == WeaponType.Bow) // 활 스킬 처리
-                {
-                    skill.CanUse = true;
-                }
-                else if(skill.IsBowSkill && character.Weapon is Weapon wea && wea.WeaponType != WeaponType.Bow)
-                {
-                    skill.CanUse = false;
-                }
+                runtime.canUse = false;
+                runtime.useOffHand = false;
+                continue;
             }
 
-            skill.IsOffHand = false;
-
-            // 보조무기 사용 여부를 고려한 스킬 사용 가능 여부 설정
-            if (character.Weapon is Weapon mainWeapon && skill.CanUse)
-            {
-                foreach(var att in mainWeapon.Attribute)
-                {
-                    if (!character.AvailableAttributes.Contains(att))
-                    {
-                        skill.IsOffHand = true;
-                    }
-                }
-                
-            }
+            runtime.canUse = skill.CanBeUsedBy(character);
+            runtime.useOffHand = runtime.canUse && skill.ShouldUseOffHand(character);
         }
+
+        SkillManager.RefreshAutoQuickSlots(character);
     }
 }
