@@ -57,7 +57,7 @@ MonoBehaviour:
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
-    PhysicalAttack: 7
+    PhysicalAttack: 5
     MagicalAttack: 0
     PhysicalDefense: 0
     MagicalDefense: 0

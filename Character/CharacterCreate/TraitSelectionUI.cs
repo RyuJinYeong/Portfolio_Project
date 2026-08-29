@@ -13,15 +13,6 @@ public class TraitSelectionUI : MonoBehaviour
 
     private CharacterCreation characterCreation;
 
-    private static readonly int[] EXCLUDE_ORIGIN_BASE_IDS = { 1000, 1001, 1002, 1006, 1007 };
-
-    private static readonly int[] CATALOG_IDS =
-    {
-    1010, 1011, 1012, 1013, // 盔家 利己
-    1003, 1004, 1005,       // 老馆 编沥
-    5000, 5001              // 何沥
-    };
-
     private readonly List<TraitDefinitionSO> availableTraits = new();
 
     private void Awake()
@@ -44,27 +35,33 @@ public class TraitSelectionUI : MonoBehaviour
     {
         availableTraits.Clear();
 
-        foreach (int id in CATALOG_IDS)
+        if (GameDataRegistry.Instance == null)
+            return;
+
+        List<TraitDefinitionSO> traits = GameDataRegistry.Instance.GetAllTraits();
+
+        if (traits == null)
+            return;
+
+        foreach (TraitDefinitionSO trait in traits)
         {
-            if (IsExcludedOriginBaseTrait(id))
+            if (trait == null || IsCurrentOriginTrait(trait.id))
                 continue;
 
-            TraitDefinitionSO trait = GameDataRegistry.Instance.GetTrait(id);
-
-            if (trait != null)
-                availableTraits.Add(trait);
+            availableTraits.Add(trait);
         }
+
+        availableTraits.Sort(CompareTraits);
     }
 
-    private bool IsExcludedOriginBaseTrait(int id)
+    private bool IsCurrentOriginTrait(int id)
     {
-        for (int i = 0; i < EXCLUDE_ORIGIN_BASE_IDS.Length; i++)
-        {
-            if (EXCLUDE_ORIGIN_BASE_IDS[i] == id)
-                return true;
-        }
+        if (characterCreation == null ||
+            characterCreation.characterManager == null ||
+            characterCreation.characterManager.character == null)
+            return false;
 
-        return false;
+        return characterCreation.characterManager.character.HasCharacterTrait(id);
     }
 
     void PopulateLeftPanel()
@@ -77,6 +74,26 @@ public class TraitSelectionUI : MonoBehaviour
             TraitButton traitButton = button.GetComponent<TraitButton>();
 
             traitButton.Initialize(trait, this, false, traitCost);
+        }
+
+        RefreshTraitButtonInteractability();
+    }
+
+    private void RefreshTraitButtonInteractability()
+    {
+        foreach (Transform child in leftPanelContent)
+        {
+            TraitButton traitButton = child.GetComponent<TraitButton>();
+
+            if (traitButton == null ||
+                traitButton.trait == null ||
+                traitButton.button == null)
+            {
+                continue;
+            }
+
+            int traitCost = DetermineTraitCost(traitButton.trait);
+            traitButton.button.interactable = traitCost <= 0 || availableTraitPoints >= traitCost;
         }
     }
 
@@ -124,12 +141,14 @@ public class TraitSelectionUI : MonoBehaviour
                 GameObject newButton = Instantiate(traitButtonPrefab, rightPanelContent);
                 TraitButton newTraitButton = newButton.GetComponent<TraitButton>();
                 newTraitButton.Initialize(trait, this, true, traitCost);
+                SortPanelByTraitOrder(rightPanelContent);
 
                 TraitManager.AddTrait(characterCreation.characterManager, trait.id);
 
                 availableTraitPoints -= traitCost;
 
                 UpdateUI();
+                RefreshTraitButtonInteractability();
                 characterCreation.UIupdate();
                 break;
             }
@@ -154,12 +173,14 @@ public class TraitSelectionUI : MonoBehaviour
                 GameObject newButton = Instantiate(traitButtonPrefab, leftPanelContent);
                 TraitButton newTraitButton = newButton.GetComponent<TraitButton>();
                 newTraitButton.Initialize(trait, this, false, traitCost);
+                SortPanelByTraitOrder(leftPanelContent);
 
                 TraitManager.RemoveTrait(characterCreation.characterManager, trait.id);
 
                 availableTraitPoints += traitCost;
 
                 UpdateUI();
+                RefreshTraitButtonInteractability();
                 characterCreation.UIupdate();
                 break;
             }
@@ -176,6 +197,7 @@ public class TraitSelectionUI : MonoBehaviour
     {
         availableTraitPoints = points;
         UpdateUI();
+        RefreshTraitButtonInteractability();
     }
 
     public void ResetTraitSelection()
@@ -189,5 +211,56 @@ public class TraitSelectionUI : MonoBehaviour
         BuildAvailableTraitCatalog();
         PopulateLeftPanel();
         UpdateUI();
+    }
+
+    private void SortPanelByTraitOrder(Transform panel)
+    {
+        List<TraitButton> buttons = new();
+
+        foreach (Transform child in panel)
+        {
+            TraitButton traitButton = child.GetComponent<TraitButton>();
+
+            if (traitButton != null && traitButton.trait != null)
+                buttons.Add(traitButton);
+        }
+
+        buttons.Sort((left, right) => CompareTraits(left.trait, right.trait));
+
+        for (int i = 0; i < buttons.Count; i++)
+            buttons[i].transform.SetSiblingIndex(i);
+    }
+
+    private int CompareTraits(TraitDefinitionSO left, TraitDefinitionSO right)
+    {
+        int polarityComparison = GetPolarityOrder(left.polarity).CompareTo(GetPolarityOrder(right.polarity));
+
+        if (polarityComparison != 0)
+            return polarityComparison;
+
+        int gradeComparison = right.defaultAcquireGrade.CompareTo(left.defaultAcquireGrade);
+
+        if (gradeComparison != 0)
+            return gradeComparison;
+
+        return left.id.CompareTo(right.id);
+    }
+
+    private int GetPolarityOrder(TraitPolarity polarity)
+    {
+        switch (polarity)
+        {
+            case TraitPolarity.Positive:
+                return 0;
+
+            case TraitPolarity.Mixed:
+                return 1;
+
+            case TraitPolarity.Negative:
+                return 2;
+
+            default:
+                return 0;
+        }
     }
 }

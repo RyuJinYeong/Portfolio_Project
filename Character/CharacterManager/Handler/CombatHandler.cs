@@ -10,8 +10,6 @@ public class CombatHandler : MonoBehaviour
     private List<SkillQueueData> skillQueue = new();
     private List<SkillQueueData> counterSkillQueue = new();
 
-    private List<SynergyEffect> activeSynergyEffects;
-    private SynergyManager synergyManager;
 
     public bool isDefenseTarget;
     public bool isDefenseCharacter;
@@ -27,9 +25,6 @@ public class CombatHandler : MonoBehaviour
 
         skillQueue = new List<SkillQueueData>();
         counterSkillQueue = new List<SkillQueueData>();
-
-        activeSynergyEffects = new List<SynergyEffect>();
-        synergyManager = new SynergyManager();
     }
 
     public void StartTurn(System.Action onTurnEnd)
@@ -499,9 +494,6 @@ public class CombatHandler : MonoBehaviour
                     cancelNextSkill = true;
             }
         }
-
-        foreach (var synergyEffect in activeSynergyEffects)
-            synergyEffect.OnApply(characterManager);
 
         float counterDamageMultiplier = appliedCounter != null
             ? appliedCounter.damageMultiplier
@@ -1435,12 +1427,13 @@ public class CombatHandler : MonoBehaviour
         // 이후 SynergyManager를 SkillDefinitionSO 기준으로 바꾼 뒤 연결.
     }
 
-    private void EndSynergyEffects()
+    private void EndSynergyEffects() // 시너지 이펙트 구현 보류로 임시 비활성화   
     {
+        /*
         foreach (var effect in activeSynergyEffects)
             effect.OnExpire(characterManager);
 
-        activeSynergyEffects.Clear();
+        activeSynergyEffects.Clear();*/
     }
 
     public IEnumerator HandleAITurn(System.Action onTurnEnd)

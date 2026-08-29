@@ -314,7 +314,23 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        GameObject gameObject = Instantiate(enemyPrefab, spawnPoint.position, spawnPoint.rotation);
+        MonsterRoleSO monsterRole = GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetMonsterRole(enemyData.monsterRoleId)
+            : null;
+
+        GameObject prefab = monsterRole != null && monsterRole.modelPrefabOverride != null
+            ? monsterRole.modelPrefabOverride
+            : monsterRole != null && monsterRole.baseMonster != null && monsterRole.baseMonster.modelPrefab != null
+                ? monsterRole.baseMonster.modelPrefab
+                : enemyPrefab;
+
+        if (prefab == null)
+        {
+            Debug.LogError($"Monster prefab not found. monsterRoleId: {enemyData.monsterRoleId}");
+            return;
+        }
+
+        GameObject gameObject = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation);
         var characterManager = gameObject.GetComponent<CharacterManager>();
         if (characterManager != null)
         {

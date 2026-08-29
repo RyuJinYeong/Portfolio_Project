@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
+  m_Name: "2402_전격"
+  m_EditorClassIdentifier: 
+  uid: 2402
+  skillName: "전격"
+  description: "번개를 방출해 번개 피해와 저릿함을 준다."
+  icon: {fileID: 0}
+  activationSpeed: 1.1
+  staminaCost: 0
+  mentalCost: 1
+  type: 1
+  style: 1
+  discipline: 7
+  damageComponents:
+  - damageType: 1
+    attribute: 2
+    damageMultiplier: 0.85
+    hitCount: 1
+  equipmentRequirement:
+    requireMainHandEmpty: 0
+    requireSubHandEmpty: 0
+    requireAnyHandEmpty: 0
+    requireShield: 0
+    allowedMainWeaponTypes: 
+    allowedSubWeaponTypes: 
+    allowedAnyWeaponTypes: 
+  isCounterSkill: 0
+  isStatusEffectSkill: 1
+  isRangedSkill: 1
+  monsterOnly: 0
+  counterActionType: 0
+  successArmorAttackMultiplier: 1
+  minEvadeReductionRate: 0.1
+  attackEffects: 
+  statusAccuracyBonus: 0
+  statusEffects:
+  - statusEffectId: 2021
+    baseChance: 50
+    stackAmount: 2
+  statusConsumeEffects: []
+  isConditionalSkill: 1
+  requiredStats: []
+  requiredTraitIds: f4030000
+  isEvolvableSkill: 0
+  evolvedSkillUid: 0
+  evolRequiredUseCount: 0
+  evolRequiredKillCount: 0
+  evolRequiredDamageCount: 0
+  evolRequiredTraitIds: 

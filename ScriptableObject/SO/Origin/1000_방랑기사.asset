@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 1000
   originName: "\uBC29\uB791\uAE30\uC0AC"
-  description: "\uBC29\uB791\uAE30\uC0AC"
+  description: "\uB192\uC740 \uAC74\uAC15\uACFC \uBC29\uC5B4 \uB2A5\uB825\uC744 \uBC14\uD0D5\uC73C\uB85C
+    \uC544\uAD70\uC744 \uBCF4\uD638\uD558\uB294 \uADE0\uD615\uD615 \uADFC\uB825 \uD0F1\uCEE4."
   icon: {fileID: 0}
-  traitPoint: 5
+  traitPoint: 8
   characterType: 3
   defaultPersonality: 0
   originBaseStats:
@@ -25,7 +26,8 @@ MonoBehaviour:
     Speed: 5
     Intelligence: 2
     Wisdom: 2
-    Health: 10
+    Health: 9
+    Vitality: 6
     Endurance: 5
     Detection: 0
     Insight: 0
@@ -39,16 +41,14 @@ MonoBehaviour:
     StaminaRecovery: 0
     MentalityRecovery: 0
     FireResistance: 0
-    WaterResistance: 0
-    EarthResistance: 0
-    WindResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
     PierceResistance: 0
     SlashResistance: 0
     SmashResistance: 0
     FireAffinity: 0
-    WaterAffinity: 0
-    EarthAffinity: 0
-    WindAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
@@ -59,6 +59,7 @@ MonoBehaviour:
   originSpecialStats:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0
@@ -66,8 +67,8 @@ MonoBehaviour:
     KillStaminaRecovery: 0
     KillMentalityRecovery: 0
   initialTraitIds: e8030000
-  initialSkillUids: 
-  defaultCounterSkillUid: 0
+  initialSkillUids: e8030000e9030000ea030000eb0300004c040000ed030000b80b0000b90b0000ba0b0000bb0b0000bd0b0000
+  defaultCounterSkillUid: 3005
   initialEquipmentSlots:
     helmet:
       equipmentUid: 0

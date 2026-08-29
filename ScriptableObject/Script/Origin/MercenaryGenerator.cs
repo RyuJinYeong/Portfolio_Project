@@ -8,22 +8,60 @@ public static class MercenaryGenerator
         if (template == null || template.baseOrigin == null)
             return null;
 
+        System.Random random = new System.Random(System.Guid.NewGuid().GetHashCode());
         CharacterData character = template.baseOrigin.CreateRuntimeCharacterData();
 
-        character.Level = Mathf.Max(1, accountLevel + Random.Range(template.minLevelOffset, template.maxLevelOffset + 1));
+        character.ID = System.Guid.NewGuid().ToString();
+        character.customizationData = template.identityPool.CreateCustomization(random);
+        character.Name = template.identityPool.PickName(
+            character.customizationData.IsMale,
+            string.IsNullOrEmpty(template.templateName)
+                ? $"{template.baseOrigin.originName} 용병"
+                : template.templateName,
+            random);
+
+        int minimumLevelOffset = Mathf.Min(template.minLevelOffset, template.maxLevelOffset);
+        int maximumLevelOffset = Mathf.Max(template.minLevelOffset, template.maxLevelOffset);
+
+        character.Level = Mathf.Max(
+            1,
+            accountLevel + random.Next(minimumLevelOffset, maximumLevelOffset + 1));
 
         ApplyFixedTraits(character, template.fixedTraitIds);
         ApplyFixedSkills(character, template.fixedSkillUids);
 
-        ApplyRandomTraits(character, template.randomTraitPool, template.randomTraitCount);
-        ApplyRandomSkills(character, template.randomSkillPool, template.randomSkillCount);
+        TraitGenerationUtility.Apply(
+            character,
+            template.traitGeneration,
+            0,
+            random);
 
-        RuntimeEquipmentApplier.ApplyRuntimeEquipments(character, template.fixedEquipments);
-        ApplyRandomEquipments(character, template.randomEquipmentPool, template.randomEquipmentCount);
+        ApplyRandomSkills(character, template.randomSkillPool, template.randomSkillCount, random);
 
         character.RemoveAllTraits(null);
         character.ApplyAllTraits(null);
         character.UpdateFinalStats();
+
+        LevelGrowthUtility.ApplyAutomaticGrowth(
+            character,
+            character.Level,
+            template.baseOrigin.levelUpStatWeights,
+            random);
+
+        RuntimeEquipmentApplier.ApplyRuntimeEquipments(character, template.fixedEquipments);
+        ApplyRandomEquipments(
+            character,
+            template.randomEquipmentPool,
+            template.randomEquipmentCount,
+            random);
+
+        character.RemoveAllTraits(null);
+        character.ApplyAllTraits(null);
+        character.UpdateFinalStats();
+
+        character.CurrentHp = character.FinalStats.MaxHp;
+        character.CurrentStamina = character.FinalStats.MaxStamina;
+        character.CurrentMentality = character.FinalStats.MaxMentality;
 
         return character;
     }
@@ -63,7 +101,11 @@ public static class MercenaryGenerator
         }
     }
 
-    private static void ApplyRandomTraits(CharacterData character, List<int> pool, int count)
+    private static void ApplyRandomSkills(
+        CharacterData character,
+        List<int> pool,
+        int count,
+        System.Random random)
     {
         if (character == null || pool == null || count <= 0)
             return;
@@ -75,32 +117,7 @@ public static class MercenaryGenerator
             if (candidates.Count == 0)
                 return;
 
-            int index = Random.Range(0, candidates.Count);
-            int traitId = candidates[index];
-            candidates.RemoveAt(index);
-
-            TraitDefinitionSO trait = GameDataRegistry.Instance.GetTrait(traitId);
-
-            if (trait == null)
-                continue;
-
-            TraitGradeUtility.AddTrait(character.Traits, trait, trait.defaultAcquireGrade);
-        }
-    }
-
-    private static void ApplyRandomSkills(CharacterData character, List<int> pool, int count)
-    {
-        if (character == null || pool == null || count <= 0)
-            return;
-
-        List<int> candidates = new List<int>(pool);
-
-        for (int i = 0; i < count; i++)
-        {
-            if (candidates.Count == 0)
-                return;
-
-            int index = Random.Range(0, candidates.Count);
+            int index = random.Next(0, candidates.Count);
             int skillUid = candidates[index];
             candidates.RemoveAt(index);
 
@@ -116,7 +133,11 @@ public static class MercenaryGenerator
         }
     }
 
-    private static void ApplyRandomEquipments(CharacterData character, List<EquipmentSpawnData> pool, int count)
+    private static void ApplyRandomEquipments(
+        CharacterData character,
+        List<EquipmentSpawnData> pool,
+        int count,
+        System.Random random)
     {
         if (character == null || pool == null || count <= 0)
             return;
@@ -128,7 +149,7 @@ public static class MercenaryGenerator
             if (candidates.Count == 0)
                 return;
 
-            int index = Random.Range(0, candidates.Count);
+            int index = random.Next(0, candidates.Count);
             EquipmentSpawnData spawnData = candidates[index];
             candidates.RemoveAt(index);
 

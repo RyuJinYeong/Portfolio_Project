@@ -14,18 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: 1001
   originName: "\uC0AC\uB0E5\uAFBC"
-  description: "\uC0AC\uB0E5\uAFBC"
+  description: "\uAE30\uAD50\uC640 \uC18D\uB3C4\uB97C \uD65C\uC6A9\uD574 \uC6D0\uAC70\uB9AC\uC5D0\uC11C
+    \uC801\uC744 \uC555\uBC15\uD558\uB294 \uAD81\uC220 \uD2B9\uD654 \uCD9C\uC2E0."
   icon: {fileID: 0}
-  traitPoint: 5
+  traitPoint: 8
   characterType: 3
   defaultPersonality: 3
   originBaseStats:
     Strength: 3
     Dexterity: 12
-    Speed: 7
+    Speed: 8
     Intelligence: 2
     Wisdom: 2
     Health: 4
+    Vitality: 4
     Endurance: 5
     Detection: 0
     Insight: 0
@@ -39,16 +41,14 @@ MonoBehaviour:
     StaminaRecovery: 0
     MentalityRecovery: 0
     FireResistance: 0
-    WaterResistance: 0
-    EarthResistance: 0
-    WindResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
     PierceResistance: 0
     SlashResistance: 0
     SmashResistance: 0
     FireAffinity: 0
-    WaterAffinity: 0
-    EarthAffinity: 0
-    WindAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
@@ -59,6 +59,7 @@ MonoBehaviour:
   originSpecialStats:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0
@@ -66,8 +67,8 @@ MonoBehaviour:
     KillStaminaRecovery: 0
     KillMentalityRecovery: 0
   initialTraitIds: ef030000
-  initialSkillUids: 
-  defaultCounterSkillUid: 0
+  initialSkillUids: e8030000e9030000ea030000eb0300004c0400009808000099080000b80b0000b90b0000ba0b0000bb0b0000
+  defaultCounterSkillUid: 3001
   initialEquipmentSlots:
     helmet:
       equipmentUid: 0
@@ -76,19 +77,19 @@ MonoBehaviour:
       rarityWeights: []
       equipOnSpawn: 1
     armor:
-      equipmentUid: 0
+      equipmentUid: 1007
       rarityRollMode: 0
       fixedRarity: 0
       rarityWeights: []
       equipOnSpawn: 1
     gloves:
-      equipmentUid: 0
+      equipmentUid: 1008
       rarityRollMode: 0
       fixedRarity: 0
       rarityWeights: []
       equipOnSpawn: 1
     shoes:
-      equipmentUid: 0
+      equipmentUid: 1009
       rarityRollMode: 0
       fixedRarity: 0
       rarityWeights: []
@@ -112,7 +113,7 @@ MonoBehaviour:
       rarityWeights: []
       equipOnSpawn: 1
     weapon:
-      equipmentUid: 0
+      equipmentUid: 5005
       rarityRollMode: 0
       fixedRarity: 0
       rarityWeights: []

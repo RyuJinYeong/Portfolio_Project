@@ -9,14 +9,16 @@ public class MercenaryDefinitionSO : ScriptableObject
 
     public OriginDefinitionSO baseOrigin;
 
+    [Header("Random Identity")]
+    public MercenaryIdentityPoolData identityPool = new();
+
     [Header("Fixed Additions")]
     public List<int> fixedTraitIds = new();
     public List<int> fixedSkillUids = new();
     public List<EquipmentSpawnData> fixedEquipments = new();
 
-    [Header("Random Trait")]
-    public List<int> randomTraitPool = new();
-    public int randomTraitCount;
+    [Header("Trait Generation")]
+    public TraitGenerationData traitGeneration = new();
 
     [Header("Random Skill")]
     public List<int> randomSkillPool = new();

@@ -1,0 +1,94 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e7f65099438f924ba3ad055c9537636, type: 3}
+  m_Name: 11000_산적_졸개
+  m_EditorClassIdentifier:
+  id: 11000
+  roleName: 졸개
+  baseMonster: {fileID: 11400000, guid: 6000000000004aaa9000000000000001, type: 2}
+  modelPrefabOverride: {fileID: 0}
+  characterType: 2
+  personality: 1
+  roleStatBonus: {}
+  roleSpecialStatBonus: {}
+  levelUpStatWeights: []
+  skillUids:
+  - 1000
+  - 1001
+  - 1002
+  - 1100
+  defaultCounterSkillUids:
+  - 3000
+  - 3001
+  - 3002
+  traitIds: []
+  traitsByTier:
+  - tier: 1
+    fixedTraitPool: []
+    fixedTraitCount: 0
+    additionalTraitChance: 20
+    additionalTraitChanceDecrease: 10
+    maxTraitCount: 2
+    traitGradeBonus: 0
+  - tier: 2
+    fixedTraitPool: []
+    fixedTraitCount: 0
+    additionalTraitChance: 25
+    additionalTraitChanceDecrease: 10
+    maxTraitCount: 2
+    traitGradeBonus: 0
+  - tier: 3
+    fixedTraitPool: []
+    fixedTraitCount: 0
+    additionalTraitChance: 30
+    additionalTraitChanceDecrease: 10
+    maxTraitCount: 2
+    traitGradeBonus: 0
+  - tier: 4
+    fixedTraitPool: []
+    fixedTraitCount: 0
+    additionalTraitChance: 35
+    additionalTraitChanceDecrease: 10
+    maxTraitCount: 2
+    traitGradeBonus: 0
+  - tier: 5
+    fixedTraitPool: []
+    fixedTraitCount: 0
+    additionalTraitChance: 40
+    additionalTraitChanceDecrease: 10
+    maxTraitCount: 2
+    traitGradeBonus: 0
+  equipments: []
+  randomEquipmentPool:
+  - equipmentUid: 5001
+    rarityRollMode: 1
+    fixedRarity: 0
+    rarityWeights:
+    - rarity: 0
+      weight: 75
+    - rarity: 1
+      weight: 25
+    equipOnSpawn: 1
+  - equipmentUid: 5002
+    rarityRollMode: 1
+    fixedRarity: 0
+    rarityWeights:
+    - rarity: 0
+      weight: 80
+    - rarity: 1
+      weight: 20
+    equipOnSpawn: 1
+  minRandomEquipmentCount: 1
+  maxRandomEquipmentCount: 2
+  traitCaptureChance: 10
+  equippedItemDropChance: 10
+  levelBonus: 0

@@ -6,5 +6,11 @@ public enum TraitSpecialFlag
 
     UnlockFireMagic,
     UnlockIceMagic,
-    UnlockLightningMagic
+    UnlockLightningMagic,
+
+    Rooted,
+    InitiativeAdvantage,
+    Pathfinder,
+    RestCook,
+    RestPerformer
 }

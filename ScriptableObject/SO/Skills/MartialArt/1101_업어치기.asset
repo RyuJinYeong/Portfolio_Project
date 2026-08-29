@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
+  m_Name: "1101_업어치기"
+  m_EditorClassIdentifier: 
+  uid: 1101
+  skillName: "업어치기"
+  description: "한손이 빈 상태에서 상대를 업어 넘겨 낮은 피해와 큰 흐트러짐을 준다."
+  icon: {fileID: 0}
+  activationSpeed: 0.8
+  staminaCost: 2
+  mentalCost: 0
+  type: 0
+  style: 0
+  discipline: 5
+  damageComponents:
+  - damageType: 0
+    attribute: 7
+    damageMultiplier: 1.9
+    hitCount: 1
+  equipmentRequirement:
+    requireMainHandEmpty: 0
+    requireSubHandEmpty: 0
+    requireAnyHandEmpty: 1
+    requireShield: 0
+    allowedMainWeaponTypes: 
+    allowedSubWeaponTypes: 
+    allowedAnyWeaponTypes: 
+  isCounterSkill: 0
+  isStatusEffectSkill: 1
+  isRangedSkill: 0
+  monsterOnly: 0
+  counterActionType: 0
+  successArmorAttackMultiplier: 1
+  minEvadeReductionRate: 0.1
+  attackEffects: 
+  statusAccuracyBonus: 0
+  statusEffects:
+  - statusEffectId: 1021
+    baseChance: 65
+    stackAmount: 3
+  statusConsumeEffects: []
+  isConditionalSkill: 0
+  requiredStats: []
+  requiredTraitIds: 
+  isEvolvableSkill: 0
+  evolvedSkillUid: 0
+  evolRequiredUseCount: 0
+  evolRequiredKillCount: 0
+  evolRequiredDamageCount: 0
+  evolRequiredTraitIds: 

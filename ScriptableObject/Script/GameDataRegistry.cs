@@ -21,15 +21,41 @@ public class GameDataRegistry : MonoBehaviour
     [Header("Status Effects")]
     [SerializeField] private List<StatusEffectDefinitionSO> statusEffects = new();
 
+    [Header("Equipment Affixes")]
+    [SerializeField] private List<EquipmentAffixDefinitionSO> equipmentAffixes = new();
+
+    [Header("Monster Bases")]
+    [SerializeField] private List<MonsterBaseSO> monsterBases = new();
+
+    [Header("Monster Roles")]
+    [SerializeField] private List<MonsterRoleSO> monsterRoles = new();
+
+    [Header("Quest Stages")]
+    [SerializeField] private List<QuestStageDefinitionSO> questStages = new();
+
+
     private readonly Dictionary<int, StatusEffectDefinitionSO> statusEffectMap = new();
+
     private readonly Dictionary<int, ItemDefinitionSO> itemMap = new();
     private readonly Dictionary<int, EquipmentDefinitionSO> equipmentMap = new();
+
     private readonly Dictionary<int, SkillDefinitionSO> skillMap = new();
+
     private readonly Dictionary<int, TraitDefinitionSO> traitMap = new();
     private readonly Dictionary<TraitGrade, List<TraitDefinitionSO>> traitGradeMap = new();
+
     private readonly Dictionary<int, OriginDefinitionSO> originMap = new();
 
+    private readonly Dictionary<int, EquipmentAffixDefinitionSO> equipmentAffixDic = new();
+
+    private readonly Dictionary<int, MonsterBaseSO> monsterBaseMap = new();
+    private readonly Dictionary<int, MonsterRoleSO> monsterRoleMap = new();
+    private readonly Dictionary<string, QuestStageDefinitionSO> questStageMap = new();
+
+    private readonly Dictionary<int, List<EquipmentDefinitionSO>> equipmentTierMap = new();
+
     private bool built;
+
 
     private void Awake()
     {
@@ -45,15 +71,28 @@ public class GameDataRegistry : MonoBehaviour
         Build();
     }
 
+
     public void Build()
     {
+        statusEffectMap.Clear();
+
         itemMap.Clear();
         equipmentMap.Clear();
+        equipmentTierMap.Clear();
+
         skillMap.Clear();
+
         traitMap.Clear();
         traitGradeMap.Clear();
+
         originMap.Clear();
-        statusEffectMap.Clear();
+
+        equipmentAffixDic.Clear();
+
+        monsterBaseMap.Clear();
+        monsterRoleMap.Clear();
+        questStageMap.Clear();
+
 
         foreach (StatusEffectDefinitionSO status in statusEffects)
         {
@@ -62,12 +101,15 @@ public class GameDataRegistry : MonoBehaviour
 
             if (statusEffectMap.ContainsKey(status.id))
             {
-                Debug.LogWarning($"�ߺ� �����̻� id: {status.id} / {status.statusName}");
+                Debug.LogWarning(
+                    $"중복 상태이상 id: {status.id} / {status.statusName}");
+
                 continue;
             }
 
             statusEffectMap.Add(status.id, status);
         }
+
 
         foreach (ItemDefinitionSO item in items)
         {
@@ -77,8 +119,20 @@ public class GameDataRegistry : MonoBehaviour
             itemMap[item.uid] = item;
 
             if (item is EquipmentDefinitionSO equipment)
+            {
                 equipmentMap[item.uid] = equipment;
+
+                if (!equipmentTierMap.TryGetValue(equipment.tier, out List<EquipmentDefinitionSO> tierList))
+                {
+                    tierList = new List<EquipmentDefinitionSO>();
+
+                    equipmentTierMap.Add(equipment.tier, tierList);
+                }
+
+                tierList.Add(equipment);
+            }
         }
+
 
         foreach (SkillDefinitionSO skill in skills)
         {
@@ -87,6 +141,7 @@ public class GameDataRegistry : MonoBehaviour
 
             skillMap[skill.uid] = skill;
         }
+
 
         foreach (TraitDefinitionSO trait in traits)
         {
@@ -99,12 +154,14 @@ public class GameDataRegistry : MonoBehaviour
 
             if (!traitGradeMap.TryGetValue(grade, out List<TraitDefinitionSO> list))
             {
-                list = new List<TraitDefinitionSO>();
-                traitGradeMap[grade] = list;
+                list =new List<TraitDefinitionSO>();
+
+                traitGradeMap.Add(grade, list);
             }
 
             list.Add(trait);
         }
+
 
         foreach (OriginDefinitionSO origin in origins)
         {
@@ -114,7 +171,6 @@ public class GameDataRegistry : MonoBehaviour
             originMap[origin.id] = origin;
         }
 
-        equipmentAffixDic.Clear();
 
         foreach (EquipmentAffixDefinitionSO affix in equipmentAffixes)
         {
@@ -123,104 +179,349 @@ public class GameDataRegistry : MonoBehaviour
 
             if (equipmentAffixDic.ContainsKey(affix.id))
             {
-                Debug.LogWarning($"�ߺ� EquipmentAffix id: {affix.id}");
+                Debug.LogWarning($"중복 EquipmentAffix id: {affix.id}");
+
                 continue;
             }
 
             equipmentAffixDic.Add(affix.id, affix);
         }
 
+
+        foreach (MonsterBaseSO monsterBase in monsterBases)
+        {
+            if (monsterBase == null)
+                continue;
+
+            if (monsterBaseMap.ContainsKey(monsterBase.id))
+            {
+                Debug.LogWarning(
+                    $"중복 MonsterBase id: " +
+                    $"{monsterBase.id} / " +
+                    $"{monsterBase.monsterName}");
+
+                continue;
+            }
+
+            monsterBaseMap.Add(monsterBase.id, monsterBase);
+        }
+
+
+        foreach (MonsterRoleSO monsterRole in monsterRoles)
+        {
+            if (monsterRole == null)
+                continue;
+
+            if (monsterRoleMap.ContainsKey(monsterRole.id))
+            {
+                Debug.LogWarning(
+                    $"중복 MonsterRole id: " +
+                    $"{monsterRole.id} / " +
+                    $"{monsterRole.roleName}");
+
+                continue;
+            }
+
+            monsterRoleMap.Add(
+                monsterRole.id,
+                monsterRole);
+
+            if (monsterRole.baseMonster == null)
+            {
+                Debug.LogWarning(
+                    $"MonsterRole에 BaseMonster 없음: " +
+                    $"{monsterRole.id} / " +
+                    $"{monsterRole.roleName}");
+
+                continue;
+            }
+
+        }
+
+
+        foreach (QuestStageDefinitionSO questStage in questStages)
+        {
+            if (questStage == null || string.IsNullOrEmpty(questStage.stageKey))
+                continue;
+
+            if (questStageMap.ContainsKey(questStage.stageKey))
+            {
+                Debug.LogWarning($"중복 QuestStage key: {questStage.stageKey}");
+                continue;
+            }
+
+            questStageMap.Add(questStage.stageKey, questStage);
+        }
+
+
         built = true;
     }
+
 
     public bool IsBuilt()
     {
         return built;
     }
 
-    [SerializeField] private List<EquipmentAffixDefinitionSO> equipmentAffixes = new();
 
-    private Dictionary<int, EquipmentAffixDefinitionSO> equipmentAffixDic = new();
+    #region Equipment Affix
 
     public EquipmentAffixDefinitionSO GetEquipmentAffix(int id)
     {
-        if (equipmentAffixDic == null)
-            return null;
-
         equipmentAffixDic.TryGetValue(id, out EquipmentAffixDefinitionSO affix);
+
         return affix;
     }
+
 
     public List<EquipmentAffixDefinitionSO> GetAllEquipmentAffixes()
     {
         return equipmentAffixes;
     }
 
+    #endregion
+
+
+    #region Status Effect
+
     public StatusEffectDefinitionSO GetStatusEffect(int id)
     {
-        if (statusEffectMap == null)
-            return null;
-
         statusEffectMap.TryGetValue(id, out StatusEffectDefinitionSO result);
+
         return result;
     }
+
+    #endregion
+
+
+    #region Item / Equipment
 
     public ItemDefinitionSO GetItem(int uid)
     {
         itemMap.TryGetValue(uid, out ItemDefinitionSO item);
+
         return item;
     }
+
 
     public EquipmentDefinitionSO GetEquipment(int uid)
     {
         equipmentMap.TryGetValue(uid, out EquipmentDefinitionSO equipment);
+
         return equipment;
     }
+
 
     public List<EquipmentDefinitionSO> GetAllEquipments()
     {
         return new List<EquipmentDefinitionSO>(equipmentMap.Values);
     }
 
+
+    public List<EquipmentDefinitionSO> GetEquipmentsByTier(int tier)
+    {
+        if (equipmentTierMap.TryGetValue(tier, out List<EquipmentDefinitionSO> list))
+        {
+            return new List<EquipmentDefinitionSO>(list);
+        }
+
+        return new List<EquipmentDefinitionSO>();
+    }
+
+    #endregion
+
+
+    #region Skill
+
     public SkillDefinitionSO GetSkill(int uid)
     {
         skillMap.TryGetValue(uid, out SkillDefinitionSO skill);
+
         return skill;
     }
+
+
+    public List<SkillDefinitionSO> GetAllSkills()
+    {
+        return skills;
+    }
+
+
+    public List<SkillDefinitionSO> GetRewardSkills()
+    {
+        List<SkillDefinitionSO> result = new List<SkillDefinitionSO>();
+
+        foreach (SkillDefinitionSO skill in skills)
+        {
+            if (skill == null)
+                continue;
+
+            if (!skill.CanAppearInRewardPool())
+                continue;
+
+            result.Add(skill);
+        }
+
+        return result;
+    }
+
+    #endregion
+
+
+    #region Trait
 
     public TraitDefinitionSO GetTrait(int id)
     {
         traitMap.TryGetValue(id, out TraitDefinitionSO trait);
+
         return trait;
     }
+
+
+    public List<TraitDefinitionSO> GetAllTraits()
+    {
+        return traits;
+    }
+
+
+    public List<TraitDefinitionSO> GetTraitsByGrade(TraitGrade grade)
+    {
+        if (traitGradeMap.TryGetValue(grade, out List<TraitDefinitionSO> list))
+        {
+            return list;
+        }
+
+        return new List<TraitDefinitionSO>();
+    }
+
+
+    public TraitDefinitionSO GetRandomTraitByGrade(TraitGrade grade)
+    {
+        if (!traitGradeMap.TryGetValue(grade, out List<TraitDefinitionSO> list))
+        {
+            return null;
+        }
+
+        if (list.Count == 0)
+            return null;
+
+        return list[
+            Random.Range(
+                0,
+                list.Count)];
+    }
+
+    #endregion
+
+
+    #region Origin
 
     public OriginDefinitionSO GetOrigin(int id)
     {
         originMap.TryGetValue(id, out OriginDefinitionSO origin);
+
         return origin;
     }
+
 
     public List<OriginDefinitionSO> GetAllOrigins()
     {
         return origins;
     }
 
-    public List<TraitDefinitionSO> GetTraitsByGrade(TraitGrade grade)
-    {
-        if (traitGradeMap.TryGetValue(grade, out List<TraitDefinitionSO> list))
-            return list;
+    #endregion
 
-        return new List<TraitDefinitionSO>();
+
+    #region Monster
+
+    public MonsterBaseSO GetMonsterBase(int id)
+    {
+        monsterBaseMap.TryGetValue(id, out MonsterBaseSO monsterBase);
+
+        return monsterBase;
     }
 
-    public TraitDefinitionSO GetRandomTraitByGrade(TraitGrade grade)
+
+    public MonsterRoleSO GetMonsterRole(int id)
     {
-        if (!traitGradeMap.TryGetValue(grade, out List<TraitDefinitionSO> list))
-            return null;
+        monsterRoleMap.TryGetValue(id, out MonsterRoleSO monsterRole);
 
-        if (list.Count == 0)
-            return null;
-
-        return list[Random.Range(0, list.Count)];
+        return monsterRole;
     }
+
+
+    public List<MonsterBaseSO> GetAllMonsterBases()
+    {
+        return monsterBases;
+    }
+
+
+    public List<MonsterRoleSO> GetAllMonsterRoles()
+    {
+        return monsterRoles;
+    }
+
+
+    public List<MonsterRoleSO> GetMonsterRolesByTypeAndTags(
+        CharacterType characterType,
+        List<string> monsterTags)
+    {
+        List<MonsterRoleSO> result = new List<MonsterRoleSO>();
+
+        foreach (MonsterRoleSO monsterRole in monsterRoles)
+        {
+            if (monsterRole == null || monsterRole.baseMonster == null)
+                continue;
+
+            if (monsterRole.characterType != characterType)
+                continue;
+
+            if (!HasAnyMonsterTag(monsterRole.baseMonster.tags, monsterTags))
+                continue;
+
+            result.Add(monsterRole);
+        }
+
+        return result;
+    }
+
+
+    private bool HasAnyMonsterTag(List<string> monsterTags, List<string> stageTags)
+    {
+        if (stageTags == null || stageTags.Count == 0)
+            return true;
+
+        if (monsterTags == null || monsterTags.Count == 0)
+            return false;
+
+        foreach (string tag in stageTags)
+        {
+            if (monsterTags.Contains(tag))
+                return true;
+        }
+
+        return false;
+    }
+
+    #endregion
+
+
+    #region Quest Stage
+
+    public QuestStageDefinitionSO GetQuestStage(string stageKey)
+    {
+        if (string.IsNullOrEmpty(stageKey))
+            return null;
+
+        questStageMap.TryGetValue(stageKey, out QuestStageDefinitionSO questStage);
+        return questStage;
+    }
+
+
+    public List<QuestStageDefinitionSO> GetAllQuestStages()
+    {
+        return questStages;
+    }
+
+    #endregion
 }

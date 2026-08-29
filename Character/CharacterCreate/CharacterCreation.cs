@@ -17,11 +17,18 @@ public class CharacterCreation : MonoBehaviour
     public TMP_InputField characterNameInput;
     public TMP_Dropdown originDropdown;
     public TextMeshProUGUI selectedOriginInfo;
+    public TextMeshProUGUI originSkillsText;
+    public GameObject originSkillItemPrefab;
+    public RectTransform traitListContent;
     public TextMeshProUGUI[] baseStats;
-    public TextMeshProUGUI[] baseTraits;
     public TextMeshProUGUI traitPointText;
     public GameObject ConfirmWindow;
     public Image originImage;
+
+    [Header("Trait Summary Colors")]
+    public Color positiveTraitTextColor;
+    public Color negativeTraitTextColor;
+    public Color mixedTraitTextColor;
 
     [Header("References")]
     public CharacterManager characterManager;
@@ -29,10 +36,12 @@ public class CharacterCreation : MonoBehaviour
     public TraitSelectionUI traitSelectionUI;
 
     [Header("Trait Point")]
-    public int traitPoint = 5;
+    public int traitPoint = 8;
 
     private OriginDefinitionSO selectedOrigin;
     private readonly List<OriginDefinitionSO> originList = new();
+    private readonly List<GameObject> originSkillItems = new();
+    private readonly List<GameObject> traitListItems = new();
 
     private void Awake()
     {
@@ -121,6 +130,7 @@ public class CharacterCreation : MonoBehaviour
                 originDropdown.value = 0;
         }
 
+        RefreshCharacterBySelectedOrigin(false);
         ApplyTraitPointBySelectedOrigin();
 
         if (traitSelectionUI != null)
@@ -129,7 +139,6 @@ public class CharacterCreation : MonoBehaviour
             traitSelectionUI.SetTraitPoints(traitPoint);
         }
 
-        RefreshCharacterBySelectedOrigin(false);
         UpdateSelectedOriginInfo();
         UIupdate();
     }
@@ -144,7 +153,7 @@ public class CharacterCreation : MonoBehaviour
 
         if (GameDataRegistry.Instance == null)
         {
-            Debug.LogError("GameDataRegistry.Instance∞° æ¯Ω¿¥œ¥Ÿ. æ¿ø° GameDataRegistry ø¿∫Í¡ß∆Æ∞° « ø‰«’¥œ¥Ÿ.");
+            Debug.LogError("GameDataRegistry.InstanceÍ∞Ä ÏóÜÏäµÎãàÎã§. Ïî¨Ïóê GameDataRegistry Ïò§Î∏åÏ†ùÌä∏Í∞Ä ÌïÑÏöîÌï©ÎãàÎã§.");
             return;
         }
 
@@ -194,6 +203,8 @@ public class CharacterCreation : MonoBehaviour
 
         selectedOrigin = originList[index];
 
+        UpdateSelectedOriginInfo();
+        RefreshCharacterBySelectedOrigin(false);
         ApplyTraitPointBySelectedOrigin();
 
         if (traitSelectionUI != null)
@@ -202,13 +213,12 @@ public class CharacterCreation : MonoBehaviour
             traitSelectionUI.SetTraitPoints(traitPoint);
         }
 
-        UpdateSelectedOriginInfo();
-        RefreshCharacterBySelectedOrigin(false);
+        UIupdate();
     }
 
     private void ApplyTraitPointBySelectedOrigin()
     {
-        traitPoint = selectedOrigin != null ? selectedOrigin.traitPoint : 5;
+        traitPoint = selectedOrigin != null ? selectedOrigin.traitPoint : 8;
 
         if (traitPointText != null)
             traitPointText.text = traitPoint.ToString();
@@ -280,6 +290,7 @@ public class CharacterCreation : MonoBehaviour
             traitPoint = traitSelectionUI.availableTraitPoints;
 
         UpdateTraitListUI();
+        UpdateSkillListUI();
 
         if (traitPointText != null)
             traitPointText.text = traitPoint.ToString();
@@ -289,11 +300,23 @@ public class CharacterCreation : MonoBehaviour
 
     private void UpdateTraitListUI()
     {
-        if (baseTraits == null)
-            return;
+        foreach (GameObject item in traitListItems)
+        {
+            if (item != null)
+                Destroy(item);
+        }
 
-        for (int i = 0; i < baseTraits.Length; i++)
-            baseTraits[i].text = "";
+        traitListItems.Clear();
+
+        if (traitListContent != null)
+        {
+            traitListContent.anchorMin = new Vector2(0f, 1f);
+            traitListContent.anchorMax = new Vector2(1f, 1f);
+            traitListContent.pivot = new Vector2(0.5f, 1f);
+            traitListContent.localScale = Vector3.one;
+            traitListContent.anchoredPosition = Vector2.zero;
+            traitListContent.sizeDelta = Vector2.zero;
+        }
 
         if (characterManager == null ||
             characterManager.character == null ||
@@ -304,21 +327,230 @@ public class CharacterCreation : MonoBehaviour
 
         List<TraitRuntimeData> traits = characterManager.character.Traits;
 
-        for (int i = 0; i < traits.Count && i < baseTraits.Length; i++)
+        if (traitListContent != null && originSkillItemPrefab != null)
         {
-            TraitRuntimeData runtime = traits[i];
+            const float rowHeight = 12f;
+            int rowIndex = 0;
 
+            foreach (TraitRuntimeData runtime in traits)
+            {
+                if (runtime == null)
+                    continue;
+
+                TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(runtime.traitId);
+
+                if (def == null)
+                    continue;
+
+                Color traitTextColor = def.polarity switch
+                {
+                    TraitPolarity.Positive => positiveTraitTextColor,
+                    TraitPolarity.Negative => negativeTraitTextColor,
+                    TraitPolarity.Mixed => mixedTraitTextColor,
+                    _ => mixedTraitTextColor
+                };
+
+                GameObject item = Instantiate(originSkillItemPrefab, traitListContent);
+                traitListItems.Add(item);
+
+                RectTransform itemRect = item.transform as RectTransform;
+
+                if (itemRect != null)
+                {
+                    itemRect.anchorMin = new Vector2(0f, 1f);
+                    itemRect.anchorMax = new Vector2(1f, 1f);
+                    itemRect.pivot = new Vector2(0.5f, 1f);
+                    itemRect.anchoredPosition = new Vector2(0f, -rowIndex * rowHeight);
+                    itemRect.sizeDelta = new Vector2(0f, rowHeight - 1f);
+                }
+
+                RawImage icon = item.GetComponentInChildren<RawImage>(true);
+
+                if (icon != null)
+                {
+                    icon.texture = def.icon;
+                    icon.enabled = def.icon != null;
+                    icon.rectTransform.anchoredPosition = Vector2.zero;
+                    icon.rectTransform.sizeDelta = new Vector2(8f, 8f);
+                }
+
+                Transform nameTransform = item.transform.Find("SkillName");
+                TextMeshProUGUI nameText = nameTransform != null
+                    ? nameTransform.GetComponent<TextMeshProUGUI>()
+                    : null;
+
+                Transform valueTransform = item.transform.Find("ItemValue");
+                TextMeshProUGUI valueText = valueTransform != null
+                    ? valueTransform.GetComponent<TextMeshProUGUI>()
+                    : null;
+
+                if (nameText != null)
+                {
+                    nameText.text = def.traitName;
+                    nameText.fontSize = 7f;
+                    nameText.color = traitTextColor;
+                }
+
+                if (valueText != null)
+                {
+                    TraitGrade currentGrade = TraitGradeUtility.GetGrade(runtime.point);
+                    valueText.text = currentGrade.ToString();
+                    valueText.fontSize = 7f;
+                    valueText.color = traitTextColor;
+                }
+
+                SkillButton skillButton = item.GetComponent<SkillButton>();
+
+                if (skillButton != null)
+                    skillButton.skill = null;
+
+                TraitTooltipHandler tooltipHandler = item.GetComponent<TraitTooltipHandler>();
+
+                if (tooltipHandler == null)
+                    tooltipHandler = item.AddComponent<TraitTooltipHandler>();
+
+                tooltipHandler.Bind(def);
+                rowIndex++;
+            }
+
+            traitListContent.sizeDelta = new Vector2(
+                traitListContent.sizeDelta.x,
+                rowIndex * rowHeight);
+        }
+    }
+
+    private void UpdateSkillListUI()
+    {
+        if (originSkillsText == null)
+            return;
+
+        foreach (GameObject item in originSkillItems)
+        {
+            if (item != null)
+                Destroy(item);
+        }
+
+        originSkillItems.Clear();
+        originSkillsText.text = "";
+        RectTransform content = originSkillsText.rectTransform;
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = new Vector2(1f, 1f);
+        content.pivot = new Vector2(0.5f, 1f);
+        content.localScale = Vector3.one;
+        content.anchoredPosition = Vector2.zero;
+        content.sizeDelta = Vector2.zero;
+
+        if (characterManager == null ||
+            characterManager.character == null ||
+            characterManager.character.Skills == null ||
+            GameDataRegistry.Instance == null)
+        {
+            return;
+        }
+
+        if (originSkillItemPrefab == null)
+        {
+            originSkillsText.enabled = true;
+            UpdateLegacySkillListUI();
+            return;
+        }
+
+        originSkillsText.enabled = false;
+        const float rowHeight = 40f;
+        int rowIndex = 0;
+
+        foreach (SkillRuntimeData runtime in characterManager.character.Skills)
+        {
             if (runtime == null)
                 continue;
 
-            TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(runtime.traitId);
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(runtime.skillUid);
 
-            if (def == null)
+            if (skill == null)
                 continue;
 
-            TraitGrade currentGrade = TraitGradeUtility.GetGrade(runtime.point);
-            baseTraits[i].text = $"{def.traitName} ({currentGrade})";
+            GameObject item = Instantiate(originSkillItemPrefab, content);
+            originSkillItems.Add(item);
+
+            RectTransform itemRect = item.transform as RectTransform;
+
+            if (itemRect != null)
+            {
+                itemRect.anchorMin = new Vector2(0f, 1f);
+                itemRect.anchorMax = new Vector2(1f, 1f);
+                itemRect.pivot = new Vector2(0.5f, 1f);
+                itemRect.anchoredPosition = new Vector2(0f, -rowIndex * rowHeight);
+                itemRect.sizeDelta = new Vector2(0f, rowHeight - 1f);
+            }
+
+            RawImage icon = item.GetComponentInChildren<RawImage>(true);
+
+            if (icon != null)
+            {
+                icon.texture = skill.icon;
+                icon.enabled = skill.icon != null;
+                icon.rectTransform.anchoredPosition = Vector2.zero;
+                icon.rectTransform.sizeDelta = new Vector2(32f, 32f);
+            }
+
+            Transform nameTransform = item.transform.Find("SkillName");
+            TextMeshProUGUI nameText = nameTransform != null
+                ? nameTransform.GetComponent<TextMeshProUGUI>()
+                : null;
+
+            Transform valueTransform = item.transform.Find("ItemValue");
+            TextMeshProUGUI valueText = valueTransform != null
+                ? valueTransform.GetComponent<TextMeshProUGUI>()
+                : null;
+
+            if (nameText != null)
+            {
+                nameText.text = skill.skillName;
+                nameText.fontSize = 26f;
+            }
+
+            if (valueText != null)
+                valueText.text = "";
+
+            SkillButton skillButton = item.GetComponent<SkillButton>();
+
+            if (skillButton != null)
+                skillButton.skill = skill;
+
+            CanvasGroup canvasGroup = item.GetComponent<CanvasGroup>();
+
+            if (canvasGroup != null)
+                canvasGroup.alpha = runtime.canUse ? 1f : 0.45f;
+
+            rowIndex++;
         }
+
+        content.sizeDelta = new Vector2(content.sizeDelta.x, rowIndex * rowHeight);
+    }
+
+    private void UpdateLegacySkillListUI()
+    {
+        List<string> skillNames = new List<string>();
+
+        foreach (SkillRuntimeData runtime in characterManager.character.Skills)
+        {
+            if (runtime == null)
+                continue;
+
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(runtime.skillUid);
+
+            if (skill == null)
+                continue;
+
+            string line = $"‚Ä¢ {skill.skillName}";
+
+            if (!runtime.canUse)
+                line = $"<color=#827A70>{line}</color>";
+
+            skillNames.Add(line);
+        }
+
+        originSkillsText.text = string.Join("\n", skillNames);
     }
 
     private void UpdateSelectedOriginInfo()
@@ -414,7 +646,7 @@ public class CharacterCreation : MonoBehaviour
 
         if (characterManager == null || characterManager.character == null)
         {
-            Debug.LogError("CharacterManager ∂«¥¬ CharacterData∞° æ¯Ω¿¥œ¥Ÿ.");
+            Debug.LogError("CharacterManager ÎòêÎäî CharacterDataÍ∞Ä ÏóÜÏäµÎãàÎã§.");
             return;
         }
 

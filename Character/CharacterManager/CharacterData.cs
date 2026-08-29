@@ -331,6 +331,10 @@ public class CharacterSpecialStats
     public int KillStaminaRecovery;
     public int KillMentalityRecovery;
 
+    [Header("레벨업")]
+    public int MinLevelUpStatGainBonus;
+    public int MaxLevelUpStatGainBonus;
+
     public static CharacterSpecialStats operator +(CharacterSpecialStats a, CharacterSpecialStats b)
     {
         if (a == null) a = new CharacterSpecialStats();
@@ -348,7 +352,10 @@ public class CharacterSpecialStats
 
             KillHpRecovery = a.KillHpRecovery + b.KillHpRecovery,
             KillStaminaRecovery = a.KillStaminaRecovery + b.KillStaminaRecovery,
-            KillMentalityRecovery = a.KillMentalityRecovery + b.KillMentalityRecovery
+            KillMentalityRecovery = a.KillMentalityRecovery + b.KillMentalityRecovery,
+
+            MinLevelUpStatGainBonus = a.MinLevelUpStatGainBonus + b.MinLevelUpStatGainBonus,
+            MaxLevelUpStatGainBonus = a.MaxLevelUpStatGainBonus + b.MaxLevelUpStatGainBonus
         };
     }
 
@@ -368,7 +375,10 @@ public class CharacterSpecialStats
 
             KillHpRecovery = KillHpRecovery * multiplier,
             KillStaminaRecovery = KillStaminaRecovery * multiplier,
-            KillMentalityRecovery = KillMentalityRecovery * multiplier
+            KillMentalityRecovery = KillMentalityRecovery * multiplier,
+
+            MinLevelUpStatGainBonus = MinLevelUpStatGainBonus * multiplier,
+            MaxLevelUpStatGainBonus = MaxLevelUpStatGainBonus * multiplier
         };
     }
 
@@ -386,7 +396,10 @@ public class CharacterSpecialStats
 
             KillHpRecovery = KillHpRecovery,
             KillStaminaRecovery = KillStaminaRecovery,
-            KillMentalityRecovery = KillMentalityRecovery
+            KillMentalityRecovery = KillMentalityRecovery,
+
+            MinLevelUpStatGainBonus = MinLevelUpStatGainBonus,
+            MaxLevelUpStatGainBonus = MaxLevelUpStatGainBonus
         };
     }
 }
@@ -425,6 +438,7 @@ public class CharacterData
 {
     public int originId; // 출신지
     public string originName; // 출신지 명
+    public int monsterRoleId;
 
     public Personality personality = Personality.Simple; // 성향
     public int Belonging { get; set; } // 소속감
@@ -947,8 +961,6 @@ public class CharacterData
 
         FinalSpecialStats.CriticalChance += 15;
         FinalSpecialStats.CriticalDamageBonus += 150;
-        FinalSpecialStats.CriticalChance += FinalStats.Dexterity / 20;
-        FinalSpecialStats.CriticalDamageBonus += FinalStats.Strength / 10;
 
         FinalSpecialStats.StatusResistance += Mathf.RoundToInt(
             FinalStats.Health * 0.5f +

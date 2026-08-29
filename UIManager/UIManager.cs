@@ -706,8 +706,9 @@ public class UIManager : MonoBehaviour
 
     #endregion 
 
-    // 시너지 정보를 UI에 표시하는 메서드
-    public void UpdateSynergyUI(List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)
+
+    // 시너지 정보를 UI에 표시하는 메서드 - 구현 보류
+    public void UpdateSynergyUI()//List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)
     {
         // 활성화된 시너지를 UI에 표시
         foreach (Transform child in synergyInfoPanel.transform)

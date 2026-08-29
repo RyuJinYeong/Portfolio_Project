@@ -12,13 +12,16 @@ public class OriginDefinitionSO : ScriptableObject
 
     public Texture2D icon;
 
-    public int traitPoint = 5;
+    public int traitPoint = 8;
 
     public CharacterType characterType = CharacterType.Character;
     public Personality defaultPersonality = Personality.Simple;
 
     public CharacterStats originBaseStats = new CharacterStats();
     public CharacterSpecialStats originSpecialStats = new CharacterSpecialStats();
+
+    [Header("Level Growth Weights")]
+    public List<StatGrowthWeightData> levelUpStatWeights = new();
 
     public List<int> initialTraitIds = new();
     public List<int> initialSkillUids = new();

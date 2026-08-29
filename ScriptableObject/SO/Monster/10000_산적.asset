@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96a0a80a5f100ee40a21ddbf9a3354f2, type: 3}
+  m_Name: 10000_산적
+  m_EditorClassIdentifier:
+  id: 10000
+  monsterName: 산적
+  description: 숲길과 변두리를 습격하는 인간형 몬스터군입니다.
+  modelPrefab: {fileID: 0}
+  tags:
+  - Forest
+  - Human
+  - Bandit
+  baseStats:
+    Strength: 7
+    Dexterity: 7
+    Speed: 6
+    Intelligence: 3
+    Wisdom: 3
+    Health: 5
+    Vitality: 5
+    Endurance: 4
+  baseSpecialStats:
+    MinLevelUpStatGainBonus: 0
+    MaxLevelUpStatGainBonus: 0
+  levelUpStatWeights:
+  - stat: 0
+    weight: 30
+  - stat: 1
+    weight: 25
+  - stat: 2
+    weight: 15
+  - stat: 5
+    weight: 8
+  - stat: 6
+    weight: 12
+  - stat: 7
+    weight: 10
+  baseTraitIds: []

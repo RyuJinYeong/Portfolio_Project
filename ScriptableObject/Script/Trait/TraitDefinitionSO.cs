@@ -13,23 +13,25 @@ public class TraitDefinitionSO : ScriptableObject
     [TextArea]
     public string description;
 
+    public Texture2D icon;
+
     public TraitPolarity polarity;
 
     [Header("Grade")]
     public bool canGradeUp = true;
     public TraitGrade defaultAcquireGrade = TraitGrade.F;
 
-    [Header("±âº»½ºÅÈ")]
+    [Header("ê¸°ë³¸ìŠ¤íƒ¯")]
     public bool isPercentage;
     public CharacterStats statDelta = new CharacterStats();
 
-    [Header("Æ¯¼ö½ºÅÈ")]
+    [Header("íŠ¹ìˆ˜ìŠ¤íƒ¯")]
     public CharacterSpecialStats specialStatDelta = new CharacterSpecialStats();
 
-    [Header("Æ¯¼öÁ¶°Ç")]
+    [Header("íŠ¹ìˆ˜ì¡°ê±´")]
     public List<TraitSpecialFlag> specialFlags = new();
 
-    [Header("Á¶°ÇºÎ ½ºÅÈ")]
+    [Header("ì¡°ê±´ë¶€ ìŠ¤íƒ¯")]
     public bool hasRequiredWeaponCondition;
     public WeaponType requiredWeaponType;
 

@@ -37,8 +37,8 @@ public class QuestPanelItem : MonoBehaviour
 
         titleText.text = def.title;
 
-        stageText.text = $"지역: {StageContentDB.GetLabel(def.stageKey)}";
-        bossText.text = $"보스: {MonsterDB.GetName(def.bossUid)}";
+        stageText.text = $"지역:";
+        bossText.text = $"보스:";
 
         recommendText.text = $"권장 Lv {def.recommendedLevel} / 권장 {def.recommendedPartySize}명 (최대 {def.maxPartySize}명)";
         issuerText.text = $"의뢰: {def.issuer}";

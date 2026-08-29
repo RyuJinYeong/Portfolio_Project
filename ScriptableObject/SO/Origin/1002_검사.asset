@@ -1,0 +1,127 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 452d0af290bb36c49bec72baa936c665, type: 3}
+  m_Name: "1002_\uAC80\uC0AC"
+  m_EditorClassIdentifier: 
+  id: 1002
+  originName: "\uAC80\uC0AC"
+  description: "\uAE30\uAD50\uC640 \uC18D\uB3C4\uB97C \uD65C\uC6A9\uD574 \uC815\uBC00\uD55C
+    \uC5F0\uC18D \uACF5\uACA9\uC744 \uD3BC\uCE58\uB294 \uADFC\uC811 \uB51C\uB7EC."
+  icon: {fileID: 0}
+  traitPoint: 8
+  characterType: 3
+  defaultPersonality: 2
+  originBaseStats:
+    Strength: 3
+    Dexterity: 11
+    Speed: 8
+    Intelligence: 1
+    Wisdom: 2
+    Health: 5
+    Vitality: 5
+    Endurance: 5
+    Detection: 0
+    Insight: 0
+    AttackSpeed: 0
+    CastSpeed: 0
+    WeaponAttackSpeedMultiplier: 0
+    WeaponCastSpeedMultiplier: 0
+    MaxHp: 0
+    MaxMentality: 0
+    MaxStamina: 0
+    StaminaRecovery: 0
+    MentalityRecovery: 0
+    FireResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
+    PierceResistance: 0
+    SlashResistance: 0
+    SmashResistance: 0
+    FireAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
+    PierceAffinity: 0
+    SlashAffinity: 0
+    SmashAffinity: 0
+    PhysicalAttack: 0
+    MagicalAttack: 0
+    PhysicalDefense: 0
+    MagicalDefense: 0
+  originSpecialStats:
+    CriticalChance: 0
+    CriticalDamageBonus: 0
+    StatusResistance: 0
+    MapDetectionRange: 0
+    TrapDetectionBonus: 0
+    EventInsightBonus: 0
+    KillHpRecovery: 0
+    KillStaminaRecovery: 0
+    KillMentalityRecovery: 0
+  initialTraitIds: ee030000
+  initialSkillUids: e8030000e9030000ea030000eb0300004c0400003408000035080000b80b0000b90b0000ba0b0000bb0b0000
+  defaultCounterSkillUid: 3002
+  initialEquipmentSlots:
+    helmet:
+      equipmentUid: 0
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    armor:
+      equipmentUid: 1007
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    gloves:
+      equipmentUid: 1008
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    shoes:
+      equipmentUid: 1009
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    ring1:
+      equipmentUid: 0
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    ring2:
+      equipmentUid: 0
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    necklace:
+      equipmentUid: 0
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    weapon:
+      equipmentUid: 5001
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+    subWeapon:
+      equipmentUid: 0
+      rarityRollMode: 0
+      fixedRarity: 0
+      rarityWeights: []
+      equipOnSpawn: 1
+  initialInventoryEquipments: []

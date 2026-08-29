@@ -26,6 +26,10 @@ public class SkillDefinitionSO : ScriptableObject
     [Header("UI")]
     public SkillDiscipline discipline = SkillDiscipline.Basic;
 
+    [Header("Reward")]
+    [Min(1)]
+    public int firstRewardTier = 1;
+
     [Header("Damage")]
     public List<SkillDamageComponentData> damageComponents = new();
 
@@ -37,16 +41,16 @@ public class SkillDefinitionSO : ScriptableObject
     public bool isStatusEffectSkill;
     public bool isRangedSkill;
 
-    [Tooltip("∏ÛΩ∫≈Õ ¿¸øÎ Ω∫≈≥¿Ã∏È ¿œπ› ∫∏ªÛ/ªÛ¡°/Ω∫≈≥∫œ «Æø°º≠ ¡¶ø‹")]
+    [Tooltip("Î™¨Ïä§ÌÑ∞ Ï†ÑÏö© Ïä§ÌÇ¨Ïù¥Î©¥ ÏùºÎ∞ò Î≥¥ÏÉÅ/ÏÉÅÏ†ê/Ïä§ÌÇ¨Î∂Å ÌíÄÏóêÏÑú Ï†úÏô∏")]
     public bool monsterOnly;
 
     [Header("Counter")]
     public CounterActionType counterActionType = CounterActionType.None;
 
-    [Tooltip("¿œπ› ¥Î¿¿ º∫∞¯ Ω√ ∞¯∞›∑¬ø° ∫Ò∑ «ÿ æÚ¥¬ πÊæÓµµ ∞Ëºˆ. »∏««¥¬ ªÁøÎ«œ¡ˆ æ ¿Ω")]
+    [Tooltip("ÏùºÎ∞ò ÎåÄÏùë ÏÑ±Í≥µ Ïãú Í≥µÍ≤©Î†•Ïóê ÎπÑÎ°ÄÌï¥ ÏñªÎäî Î∞©Ïñ¥ÎèÑ Í≥ÑÏàò. ÌöåÌîºÎäî ÏÇ¨Ïö©ÌïòÏßÄ ÏïäÏùå")]
     public float successArmorAttackMultiplier = 1f;
 
-    [Tooltip("»∏«« ¿œπ› º∫∞¯ Ω√ √÷º“ «««ÿ ∞®º“¿≤")]
+    [Tooltip("ÌöåÌîº ÏùºÎ∞ò ÏÑ±Í≥µ Ïãú ÏµúÏÜå ÌîºÌï¥ Í∞êÏÜåÏú®")]
     public float minEvadeReductionRate = 0.1f;
 
     [Header("Attack Effects")]
@@ -108,6 +112,11 @@ public class SkillDefinitionSO : ScriptableObject
         return !monsterOnly;
     }
 
+    public bool CanAppearInRewardPool(int questTier)
+    {
+        return !monsterOnly && questTier >= Mathf.Max(1, firstRewardTier);
+    }
+
     public bool HasStatusEffects()
     {
         return statusEffects != null && statusEffects.Count > 0;
@@ -121,6 +130,11 @@ public class SkillDefinitionSO : ScriptableObject
     public bool HasAttackEffect(AttackEffectType effect)
     {
         return attackEffects != null && attackEffects.Contains(effect);
+    }
+
+    public int GetTotalResourceCost()
+    {
+        return Mathf.Max(0, staminaCost) + Mathf.Max(0, mentalCost);
     }
 
     public float GetTotalDamageMultiplier()
@@ -164,7 +178,7 @@ public class SkillDefinitionSO : ScriptableObject
     public string GetDamageSummaryText()
     {
         if (damageComponents == null || damageComponents.Count == 0)
-            return "«««ÿ æ¯¿Ω";
+            return "ÌîºÌï¥ ÏóÜÏùå";
 
         List<string> lines = new List<string>();
 
@@ -180,9 +194,9 @@ public class SkillDefinitionSO : ScriptableObject
             string attributeText = GetAttributeText(component.attribute);
 
             if (hitCount <= 1)
-                lines.Add($"{attributeText} {damageTypeText} «««ÿ {percent}%");
+                lines.Add($"{attributeText} {damageTypeText} ÌîºÌï¥ {percent}%");
             else
-                lines.Add($"{attributeText} {damageTypeText} «««ÿ {percent}% °ø {hitCount}»∏");
+                lines.Add($"{attributeText} {damageTypeText} ÌîºÌï¥ {percent}% √ó {hitCount}Ìöå");
         }
 
         return string.Join("\n", lines);
@@ -415,9 +429,9 @@ public class SkillDefinitionSO : ScriptableObject
     {
         return type switch
         {
-            SkillType.Physical => "π∞∏Æ",
-            SkillType.Magical => "∏∂π˝",
-            SkillType.Mixed => "»•«’",
+            SkillType.Physical => "Î¨ºÎ¶¨",
+            SkillType.Magical => "ÎßàÎ≤ï",
+            SkillType.Mixed => "ÌòºÌï©",
             _ => "-"
         };
     }
@@ -426,14 +440,14 @@ public class SkillDefinitionSO : ScriptableObject
     {
         return attribute switch
         {
-            SkillAttribute.Pierce => "∞¸≈Î",
-            SkillAttribute.Slash => "¬¸∞›",
-            SkillAttribute.Smash => "≈∏∞›",
-            SkillAttribute.Fire => "»≠ø∞",
-            SkillAttribute.Ice => "æÛ¿Ω",
-            SkillAttribute.Lightning => "π¯∞≥",
-            SkillAttribute.Magic => "∏∂∑¬",
-            SkillAttribute.None => "π´º”º∫",
+            SkillAttribute.Pierce => "Í¥ÄÌÜµ",
+            SkillAttribute.Slash => "Ï∞∏Í≤©",
+            SkillAttribute.Smash => "ÌÉÄÍ≤©",
+            SkillAttribute.Fire => "ÌôîÏóº",
+            SkillAttribute.Ice => "ÏñºÏùå",
+            SkillAttribute.Lightning => "Î≤àÍ∞ú",
+            SkillAttribute.Magic => "ÎßàÎ†•",
+            SkillAttribute.None => "Î¨¥ÏÜçÏÑ±",
             _ => attribute.ToString()
         };
     }

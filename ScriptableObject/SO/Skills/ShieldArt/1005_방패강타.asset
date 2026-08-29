@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
+  m_Name: "1005_\uBC29\uD328\uAC15\uD0C0"
+  m_EditorClassIdentifier: 
+  uid: 1005
+  skillName: "\uBC29\uD328\uAC15\uD0C0"
+  description: "\uBC29\uD328\uB85C \uC801\uC744 \uBC00\uCCD0 \uB0AE\uC740 \uD53C\uD574\uC640
+    \uD750\uD2B8\uB7EC\uC9D0\uC744 \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: 28fd9fdd1600da7489f1701ff673abe7, type: 3}
+  activationSpeed: 0.8
+  staminaCost: 1
+  mentalCost: 0
+  type: 0
+  style: 0
+  discipline: 4
+  damageComponents:
+  - damageType: 0
+    attribute: 6
+    damageMultiplier: 1.05
+    hitCount: 1
+  equipmentRequirement:
+    requireMainHandEmpty: 0
+    requireSubHandEmpty: 0
+    requireAnyHandEmpty: 0
+    requireShield: 1
+    allowedMainWeaponTypes: 
+    allowedSubWeaponTypes: 
+    allowedAnyWeaponTypes: 
+  isCounterSkill: 0
+  isStatusEffectSkill: 1
+  isRangedSkill: 0
+  monsterOnly: 0
+  counterActionType: 0
+  successArmorAttackMultiplier: 1
+  minEvadeReductionRate: 0.1
+  attackEffects: 
+  statusAccuracyBonus: 0
+  statusEffects:
+  - statusEffectId: 1021
+    baseChance: 40
+    stackAmount: 2
+  statusConsumeEffects: []
+  isConditionalSkill: 0
+  requiredStats: []
+  requiredTraitIds: 
+  isEvolvableSkill: 0
+  evolvedSkillUid: 0
+  evolRequiredUseCount: 0
+  evolRequiredKillCount: 0
+  evolRequiredDamageCount: 0
+  evolRequiredTraitIds: 

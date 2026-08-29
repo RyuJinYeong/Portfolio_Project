@@ -9,6 +9,8 @@ public class SkillListItem : MonoBehaviour, IPointerClickHandler, IPointerEnterH
     public RawImage icon;
     public TextMeshProUGUI nameText;
     public TextMeshProUGUI costText;
+    public Text legacyNameText;
+    public Text legacyCostText;
     public GameObject quickSlotIcon;
 
     public int index;
@@ -32,7 +34,13 @@ public class SkillListItem : MonoBehaviour, IPointerClickHandler, IPointerEnterH
             icon = GetComponentInChildren<RawImage>();
 
         if (icon != null)
+        {
             icon.texture = skill != null ? skill.icon : null;
+            icon.enabled = skill != null && skill.icon != null;
+            icon.color = runtime == null || runtime.canUse
+                ? Color.white
+                : new Color(0.35f, 0.35f, 0.35f, 0.8f);
+        }
 
         TextMeshProUGUI[] texts = GetComponentsInChildren<TextMeshProUGUI>();
 
@@ -45,8 +53,14 @@ public class SkillListItem : MonoBehaviour, IPointerClickHandler, IPointerEnterH
         if (nameText != null)
             nameText.text = skill != null ? skill.skillName : "";
 
+        if (legacyNameText != null)
+            legacyNameText.text = skill != null ? skill.skillName : "";
+
         if (costText != null)
             costText.text = GetCostText(skill);
+
+        if (legacyCostText != null)
+            legacyCostText.text = GetCostText(skill);
 
         if (quickSlotIcon != null)
             quickSlotIcon.SetActive(runtime != null && runtime.quickSlot);

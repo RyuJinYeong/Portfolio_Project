@@ -6,7 +6,6 @@ public class GameDataRegistryTester : MonoBehaviour
     public int testEquipmentUid = 1004;
     public int testTraitId = 1000;
     public TraitGrade testTraitGrade = TraitGrade.C;
-    public Origin testOrigin = Origin.wandering_knight;
 
     void Start()
     {
@@ -34,6 +33,6 @@ public class GameDataRegistryTester : MonoBehaviour
 
         Debug.Log(registry.GetOrigin(1000) != null
             ? $"Origin OK: {registry.GetOrigin(1000).originName}"
-            : $"Origin Missing: {testOrigin}");
+            : $"Origin Missing");
     }
 }

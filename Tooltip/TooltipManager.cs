@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,44 +20,48 @@ public class TooltipManager : MonoBehaviour
     public TextMeshProUGUI tooltipText;
 
     public Vector3 tooltipOffset = new Vector3(40, -25, 0);
+    public Vector2 minimumSimpleTooltipSize = new Vector2(80f, 50f);
+    public float maximumSimpleTooltipWidth = 160f;
+    public Vector2 simpleTooltipPadding = new Vector2(8f, 8f);
     private bool isTooltipActive = false;
+    private string lastSizedTooltipText;
 
     public Dictionary<string, string> keywordTooltips = new Dictionary<string, string>
     {
-        { "±Ù·Â", "¹«±â¸¦ ÅëÇÑ ¹°¸® µ¥¹ÌÁö¿¡ ¿µÇâÀ» ÁÖ´Â ±âº» ½ºÅÈÀÔ´Ï´Ù." },
-        { "±â±³", "°æ·® ¹«±â¸¦ ÅëÇÑ ¹°¸® µ¥¹ÌÁö¿¡ ¿µÇâÀ» ÁÖ´Â ±âº» ½ºÅÈÀÔ´Ï´Ù." },
-        { "¼Óµµ", "Áö±¸·Â ¼öÄ¡¿Í °ø°İ ¼Óµµ¿¡ ¿µÇâÀ» ÁÖ´Â ±âº» ½ºÅÈÀÔ´Ï´Ù." },
-        { "Áö´É", "¸¶¹ı °ø°İ·Â°ú Á¤½Å·Â È¸º¹·®¿¡ ¿µÇâÀ» ÁÖ´Â ±âº» ½ºÅÈÀÔ´Ï´Ù." },
-        { "ÁöÇı", "Á¤½Å·Â°ú ½ÃÀü ¼Óµµ¿¡ ¿µÇâÀ» ÁÖ´Â ±âº» ½ºÅÈÀÔ´Ï´Ù." },
-        { "°Ç°­", "HP¿Í Áö±¸·Â È¸º¹·®¿¡ ¿µÇâÀ» ÁÖ´Â ±âº» ½ºÅÈÀÔ´Ï´Ù." },
-        { "ÀÎ³»", "¹æ¾î·Â¿¡ ¿µÇâÀ» ÁÖ´Â ±âº» ½ºÅÈÀÔ´Ï´Ù." },
+        { "ê·¼ë ¥", "ë¬´ê¸°ë¥¼ í†µí•œ ë¬¼ë¦¬ ë°ë¯¸ì§€ì— ì˜í–¥ì„ ì£¼ëŠ” ê¸°ë³¸ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
+        { "ê¸°êµ", "ê²½ëŸ‰ ë¬´ê¸°ë¥¼ í†µí•œ ë¬¼ë¦¬ ë°ë¯¸ì§€ì— ì˜í–¥ì„ ì£¼ëŠ” ê¸°ë³¸ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
+        { "ì†ë„", "ì§€êµ¬ë ¥ ìˆ˜ì¹˜ì™€ ê³µê²© ì†ë„ì— ì˜í–¥ì„ ì£¼ëŠ” ê¸°ë³¸ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
+        { "ì§€ëŠ¥", "ë§ˆë²• ê³µê²©ë ¥ê³¼ ì •ì‹ ë ¥ íšŒë³µëŸ‰ì— ì˜í–¥ì„ ì£¼ëŠ” ê¸°ë³¸ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
+        { "ì§€í˜œ", "ì •ì‹ ë ¥ê³¼ ì‹œì „ ì†ë„ì— ì˜í–¥ì„ ì£¼ëŠ” ê¸°ë³¸ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
+        { "ê±´ê°•", "HPì™€ ì§€êµ¬ë ¥ íšŒë³µëŸ‰ì— ì˜í–¥ì„ ì£¼ëŠ” ê¸°ë³¸ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
+        { "ì¸ë‚´", "ë°©ì–´ë ¥ì— ì˜í–¥ì„ ì£¼ëŠ” ê¸°ë³¸ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
 
-        { "´«½ä¹Ì", "°£ÆÄ °ü·Ã ÆÇÁ¤¿¡ ¿µÇâÀ» ÁÖ´Â Å½Áö °è¿­ ½ºÅÈÀÔ´Ï´Ù." },
-        { "ÅëÂû·Â", "°£ÆÄ °ü·Ã ÆÇÁ¤¿¡ ¿µÇâÀ» ÁÖ´Â ÆÇ´Ü °è¿­ ½ºÅÈÀÔ´Ï´Ù." },
+        { "ëˆˆì°ë¯¸", "ê°„íŒŒ ê´€ë ¨ íŒì •ì— ì˜í–¥ì„ ì£¼ëŠ” íƒì§€ ê³„ì—´ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
+        { "í†µì°°ë ¥", "ê°„íŒŒ ê´€ë ¨ íŒì •ì— ì˜í–¥ì„ ì£¼ëŠ” íŒë‹¨ ê³„ì—´ ìŠ¤íƒ¯ì…ë‹ˆë‹¤." },
 
-        { "Áö±¸·Â", "¹°¸® ½ºÅ³¿¡ »ç¿ëµÇ´Â ÀÚ¿øÀÔ´Ï´Ù." },
-        { "Á¤½Å·Â", "¸¶¹ı ½ºÅ³°ú Á¤½Å °è¿­ ½ºÅ³¿¡ »ç¿ëµÇ´Â ÀÚ¿øÀÔ´Ï´Ù." },
+        { "ì§€êµ¬ë ¥", "ë¬¼ë¦¬ ìŠ¤í‚¬ì— ì‚¬ìš©ë˜ëŠ” ìì›ì…ë‹ˆë‹¤." },
+        { "ì •ì‹ ë ¥", "ë§ˆë²• ìŠ¤í‚¬ê³¼ ì •ì‹  ê³„ì—´ ìŠ¤í‚¬ì— ì‚¬ìš©ë˜ëŠ” ìì›ì…ë‹ˆë‹¤." },
 
-        { "¹°¸® °ø°İ·Â", "¹°¸® ½ºÅ³°ú ¹«±â °ø°İÀÇ ÇÇÇØ·®¿¡ ¿µÇâÀ» ÁÖ´Â °ø°İ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¸¶¹ı °ø°İ·Â", "¸¶¹ı ½ºÅ³ÀÇ ÇÇÇØ·®¿¡ ¿µÇâÀ» ÁÖ´Â °ø°İ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¹°¸® ¹æ¾î·Â", "¹°¸® ÇÇÇØ¸¦ ÁÙÀÌ´Â ¹æ¾î ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¸¶¹ı ¹æ¾î·Â", "¸¶¹ı ÇÇÇØ¸¦ ÁÙÀÌ´Â ¹æ¾î ´É·ÂÄ¡ÀÔ´Ï´Ù." },
+        { "ë¬¼ë¦¬ ê³µê²©ë ¥", "ë¬¼ë¦¬ ìŠ¤í‚¬ê³¼ ë¬´ê¸° ê³µê²©ì˜ í”¼í•´ëŸ‰ì— ì˜í–¥ì„ ì£¼ëŠ” ê³µê²© ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë§ˆë²• ê³µê²©ë ¥", "ë§ˆë²• ìŠ¤í‚¬ì˜ í”¼í•´ëŸ‰ì— ì˜í–¥ì„ ì£¼ëŠ” ê³µê²© ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë¬¼ë¦¬ ë°©ì–´ë ¥", "ë¬¼ë¦¬ í”¼í•´ë¥¼ ì¤„ì´ëŠ” ë°©ì–´ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë§ˆë²• ë°©ì–´ë ¥", "ë§ˆë²• í”¼í•´ë¥¼ ì¤„ì´ëŠ” ë°©ì–´ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
 
-        { "È­¿° ÀúÇ×", "È­¿° ¼Ó¼º ÇÇÇØ¸¦ ÁÙÀÌ´Â ÀúÇ× ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¹° ÀúÇ×", "¹° ¼Ó¼º ÇÇÇØ¸¦ ÁÙÀÌ´Â ÀúÇ× ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¶¥ ÀúÇ×", "¶¥ ¼Ó¼º ÇÇÇØ¸¦ ÁÙÀÌ´Â ÀúÇ× ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¹Ù¶÷ ÀúÇ×", "¹Ù¶÷ ¼Ó¼º ÇÇÇØ¸¦ ÁÙÀÌ´Â ÀúÇ× ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "°üÅë ÀúÇ×", "°üÅë °è¿­ ÇÇÇØ¸¦ ÁÙÀÌ´Â ÀúÇ× ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "Âü°İ ÀúÇ×", "Âü°İ °è¿­ ÇÇÇØ¸¦ ÁÙÀÌ´Â ÀúÇ× ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "Å¸°İ ÀúÇ×", "Å¸°İ °è¿­ ÇÇÇØ¸¦ ÁÙÀÌ´Â ÀúÇ× ´É·ÂÄ¡ÀÔ´Ï´Ù." },
+        { "í™”ì—¼ ì €í•­", "í™”ì—¼ ì†ì„± í”¼í•´ë¥¼ ì¤„ì´ëŠ” ì €í•­ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë¬¼ ì €í•­", "ë¬¼ ì†ì„± í”¼í•´ë¥¼ ì¤„ì´ëŠ” ì €í•­ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë•… ì €í•­", "ë•… ì†ì„± í”¼í•´ë¥¼ ì¤„ì´ëŠ” ì €í•­ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë°”ëŒ ì €í•­", "ë°”ëŒ ì†ì„± í”¼í•´ë¥¼ ì¤„ì´ëŠ” ì €í•­ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ê´€í†µ ì €í•­", "ê´€í†µ ê³„ì—´ í”¼í•´ë¥¼ ì¤„ì´ëŠ” ì €í•­ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ì°¸ê²© ì €í•­", "ì°¸ê²© ê³„ì—´ í”¼í•´ë¥¼ ì¤„ì´ëŠ” ì €í•­ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "íƒ€ê²© ì €í•­", "íƒ€ê²© ê³„ì—´ í”¼í•´ë¥¼ ì¤„ì´ëŠ” ì €í•­ ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
 
-        { "È­¿° Æ¯È­", "È­¿° ¼Ó¼º °ø°İÀÇ È¿À²¿¡ ¿µÇâÀ» ÁÖ´Â ¼Ó¼º Æ¯È­ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¹° Æ¯È­", "¹° ¼Ó¼º °ø°İÀÇ È¿À²¿¡ ¿µÇâÀ» ÁÖ´Â ¼Ó¼º Æ¯È­ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¶¥ Æ¯È­", "¶¥ ¼Ó¼º °ø°İÀÇ È¿À²¿¡ ¿µÇâÀ» ÁÖ´Â ¼Ó¼º Æ¯È­ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "¹Ù¶÷ Æ¯È­", "¹Ù¶÷ ¼Ó¼º °ø°İÀÇ È¿À²¿¡ ¿µÇâÀ» ÁÖ´Â ¼Ó¼º Æ¯È­ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "°üÅë Æ¯È­", "°üÅë °è¿­ ¹°¸® °ø°İÀÇ È¿À²¿¡ ¿µÇâÀ» ÁÖ´Â ¹°¸® Æ¯È­ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "Âü°İ Æ¯È­", "Âü°İ °è¿­ ¹°¸® °ø°İÀÇ È¿À²¿¡ ¿µÇâÀ» ÁÖ´Â ¹°¸® Æ¯È­ ´É·ÂÄ¡ÀÔ´Ï´Ù." },
-        { "Å¸°İ Æ¯È­", "Å¸°İ °è¿­ ¹°¸® °ø°İÀÇ È¿À²¿¡ ¿µÇâÀ» ÁÖ´Â ¹°¸® Æ¯È­ ´É·ÂÄ¡ÀÔ´Ï´Ù." }
+        { "í™”ì—¼ íŠ¹í™”", "í™”ì—¼ ì†ì„± ê³µê²©ì˜ íš¨ìœ¨ì— ì˜í–¥ì„ ì£¼ëŠ” ì†ì„± íŠ¹í™” ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë¬¼ íŠ¹í™”", "ë¬¼ ì†ì„± ê³µê²©ì˜ íš¨ìœ¨ì— ì˜í–¥ì„ ì£¼ëŠ” ì†ì„± íŠ¹í™” ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë•… íŠ¹í™”", "ë•… ì†ì„± ê³µê²©ì˜ íš¨ìœ¨ì— ì˜í–¥ì„ ì£¼ëŠ” ì†ì„± íŠ¹í™” ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ë°”ëŒ íŠ¹í™”", "ë°”ëŒ ì†ì„± ê³µê²©ì˜ íš¨ìœ¨ì— ì˜í–¥ì„ ì£¼ëŠ” ì†ì„± íŠ¹í™” ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ê´€í†µ íŠ¹í™”", "ê´€í†µ ê³„ì—´ ë¬¼ë¦¬ ê³µê²©ì˜ íš¨ìœ¨ì— ì˜í–¥ì„ ì£¼ëŠ” ë¬¼ë¦¬ íŠ¹í™” ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "ì°¸ê²© íŠ¹í™”", "ì°¸ê²© ê³„ì—´ ë¬¼ë¦¬ ê³µê²©ì˜ íš¨ìœ¨ì— ì˜í–¥ì„ ì£¼ëŠ” ë¬¼ë¦¬ íŠ¹í™” ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." },
+        { "íƒ€ê²© íŠ¹í™”", "íƒ€ê²© ê³„ì—´ ë¬¼ë¦¬ ê³µê²©ì˜ íš¨ìœ¨ì— ì˜í–¥ì„ ì£¼ëŠ” ë¬¼ë¦¬ íŠ¹í™” ëŠ¥ë ¥ì¹˜ì…ë‹ˆë‹¤." }
     };
 
     private void Awake()
@@ -65,6 +70,19 @@ public class TooltipManager : MonoBehaviour
             Instance = this;
         else
             Destroy(gameObject);
+
+        if (tooltipObject != null)
+        {
+            tooltipObject.transform.SetAsLastSibling();
+
+            Canvas tooltipCanvas = tooltipObject.GetComponent<Canvas>();
+
+            if (tooltipCanvas == null)
+                tooltipCanvas = tooltipObject.AddComponent<Canvas>();
+
+            tooltipCanvas.overrideSorting = true;
+            tooltipCanvas.sortingOrder = short.MaxValue;
+        }
     }
 
     private void Update()
@@ -106,6 +124,9 @@ public class TooltipManager : MonoBehaviour
 
         SetSkillTooltipMode();
 
+        if (tooltipText != null && skillNameText == null && descriptionText == null)
+            tooltipText.text = BuildSimpleSkillTooltip(skill);
+
         if (skillIcon != null)
             skillIcon.texture = skill.icon;
 
@@ -116,7 +137,7 @@ public class TooltipManager : MonoBehaviour
             skillTypeText.text = GetSkillTypeText(skill);
 
         if (skillSpeedText != null)
-            skillSpeedText.text = $"¹ßµ¿¼Óµµ: {skill.activationSpeed} / ½ºÅ¸ÀÏ: {GetStyleText(skill.style)}";
+            skillSpeedText.text = $"ë°œë™ì†ë„: {skill.activationSpeed} / ìŠ¤íƒ€ì¼: {GetStyleText(skill.style)}";
 
         if (costText != null)
             costText.text = GetCostText(skill);
@@ -149,7 +170,7 @@ public class TooltipManager : MonoBehaviour
             skillNameText.text = trait.traitName;
 
         if (skillTypeText != null)
-            skillTypeText.text = "Æ¯¼º";
+            skillTypeText.text = "íŠ¹ì„±";
 
         if (skillSpeedText != null)
             skillSpeedText.text = "";
@@ -161,7 +182,68 @@ public class TooltipManager : MonoBehaviour
             descriptionText.text = trait.description;
 
         if (tooltipText != null)
-            tooltipText.text = trait.description;
+            tooltipText.text = $"<b>{trait.traitName} ({trait.defaultAcquireGrade})</b>\n{trait.description}";
+
+        UpdateTooltipPosition(position);
+
+        if (tooltipObject != null)
+            tooltipObject.SetActive(true);
+
+        isTooltipActive = true;
+    }
+
+    public void ShowItemTooltip(InventorySlotData slot, Vector3 position)
+    {
+        if (slot == null || GameDataRegistry.Instance == null)
+            return;
+
+        ItemDefinitionSO item = GameDataRegistry.Instance.GetItem(slot.itemUid);
+
+        if (item == null)
+            return;
+
+        SetSkillTooltipMode();
+
+        EquipmentRuntimeData equipment = item is EquipmentDefinitionSO
+            ? EquipmentRuntimeResolver.Resolve(slot.itemUid, slot.equipmentInstanceId)
+            : null;
+
+        string displayName = equipment != null && !string.IsNullOrEmpty(equipment.displayName)
+            ? equipment.displayName
+            : item.itemName;
+
+        string typeText = GetItemTypeText(item, equipment);
+        string detailText = BuildItemDescription(item, equipment);
+
+        if (skillIcon != null)
+            skillIcon.texture = item.icon;
+
+        if (skillNameText != null)
+            skillNameText.text = displayName;
+
+        if (skillTypeText != null)
+            skillTypeText.text = typeText;
+
+        if (skillSpeedText != null)
+        {
+            skillSpeedText.text = equipment != null
+                ? $"í‹°ì–´ {equipment.tier} / {equipment.rarity}"
+                : slot.count > 1
+                    ? $"ë³´ìœ  ìˆ˜ëŸ‰: {slot.count}"
+                    : "";
+        }
+
+        if (costText != null)
+            costText.text = $"ê°€ê²©: {item.price} / ë¬´ê²Œ: {item.weight:0.##}";
+
+        if (descriptionText != null)
+            descriptionText.text = detailText;
+
+        if (tooltipText != null && skillNameText == null && descriptionText == null)
+        {
+            tooltipText.text =
+                $"<b>{displayName}</b>\n{typeText}\n{detailText}";
+        }
 
         UpdateTooltipPosition(position);
 
@@ -179,7 +261,7 @@ public class TooltipManager : MonoBehaviour
             tooltipText.text = text;
 
         if (skillNameText != null)
-            skillNameText.text = "Á¤º¸";
+            skillNameText.text = "ì •ë³´";
 
         if (skillTypeText != null)
             skillTypeText.text = "";
@@ -228,7 +310,304 @@ public class TooltipManager : MonoBehaviour
         if (tooltipObject == null)
             return;
 
-        tooltipObject.transform.position = position + tooltipOffset;
+        RectTransform tooltipRect = tooltipObject.transform as RectTransform;
+
+        if (tooltipRect == null)
+        {
+            tooltipObject.transform.position = position + tooltipOffset;
+            return;
+        }
+
+        ResizeSimpleTooltipToContent(tooltipRect);
+
+        Canvas rootCanvas = tooltipObject.GetComponentInParent<Canvas>()?.rootCanvas;
+        Camera uiCamera = rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? rootCanvas.worldCamera
+            : null;
+
+        Vector3[] corners = new Vector3[4];
+        tooltipRect.GetWorldCorners(corners);
+
+        Vector2 bottomLeft = RectTransformUtility.WorldToScreenPoint(uiCamera, corners[0]);
+        Vector2 topRight = RectTransformUtility.WorldToScreenPoint(uiCamera, corners[2]);
+        float tooltipWidth = Mathf.Abs(topRight.x - bottomLeft.x);
+        float tooltipHeight = Mathf.Abs(topRight.y - bottomLeft.y);
+
+        float horizontalGap = Mathf.Abs(tooltipOffset.x);
+        float verticalGap = Mathf.Abs(tooltipOffset.y);
+        float rightSpace = Screen.width - position.x;
+        float leftSpace = position.x;
+        float upperSpace = Screen.height - position.y;
+        float lowerSpace = position.y;
+
+        bool placeRight = rightSpace >= tooltipWidth + horizontalGap || rightSpace >= leftSpace;
+        bool placeAbove = upperSpace >= tooltipHeight + verticalGap || upperSpace >= lowerSpace;
+
+        tooltipRect.pivot = new Vector2(placeRight ? 0f : 1f, placeAbove ? 0f : 1f);
+
+        Vector2 targetScreenPosition = new Vector2(
+            position.x + (placeRight ? horizontalGap : -horizontalGap),
+            position.y + (placeAbove ? verticalGap : -verticalGap));
+
+        targetScreenPosition.x = placeRight
+            ? Mathf.Clamp(targetScreenPosition.x, 0f, Mathf.Max(0f, Screen.width - tooltipWidth))
+            : Mathf.Clamp(targetScreenPosition.x, tooltipWidth, Screen.width);
+
+        targetScreenPosition.y = placeAbove
+            ? Mathf.Clamp(targetScreenPosition.y, 0f, Mathf.Max(0f, Screen.height - tooltipHeight))
+            : Mathf.Clamp(targetScreenPosition.y, tooltipHeight, Screen.height);
+
+        if (tooltipRect.parent is RectTransform parentRect &&
+            RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                parentRect,
+                targetScreenPosition,
+                uiCamera,
+                out Vector3 worldPosition))
+        {
+            tooltipRect.position = worldPosition;
+        }
+        else
+        {
+            tooltipRect.position = targetScreenPosition;
+        }
+    }
+
+    private string BuildSimpleSkillTooltip(SkillDefinitionSO skill)
+    {
+        string text = $"<b>{skill.skillName}</b>\n{GetSkillTypeText(skill)}";
+
+        if (skill.staminaCost > 0)
+            text += $"\nì§€êµ¬ë ¥: {skill.staminaCost}";
+
+        if (skill.mentalCost > 0)
+            text += $"\nì •ì‹ ë ¥: {skill.mentalCost}";
+
+        text += $"\në°œë™ ì†ë„: {skill.activationSpeed:0.##}\n\n{BuildSkillDescription(skill)}";
+        return text;
+    }
+
+    private string GetItemTypeText(
+        ItemDefinitionSO item,
+        EquipmentRuntimeData equipment)
+    {
+        if (item is WeaponDefinitionSO weapon)
+            return $"ì¥ë¹„ - {GetEquipmentTypeText(weapon.equipType)} / {weapon.weaponType}";
+
+        if (item is EquipmentDefinitionSO equipmentDefinition)
+            return $"ì¥ë¹„ - {GetEquipmentTypeText(equipmentDefinition.equipType)}";
+
+        if (item is ConsumableDefinitionSO)
+            return "ì†Œëª¨í’ˆ";
+
+        return "ê¸°íƒ€ ì•„ì´í…œ";
+    }
+
+    private string BuildItemDescription(
+        ItemDefinitionSO item,
+        EquipmentRuntimeData equipment)
+    {
+        StringBuilder builder = new StringBuilder();
+
+        if (!string.IsNullOrEmpty(item.description))
+            builder.Append(item.description);
+
+        if (equipment != null)
+        {
+            AppendSection(builder, "ëŠ¥ë ¥ì¹˜");
+            AppendCharacterStats(builder, equipment.statModifiers);
+            AppendSpecialStats(builder, equipment.specialStatModifiers);
+
+            if (equipment.generated != null && equipment.generated.appliedAffixes != null)
+            {
+                foreach (EquipmentAffixRollData affix in equipment.generated.appliedAffixes)
+                {
+                    if (affix == null || string.IsNullOrEmpty(affix.affixName))
+                        continue;
+
+                    AppendLine(builder, $"ì˜µì…˜: {affix.affixName}");
+                }
+            }
+
+            if (equipment.grantedTraitIds != null)
+            {
+                foreach (int traitId in equipment.grantedTraitIds)
+                {
+                    TraitDefinitionSO trait = GameDataRegistry.Instance.GetTrait(traitId);
+
+                    if (trait != null)
+                        AppendLine(builder, $"íŠ¹ì„±: {trait.traitName} ({trait.defaultAcquireGrade})");
+                }
+            }
+        }
+        else if (item is ConsumableDefinitionSO consumable)
+        {
+            AppendSection(builder, "ì‚¬ìš© íš¨ê³¼");
+            AppendLine(builder, GetConsumableEffectText(consumable));
+        }
+
+        return builder.ToString();
+    }
+
+    private void AppendCharacterStats(StringBuilder builder, CharacterStats stats)
+    {
+        if (stats == null)
+            return;
+
+        AppendStat(builder, "ê·¼ë ¥", stats.Strength);
+        AppendStat(builder, "ê¸°êµ", stats.Dexterity);
+        AppendStat(builder, "ì†ë„", stats.Speed);
+        AppendStat(builder, "ì§€ëŠ¥", stats.Intelligence);
+        AppendStat(builder, "ì§€í˜œ", stats.Wisdom);
+        AppendStat(builder, "ê±´ê°•", stats.Health);
+        AppendStat(builder, "í™œë ¥", stats.Vitality);
+        AppendStat(builder, "ì¸ë‚´", stats.Endurance);
+        AppendStat(builder, "HP", stats.MaxHp);
+        AppendStat(builder, "ì§€êµ¬ë ¥", stats.MaxStamina);
+        AppendStat(builder, "ì •ì‹ ë ¥", stats.MaxMentality);
+        AppendStat(builder, "ë¬¼ë¦¬ ê³µê²©ë ¥", stats.PhysicalAttack);
+        AppendStat(builder, "ë§ˆë²• ê³µê²©ë ¥", stats.MagicalAttack);
+        AppendStat(builder, "ë¬¼ë¦¬ ë°©ì–´ë ¥", stats.PhysicalDefense);
+        AppendStat(builder, "ë§ˆë²• ë°©ì–´ë ¥", stats.MagicalDefense);
+        AppendStat(builder, "í™”ì—¼ ì €í•­", stats.FireResistance);
+        AppendStat(builder, "ì–¼ìŒ ì €í•­", stats.IceResistance);
+        AppendStat(builder, "ë²ˆê°œ ì €í•­", stats.LightningResistance);
+        AppendStat(builder, "ê´€í†µ ì €í•­", stats.PierceResistance);
+        AppendStat(builder, "ì°¸ê²© ì €í•­", stats.SlashResistance);
+        AppendStat(builder, "íƒ€ê²© ì €í•­", stats.SmashResistance);
+        AppendStat(builder, "í™”ì—¼ íŠ¹í™”", stats.FireAffinity);
+        AppendStat(builder, "ì–¼ìŒ íŠ¹í™”", stats.IceAffinity);
+        AppendStat(builder, "ë²ˆê°œ íŠ¹í™”", stats.LightningAffinity);
+        AppendStat(builder, "ê´€í†µ íŠ¹í™”", stats.PierceAffinity);
+        AppendStat(builder, "ì°¸ê²© íŠ¹í™”", stats.SlashAffinity);
+        AppendStat(builder, "íƒ€ê²© íŠ¹í™”", stats.SmashAffinity);
+        AppendFloatStat(builder, "ê³µê²© ì†ë„", stats.AttackSpeed);
+        AppendFloatStat(builder, "ì‹œì „ ì†ë„", stats.CastSpeed);
+    }
+
+    private void AppendSpecialStats(StringBuilder builder, CharacterSpecialStats stats)
+    {
+        if (stats == null)
+            return;
+
+        AppendStat(builder, "ì¹˜ëª…íƒ€ í™•ë¥ ", stats.CriticalChance);
+        AppendStat(builder, "ì¹˜ëª…íƒ€ í”¼í•´", stats.CriticalDamageBonus);
+        AppendStat(builder, "ìƒíƒœì´ìƒ ì €í•­", stats.StatusResistance);
+        AppendStat(builder, "ì§€ë„ íƒì§€ ë²”ìœ„", stats.MapDetectionRange);
+        AppendStat(builder, "í•¨ì • íƒì§€", stats.TrapDetectionBonus);
+        AppendStat(builder, "ì´ë²¤íŠ¸ í†µì°°", stats.EventInsightBonus);
+        AppendStat(builder, "ì²˜ì¹˜ ì‹œ HP íšŒë³µ", stats.KillHpRecovery);
+        AppendStat(builder, "ì²˜ì¹˜ ì‹œ ì§€êµ¬ë ¥ íšŒë³µ", stats.KillStaminaRecovery);
+        AppendStat(builder, "ì²˜ì¹˜ ì‹œ ì •ì‹ ë ¥ íšŒë³µ", stats.KillMentalityRecovery);
+        AppendStat(builder, "ìµœì†Œ ë ˆë²¨ì—… ìƒìŠ¹ì¹˜", stats.MinLevelUpStatGainBonus);
+        AppendStat(builder, "ìµœëŒ€ ë ˆë²¨ì—… ìƒìŠ¹ì¹˜", stats.MaxLevelUpStatGainBonus);
+    }
+
+    private string GetConsumableEffectText(ConsumableDefinitionSO consumable)
+    {
+        switch (consumable.consumableType)
+        {
+            case ConsumableType.HealHp:
+                return $"HP {consumable.hpAmount} íšŒë³µ";
+
+            case ConsumableType.RecoverStamina:
+                return $"ì§€êµ¬ë ¥ {consumable.staminaAmount} íšŒë³µ";
+
+            case ConsumableType.RecoverMentality:
+                return $"ì •ì‹ ë ¥ {consumable.mentalityAmount} íšŒë³µ";
+
+            case ConsumableType.LearnSkill:
+            {
+                SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(consumable.skillUid);
+                return skill != null ? $"ìŠ¤í‚¬ ìŠµë“: {skill.skillName}" : "ìŠ¤í‚¬ ìŠµë“";
+            }
+
+            case ConsumableType.GainTrait:
+            {
+                TraitDefinitionSO trait = GameDataRegistry.Instance.GetTrait(consumable.traitId);
+                return trait != null ? $"íŠ¹ì„± íšë“: {trait.traitName}" : "íŠ¹ì„± íšë“";
+            }
+
+            default:
+                return "ì‚¬ìš© íš¨ê³¼ ì—†ìŒ";
+        }
+    }
+
+    private string GetEquipmentTypeText(EquipmentType equipmentType)
+    {
+        switch (equipmentType)
+        {
+            case EquipmentType.Helmet: return "íˆ¬êµ¬";
+            case EquipmentType.Armor: return "ê°‘ì˜·";
+            case EquipmentType.Gloves: return "ì¥ê°‘";
+            case EquipmentType.Shoes: return "ì‹ ë°œ";
+            case EquipmentType.Ring: return "ë°˜ì§€";
+            case EquipmentType.Necklace: return "ëª©ê±¸ì´";
+            case EquipmentType.Weapon: return "ì£¼ë¬´ê¸°";
+            case EquipmentType.SubWeapon: return "ë³´ì¡°ë¬´ê¸°";
+            default: return "ì¥ë¹„";
+        }
+    }
+
+    private void AppendSection(StringBuilder builder, string title)
+    {
+        if (builder.Length > 0)
+            builder.Append("\n\n");
+
+        builder.Append(title);
+    }
+
+    private void AppendLine(StringBuilder builder, string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        builder.Append('\n');
+        builder.Append(text);
+    }
+
+    private void AppendStat(StringBuilder builder, string name, int value)
+    {
+        if (value == 0)
+            return;
+
+        AppendLine(builder, $"{name}: {(value > 0 ? "+" : "")}{value}");
+    }
+
+    private void AppendFloatStat(StringBuilder builder, string name, float value)
+    {
+        if (Mathf.Approximately(value, 0f))
+            return;
+
+        AppendLine(builder, $"{name}: {(value > 0f ? "+" : "")}{value:0.##}");
+    }
+
+    private void ResizeSimpleTooltipToContent(RectTransform tooltipRect)
+    {
+        if (tooltipText == null || tooltipText.rectTransform != tooltipRect)
+            return;
+
+        string currentText = tooltipText.text ?? "";
+
+        if (lastSizedTooltipText == currentText)
+            return;
+
+        lastSizedTooltipText = currentText;
+
+        float maximumWidth = Mathf.Max(minimumSimpleTooltipSize.x, maximumSimpleTooltipWidth);
+        Vector2 unconstrainedSize = tooltipText.GetPreferredValues(currentText);
+        float tooltipWidth = Mathf.Clamp(
+            unconstrainedSize.x + simpleTooltipPadding.x,
+            minimumSimpleTooltipSize.x,
+            maximumWidth);
+
+        float textWidth = Mathf.Max(1f, tooltipWidth - simpleTooltipPadding.x);
+        Vector2 constrainedSize = tooltipText.GetPreferredValues(currentText, textWidth, 0f);
+        float tooltipHeight = Mathf.Max(
+            minimumSimpleTooltipSize.y,
+            constrainedSize.y + simpleTooltipPadding.y);
+
+        tooltipRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, tooltipWidth);
+        tooltipRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, tooltipHeight);
     }
 
     private void ShowConcealedTooltip(Vector3 position)
@@ -239,22 +618,22 @@ public class TooltipManager : MonoBehaviour
             skillIcon.texture = null;
 
         if (skillNameText != null)
-            skillNameText.text = "ÀºÆóµÈ ½ºÅ³";
+            skillNameText.text = "ì€íëœ ìŠ¤í‚¬";
 
         if (skillTypeText != null)
-            skillTypeText.text = "Á¤º¸ ¾øÀ½";
+            skillTypeText.text = "ì •ë³´ ì—†ìŒ";
 
         if (skillSpeedText != null)
-            skillSpeedText.text = "°£ÆÄ ½ÇÆĞ";
+            skillSpeedText.text = "ê°„íŒŒ ì‹¤íŒ¨";
 
         if (costText != null)
             costText.text = "";
 
         if (descriptionText != null)
-            descriptionText.text = "»ó´ë°¡ ½ºÅ³ Á¤º¸¸¦ ÀºÆóÇß½À´Ï´Ù. Å¸°ÙÀº È®ÀÎ °¡´ÉÇÏÁö¸¸ ½ºÅ³ÀÇ Á¤Ã¼´Â ¾Ë ¼ö ¾ø½À´Ï´Ù.";
+            descriptionText.text = "ìƒëŒ€ê°€ ìŠ¤í‚¬ ì •ë³´ë¥¼ ì€íí–ˆìŠµë‹ˆë‹¤. íƒ€ê²Ÿì€ í™•ì¸ ê°€ëŠ¥í•˜ì§€ë§Œ ìŠ¤í‚¬ì˜ ì •ì²´ëŠ” ì•Œ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.";
 
         if (tooltipText != null)
-            tooltipText.text = "ÀºÆóµÈ ½ºÅ³";
+            tooltipText.text = "ì€íëœ ìŠ¤í‚¬";
 
         UpdateTooltipPosition(position);
 
@@ -275,19 +654,19 @@ public class TooltipManager : MonoBehaviour
             skillIcon.texture = null;
 
         if (skillNameText != null)
-            skillNameText.text = "ÀÏºÎ °£ÆÄµÈ ½ºÅ³";
+            skillNameText.text = "ì¼ë¶€ ê°„íŒŒëœ ìŠ¤í‚¬";
 
         if (skillTypeText != null)
-            skillTypeText.text = $"{GetStyleText(skill.style)} ½ºÅ¸ÀÏ / {GetSkillRangeText(skill)}";
+            skillTypeText.text = $"{GetStyleText(skill.style)} ìŠ¤íƒ€ì¼ / {GetSkillRangeText(skill)}";
 
         if (skillSpeedText != null)
-            skillSpeedText.text = $"¼Óµµ: {GetSpeedRankText(skill.activationSpeed)}";
+            skillSpeedText.text = $"ì†ë„: {GetSpeedRankText(skill.activationSpeed)}";
 
         if (costText != null)
-            costText.text = $"À§·Â: {GetPowerRankText(skill.GetTotalDamageMultiplier())}";
+            costText.text = $"ìœ„ë ¥: {GetPowerRankText(skill.GetTotalDamageMultiplier())}";
 
         if (descriptionText != null)
-            descriptionText.text = "½ºÅ³ÀÇ ÀÏºÎ Á¤º¸¸¸ °£ÆÄÇß½À´Ï´Ù. Á¤È®ÇÑ ½ºÅ³¸í°ú ¼¼ºÎ È¿°ú´Â ¾Ë ¼ö ¾ø½À´Ï´Ù.";
+            descriptionText.text = "ìŠ¤í‚¬ì˜ ì¼ë¶€ ì •ë³´ë§Œ ê°„íŒŒí–ˆìŠµë‹ˆë‹¤. ì •í™•í•œ ìŠ¤í‚¬ëª…ê³¼ ì„¸ë¶€ íš¨ê³¼ëŠ” ì•Œ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.";
 
         UpdateTooltipPosition(position);
 
@@ -311,18 +690,18 @@ public class TooltipManager : MonoBehaviour
 
     private string GetSkillTypeText(SkillDefinitionSO skill)
     {
-        string typeText = skill.type == SkillType.Physical ? "¹°¸® ½ºÅ³" : "¸¶¹ı ½ºÅ³";
+        string typeText = skill.type == SkillType.Physical ? "ë¬¼ë¦¬ ìŠ¤í‚¬" : "ë§ˆë²• ìŠ¤í‚¬";
         string rangeText = GetSkillRangeText(skill);
 
         if (skill.isCounterSkill)
-            return $"{typeText} - {rangeText} ´ëÀÀ - {GetCounterActionText(skill.counterActionType)}";
+            return $"{typeText} - {rangeText} ëŒ€ì‘ - {GetCounterActionText(skill.counterActionType)}";
 
         return $"{typeText} - {rangeText}";
     }
 
     private string GetSkillRangeText(SkillDefinitionSO skill)
     {
-        return skill.isRangedSkill ? "¿ø°Å¸®" : "±ÙÁ¢";
+        return skill.isRangedSkill ? "ì›ê±°ë¦¬" : "ê·¼ì ‘";
     }
 
     private string GetCostText(SkillDefinitionSO skill)
@@ -330,68 +709,109 @@ public class TooltipManager : MonoBehaviour
         string text = "";
 
         if (skill.staminaCost != 0)
-            text += $"Áö±¸·Â : {skill.staminaCost} ¼Ò¸ğ";
+            text += $"ì§€êµ¬ë ¥ : {skill.staminaCost} ì†Œëª¨";
 
         if (skill.mentalCost != 0)
         {
             if (!string.IsNullOrEmpty(text))
                 text += " / ";
 
-            text += $"Á¤½Å·Â : {skill.mentalCost} ¼Ò¸ğ";
+            text += $"ì •ì‹ ë ¥ : {skill.mentalCost} ì†Œëª¨";
         }
 
         if (string.IsNullOrEmpty(text))
-            text = "¼Ò¸ğ ¾øÀ½";
+            text = "ì†Œëª¨ ì—†ìŒ";
 
         return text;
     }
 
     private string BuildSkillDescription(SkillDefinitionSO skill)
     {
-        string text = skill.description;
+        StringBuilder text = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(skill.description))
+            text.Append(skill.description.Trim());
 
         if (!skill.isCounterSkill)
         {
-            text += "\n\nÇÇÇØ ±¸¼º:";
-            text += "\n" + skill.GetDamageSummaryText();
+            AppendSectionSeparator(text);
+            text.Append("ê³µê²© ì„±ëŠ¥:\n");
+            text.Append(skill.GetDamageSummaryText());
 
             float total = skill.GetTotalDamageMultiplier();
 
             if (total > 0f)
-                text += $"\nÃÑ À§·Â: {Mathf.RoundToInt(total * 100f)}%";
+                text.Append($"\nì´ ìœ„ë ¥: {Mathf.RoundToInt(total * 100f)}%");
         }
 
         if (skill.isCounterSkill)
         {
-            text += $"\n\n´ëÀÀ Å¸ÀÔ: {GetCounterActionText(skill.counterActionType)}";
+            AppendSectionSeparator(text);
+            text.Append($"ëŒ€ì‘ ì„±ëŠ¥: {GetCounterActionText(skill.counterActionType)}");
+
+            if (skill.counterActionType == CounterActionType.Evade)
+            {
+                int reductionPercent = Mathf.RoundToInt(skill.minEvadeReductionRate * 100f);
+                text.Append($"\nì„±ê³µ ì‹œ ìµœì†Œ {reductionPercent}% í”¼í•´ ê°ì†Œ");
+            }
+            else
+            {
+                int armorPercent = Mathf.RoundToInt(skill.successArmorAttackMultiplier * 100f);
+                string armorType = skill.type == SkillType.Magical ? "ë§ˆë²• ë°©ì–´ë„" : "ë¬¼ë¦¬ ë°©ì–´ë„";
+                text.Append($"\nì„±ê³µ ì‹œ ê³µê²©ë ¥ì˜ {armorPercent}%ë§Œí¼ {armorType} íšë“");
+            }
         }
 
         if (skill.attackEffects != null && skill.attackEffects.Count > 0)
         {
-            text += "\n°ø°İ È¿°ú: ";
+            text.Append("\nê³µê²© íš¨ê³¼: ");
 
             for (int i = 0; i < skill.attackEffects.Count; i++)
             {
-                text += GetAttackEffectText(skill.attackEffects[i]);
+                text.Append(GetAttackEffectText(skill.attackEffects[i]));
 
                 if (i < skill.attackEffects.Count - 1)
-                    text += ", ";
+                    text.Append(", ");
             }
         }
 
-        if (skill.HasStatusEffects())
-            text += "\n»óÅÂÀÌ»ó È¿°ú ÀÖÀ½";
+        if (skill.statusEffects != null && skill.statusEffects.Count > 0)
+        {
+            AppendSectionSeparator(text);
+            text.Append("ìƒíƒœì´ìƒ ì ìš©:");
 
-        return text;
+            foreach (StatusEffectApplyData applyData in skill.statusEffects)
+            {
+                if (applyData == null)
+                    continue;
+
+                StatusEffectDefinitionSO status = GameDataRegistry.Instance != null
+                    ? GameDataRegistry.Instance.GetStatusEffect(applyData.statusEffectId)
+                    : null;
+                string statusName = status != null && !string.IsNullOrWhiteSpace(status.statusName)
+                    ? status.statusName
+                    : $"ìƒíƒœì´ìƒ {applyData.statusEffectId}";
+
+                text.Append($"\n{statusName} {applyData.stackAmount}ìŠ¤íƒì„ {applyData.baseChance}% í™•ë¥ ë¡œ ì ìš©");
+            }
+        }
+
+        return text.ToString();
+    }
+
+    private static void AppendSectionSeparator(StringBuilder text)
+    {
+        if (text.Length > 0)
+            text.Append("\n\n");
     }
 
     private string GetStyleText(SkillStyle style)
     {
         return style switch
         {
-            SkillStyle.Strength => "Èû",
-            SkillStyle.Dexterity => "±â±³",
-            SkillStyle.Speed => "¼Óµµ",
+            SkillStyle.Strength => "í˜",
+            SkillStyle.Dexterity => "ê¸°êµ",
+            SkillStyle.Speed => "ì†ë„",
             _ => "-"
         };
     }
@@ -400,10 +820,10 @@ public class TooltipManager : MonoBehaviour
     {
         return type switch
         {
-            CounterActionType.Evade => "È¸ÇÇ",
-            CounterActionType.Parry => "ÆĞ¸µ",
-            CounterActionType.Guard => "¹æ¾î",
-            CounterActionType.Break => "ÆÄÈÑ",
+            CounterActionType.Evade => "íšŒí”¼",
+            CounterActionType.Parry => "íŒ¨ë§",
+            CounterActionType.Guard => "ë°©ì–´",
+            CounterActionType.Break => "íŒŒí›¼",
             _ => "-"
         };
     }
@@ -412,7 +832,7 @@ public class TooltipManager : MonoBehaviour
     {
         return type switch
         {
-            AttackEffectType.Breakthrough => "µ¹ÆÄ",
+            AttackEffectType.Breakthrough => "ëŒíŒŒ",
             _ => "-"
         };
     }
@@ -420,22 +840,22 @@ public class TooltipManager : MonoBehaviour
     private string GetPowerRankText(float damageMultiplier)
     {
         if (damageMultiplier >= 1.5f)
-            return "°íÀ§·Â";
+            return "ê³ ìœ„ë ¥";
 
         if (damageMultiplier >= 0.9f)
-            return "ÁßÀ§·Â";
+            return "ì¤‘ìœ„ë ¥";
 
-        return "ÀúÀ§·Â";
+        return "ì €ìœ„ë ¥";
     }
 
     private string GetSpeedRankText(float activationSpeed)
     {
         if (activationSpeed >= 1.2f)
-            return "ºü¸§";
+            return "ë¹ ë¦„";
 
         if (activationSpeed >= 0.9f)
-            return "º¸Åë";
+            return "ë³´í†µ";
 
-        return "´À¸²";
+        return "ëŠë¦¼";
     }
 }

@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 989da68dcae59b846a6bc4afb64700f2, type: 3}
-  m_Name: "1011_\uC5BC\uC74C \uC6D0\uC18C \uC801\uC131"
+  m_Name: "1011_얼음 원소 적성"
   m_EditorClassIdentifier: 
   id: 1011
-  traitName: "\uC5BC\uC74C \uC6D0\uC18C\uC801\uC131"
-  description: "\uC5BC\uC74C \uC18D\uC131 \uC800\uD56D, \uD2B9\uD654 \uC99D\uAC00"
+  traitName: "얼음 원소 적성"
+  description: "얼음 저항과 얼음 적성이 증가하고 얼음 마법 습득 조건을 충족한다."
   polarity: 0
   canGradeUp: 1
   defaultAcquireGrade: 3
@@ -26,6 +26,7 @@ MonoBehaviour:
     Intelligence: 0
     Wisdom: 0
     Health: 0
+    Vitality: 0
     Endurance: 0
     Detection: 0
     Insight: 0
@@ -57,6 +58,7 @@ MonoBehaviour:
   specialStatDelta:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0
@@ -73,6 +75,7 @@ MonoBehaviour:
     Intelligence: 0
     Wisdom: 0
     Health: 0
+    Vitality: 0
     Endurance: 0
     Detection: 0
     Insight: 0
@@ -104,6 +107,7 @@ MonoBehaviour:
   conditionalSpecialStatDelta:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0

@@ -21,10 +21,11 @@ MonoBehaviour:
   minStatModifiers:
     Strength: 0
     Dexterity: 0
-    Speed: -1
+    Speed: -3
     Intelligence: 0
     Wisdom: 0
     Health: 0
+    Vitality: 0
     Endurance: 0
     Detection: 0
     Insight: 0
@@ -38,16 +39,14 @@ MonoBehaviour:
     StaminaRecovery: 0
     MentalityRecovery: 0
     FireResistance: 0
-    WaterResistance: 0
-    EarthResistance: 0
-    WindResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
     PierceResistance: 0
     SlashResistance: 0
     SmashResistance: 0
     FireAffinity: 0
-    WaterAffinity: 0
-    EarthAffinity: 0
-    WindAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
@@ -58,10 +57,11 @@ MonoBehaviour:
   maxStatModifiers:
     Strength: 0
     Dexterity: 0
-    Speed: -3
+    Speed: -1
     Intelligence: 0
     Wisdom: 0
     Health: 0
+    Vitality: 0
     Endurance: 0
     Detection: 0
     Insight: 0
@@ -75,16 +75,14 @@ MonoBehaviour:
     StaminaRecovery: 0
     MentalityRecovery: 0
     FireResistance: 0
-    WaterResistance: 0
-    EarthResistance: 0
-    WindResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
     PierceResistance: 0
     SlashResistance: 0
     SmashResistance: 0
     FireAffinity: 0
-    WaterAffinity: 0
-    EarthAffinity: 0
-    WindAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
@@ -95,6 +93,7 @@ MonoBehaviour:
   minSpecialStatModifiers:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0
@@ -104,6 +103,7 @@ MonoBehaviour:
   maxSpecialStatModifiers:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0

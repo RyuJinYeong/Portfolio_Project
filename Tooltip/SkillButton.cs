@@ -14,7 +14,7 @@ public class SkillButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
         if (TooltipManager.Instance == null)
             return;
 
-        if (queueData != null)
+        if (queueData != null && queueData.skill != null)
         {
             TooltipManager.Instance.ShowTooltip(queueData, Input.mousePosition);
             return;

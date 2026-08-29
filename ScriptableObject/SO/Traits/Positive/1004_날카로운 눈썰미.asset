@@ -10,22 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 989da68dcae59b846a6bc4afb64700f2, type: 3}
-  m_Name: "1004_\uB0A0\uCE74\uB85C\uC6B4 \uB208\uC370\uBBF8"
+  m_Name: "1004_날카로운 눈썰미"
   m_EditorClassIdentifier: 
   id: 1004
-  traitName: "\uB0A0\uCE74\uB85C\uC6B4 \uB208\uC370\uBBF8"
-  description: "\uB208\uC370\uBBF8 \uC99D\uAC00"
+  traitName: "날카로운 눈썰미"
+  description: "탐지력이 증가한다."
   polarity: 0
   canGradeUp: 1
   defaultAcquireGrade: 3
   isPercentage: 0
-  baseStatModifiers:
+  statDelta:
     Strength: 0
     Dexterity: 0
     Speed: 0
     Intelligence: 0
     Wisdom: 0
     Health: 0
+    Vitality: 0
     Endurance: 0
     Detection: 10
     Insight: 0
@@ -39,16 +40,14 @@ MonoBehaviour:
     StaminaRecovery: 0
     MentalityRecovery: 0
     FireResistance: 0
-    WaterResistance: 0
-    EarthResistance: 0
-    WindResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
     PierceResistance: 0
     SlashResistance: 0
     SmashResistance: 0
     FireAffinity: 0
-    WaterAffinity: 0
-    EarthAffinity: 0
-    WindAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
@@ -56,9 +55,10 @@ MonoBehaviour:
     MagicalAttack: 0
     PhysicalDefense: 0
     MagicalDefense: 0
-  specialStatModifiers:
+  specialStatDelta:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0
@@ -66,14 +66,16 @@ MonoBehaviour:
     KillStaminaRecovery: 0
     KillMentalityRecovery: 0
   specialFlags: 
+  hasRequiredWeaponCondition: 0
   requiredWeaponType: 0
-  conditionalBaseStatModifiers:
+  conditionalStatDelta:
     Strength: 0
     Dexterity: 0
     Speed: 0
     Intelligence: 0
     Wisdom: 0
     Health: 0
+    Vitality: 0
     Endurance: 0
     Detection: 0
     Insight: 0
@@ -87,16 +89,14 @@ MonoBehaviour:
     StaminaRecovery: 0
     MentalityRecovery: 0
     FireResistance: 0
-    WaterResistance: 0
-    EarthResistance: 0
-    WindResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
     PierceResistance: 0
     SlashResistance: 0
     SmashResistance: 0
     FireAffinity: 0
-    WaterAffinity: 0
-    EarthAffinity: 0
-    WindAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
@@ -104,9 +104,10 @@ MonoBehaviour:
     MagicalAttack: 0
     PhysicalDefense: 0
     MagicalDefense: 0
-  conditionalSpecialStatModifiers:
+  conditionalSpecialStatDelta:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
     TrapDetectionBonus: 0
     EventInsightBonus: 0
