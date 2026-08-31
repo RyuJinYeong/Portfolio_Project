@@ -7,7 +7,7 @@ public class CameraFocusRig : MonoBehaviour
 {
     public static CameraFocusRig Instance { get; private set; }
 
-    public Camera cam;               // ¸ŞÀÎ Ä«¸Ş¶ó
+    public Camera cam;               // ë©”ì¸ ì¹´ë©”ë¼
     public float moveTime = 0.6f;
     public AnimationCurve ease = AnimationCurve.EaseInOut(0,0,1,1);
 

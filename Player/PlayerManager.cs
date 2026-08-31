@@ -8,10 +8,10 @@ using UnityEngine;
 
 public class PlayerManager : MonoBehaviour
 {
-    // ½Ì±ÛÅæ ÀÎ½ºÅÏ½º
+    // ì‹±ê¸€í†¤ ì¸ìŠ¤í„´ìŠ¤
     public static PlayerManager _instance;
 
-    // ÇöÀç ·Î±×ÀÎÇÑ ÇÃ·¹ÀÌ¾î Á¤º¸
+    // í˜„ì¬ ë¡œê·¸ì¸í•œ í”Œë ˆì´ì–´ ì •ë³´
     private PlayerData currentPlayerData;
 
     public List<CharacterManager> Characters = new List<CharacterManager>();
@@ -22,18 +22,18 @@ public class PlayerManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    // ½Ì±ÛÅæ ÀÎ½ºÅÏ½º¸¦ ¹İÈ¯ÇÏ´Â ÇÁ·ÎÆÛÆ¼
+    // ì‹±ê¸€í†¤ ì¸ìŠ¤í„´ìŠ¤ë¥¼ ë°˜í™˜í•˜ëŠ” í”„ë¡œí¼í‹°
     public static PlayerManager Instance
     {
         get
         {
-            // ÀÎ½ºÅÏ½º°¡ ¾ø´Â °æ¿ì¿¡¸¸ »ı¼º
+            // ì¸ìŠ¤í„´ìŠ¤ê°€ ì—†ëŠ” ê²½ìš°ì—ë§Œ ìƒì„±
             if (_instance == null)
             {
-                // ¾À¿¡¼­ PlayerManager ¿ÀºêÁ§Æ®¸¦ Ã£À½
+                // ì”¬ì—ì„œ PlayerManager ì˜¤ë¸Œì íŠ¸ë¥¼ ì°¾ìŒ
                 _instance = FindObjectOfType<PlayerManager>();
 
-                // ¾À¿¡ PlayerManager ¿ÀºêÁ§Æ®°¡ ¾ø´Â °æ¿ì¿¡´Â »õ·Î »ı¼º
+                // ì”¬ì— PlayerManager ì˜¤ë¸Œì íŠ¸ê°€ ì—†ëŠ” ê²½ìš°ì—ëŠ” ìƒˆë¡œ ìƒì„±
                 if (_instance == null)
                 {
                     GameObject obj = new GameObject("PlayerManager");
@@ -44,7 +44,7 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
-    // ÇÃ·¹ÀÌ¾î ·Î±×ÀÎ ÈÄ µ¥ÀÌÅÍ¸¦ ºÒ·¯¿À´Â ¸Ş¼­µå
+    // í”Œë ˆì´ì–´ ë¡œê·¸ì¸ í›„ ë°ì´í„°ë¥¼ ë¶ˆëŸ¬ì˜¤ëŠ” ë©”ì„œë“œ
     public void LoadPlayerDataFromPlayFab()
     {
         PlayFabClientAPI.GetUserData(new GetUserDataRequest(), OnDataReceived, OnDataError);
@@ -91,10 +91,10 @@ public class PlayerManager : MonoBehaviour
     private void OnDataError(PlayFabError error)
     {
         Debug.LogError("Error loading player data: " + error.GenerateErrorReport());
-        // Å¬¶óÀÌ¾ğÆ®¿¡ ³×Æ®¿öÅ© ¿¡·¯ UI Ãâ·Â ±¸Çö ¿¹Á¤
+        // í´ë¼ì´ì–¸íŠ¸ì— ë„¤íŠ¸ì›Œí¬ ì—ëŸ¬ UI ì¶œë ¥ êµ¬í˜„ ì˜ˆì •
     }
 
-    // ÇÃ·¹ÀÌ¾î µ¥ÀÌÅÍ¸¦ PlayFab¿¡ ÀúÀåÇÏ´Â ¸Ş¼­µå
+    // í”Œë ˆì´ì–´ ë°ì´í„°ë¥¼ PlayFabì— ì €ì¥í•˜ëŠ” ë©”ì„œë“œ
     public void SavePlayerDataToPlayFab()
     {
         var dto = SaveMapper.ToDto(_instance.currentPlayerData);
@@ -130,15 +130,15 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
-    //Ä³¸¯ÅÍ »ı¼º (°íÀ¯ ID ¹ß±Ş ÈÄ ÇÃ·¹ÀÌÆÕ¿¡ ÀúÀå)
+    //ìºë¦­í„° ìƒì„± (ê³ ìœ  ID ë°œê¸‰ í›„ í”Œë ˆì´íŒ¹ì— ì €ì¥)
     public void CreateCharacter(CharacterData character)
     {
-        // °íÀ¯ ID »ı¼º
+        // ê³ ìœ  ID ìƒì„±
         character.ID = System.Guid.NewGuid().ToString();
         SaveCharacter(character);
     }
 
-    // Ä³¸¯ÅÍ µ¥ÀÌÅÍ¸¦ ID¸¦ Å°·Î ÇÃ·¹ÀÌÆÕ¿¡ ÀúÀå
+    // ìºë¦­í„° ë°ì´í„°ë¥¼ IDë¥¼ í‚¤ë¡œ í”Œë ˆì´íŒ¹ì— ì €ì¥
     public void SaveCharacter(CharacterData characterData)
     {
         var dto = SaveMapper.ToDto(characterData);
@@ -155,7 +155,7 @@ public class PlayerManager : MonoBehaviour
         );
     }
 
-    // Ä³¸¯ÅÍ µ¥ÀÌÅÍ¸¦ ·ÎµåÇÏ´Â ¸Ş¼­µå
+    // ìºë¦­í„° ë°ì´í„°ë¥¼ ë¡œë“œí•˜ëŠ” ë©”ì„œë“œ
     public void LoadCharacter(string characterId, Action<CharacterData> onCharacterLoaded)
     {
         PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>

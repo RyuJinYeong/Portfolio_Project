@@ -31,4 +31,8 @@ public class MercenaryDefinitionSO : ScriptableObject
     [Header("Level")]
     public int minLevelOffset;
     public int maxLevelOffset = 2;
+
+    [Header("Initial Belonging")]
+    [Range(0, 100)] public int minInitialBelonging;
+    [Range(0, 100)] public int maxInitialBelonging = 30;
 }

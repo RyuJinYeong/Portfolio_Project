@@ -6,9 +6,9 @@ public class StatusEffectApplyData
 {
     public int statusEffectId;
 
-    [Tooltip("ÀÌ ½ºÅ³ÀÌ ÇØ´ç »óÅÂÀÌ»óÀ» °É ±âº» È®·ü")]
+    [Tooltip("ì´ ìŠ¤í‚¬ì´ í•´ë‹¹ ìƒíƒœì´ìƒì„ ê±¸ ê¸°ë³¸ í™•ë¥ ")]
     public int baseChance = 100;
 
-    [Tooltip("ºÎ¿©ÇÒ ½ºÅÃ ¼ö")]
+    [Tooltip("ë¶€ì—¬í•  ìŠ¤íƒ ìˆ˜")]
     public int stackAmount = 1;
 }

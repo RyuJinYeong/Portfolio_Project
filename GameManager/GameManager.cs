@@ -103,6 +103,12 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
+        if (pd.activeCharacterIds != null && pd.activeCharacterIds.Count > 0)
+        {
+            MercenaryGenerator.RefreshRecruitmentCandidates(pd);
+            PlayerManager.Instance.SavePlayerDataToPlayFab();
+        }
+
         SpawnSortie(pd);
     }
 
@@ -212,6 +218,12 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogWarning("No active characters or current stage is null.");
             yield break;
+        }
+
+        if (playerData.currentStage != "Town")
+        {
+            MercenaryGenerator.RefreshRecruitmentCandidates(playerData);
+            PlayerManager.Instance.SavePlayerDataToPlayFab();
         }
 
         StageManager.Instance.SetActiveStage(playerData.currentStage);

@@ -20,6 +20,7 @@ public class SharedInventoryWindowUI : MonoBehaviour
     public Text legacyItemCountText;
     public Text legacySelectedCharacterText;
     public Text legacyActionButtonText;
+    public Text legacyGoldText;
 
     [Header("Buttons")]
     public Button actionButton;
@@ -29,16 +30,18 @@ public class SharedInventoryWindowUI : MonoBehaviour
     private readonly List<InventoryItemSlotUI> itemViews = new();
     private InventorySlotData selectedSlot;
     private CharacterManager selectedCharacter;
+    private int occupiedSlotCount;
+    private int displayedCapacity;
 
     private void OnEnable()
     {
         SharedInventoryUtility.InventoryChanged += Refresh;
         SharedInventoryUtility.CharacterChanged += OnCharacterChanged;
 
-        if (actionButton != null)
+        if (inventoryType != SharedInventoryType.CompanyStorage && actionButton != null)
             actionButton.onClick.AddListener(UseOrEquipSelected);
 
-        if (transferButton != null)
+        if (inventoryType != SharedInventoryType.CompanyStorage && transferButton != null)
             transferButton.onClick.AddListener(TransferSelected);
 
         if (closeButton != null)
@@ -52,10 +55,10 @@ public class SharedInventoryWindowUI : MonoBehaviour
         SharedInventoryUtility.InventoryChanged -= Refresh;
         SharedInventoryUtility.CharacterChanged -= OnCharacterChanged;
 
-        if (actionButton != null)
+        if (inventoryType != SharedInventoryType.CompanyStorage && actionButton != null)
             actionButton.onClick.RemoveListener(UseOrEquipSelected);
 
-        if (transferButton != null)
+        if (inventoryType != SharedInventoryType.CompanyStorage && transferButton != null)
             transferButton.onClick.RemoveListener(TransferSelected);
 
         if (closeButton != null)
@@ -78,10 +81,16 @@ public class SharedInventoryWindowUI : MonoBehaviour
 
     public void Close()
     {
+        if (InventoryItemTooltipUI.Instance != null)
+            InventoryItemTooltipUI.Instance.Hide();
+
         if (TooltipManager.Instance != null)
             TooltipManager.Instance.HideTooltip();
 
         gameObject.SetActive(false);
+
+        if (InventoryUIController.Instance != null)
+            InventoryUIController.Instance.OnStorageWindowClosed(this);
     }
 
     public void Refresh()
@@ -96,16 +105,33 @@ public class SharedInventoryWindowUI : MonoBehaviour
         List<InventorySlotData> storage =
             SharedInventoryUtility.GetStorage(playerData, inventoryType);
 
-        if (storage != null && content != null && itemPrefab != null)
+        List<InventorySlotData> occupiedSlots = new List<InventorySlotData>();
+
+        if (storage != null)
         {
             foreach (InventorySlotData slot in storage)
             {
-                if (slot == null || slot.itemUid <= 0 || slot.count <= 0)
-                    continue;
+                if (slot != null && slot.itemUid > 0 && slot.count > 0)
+                    occupiedSlots.Add(slot);
+            }
+        }
 
+        occupiedSlotCount = occupiedSlots.Count;
+        displayedCapacity = inventoryType == SharedInventoryType.CompanyStorage
+            ? SharedInventoryUtility.GetStorageCapacity(playerData, inventoryType)
+            : occupiedSlotCount;
+
+        int viewCount = inventoryType == SharedInventoryType.CompanyStorage
+            ? Mathf.Max(displayedCapacity, occupiedSlotCount)
+            : occupiedSlotCount;
+
+        if (content != null && itemPrefab != null)
+        {
+            for (int i = 0; i < viewCount; i++)
+            {
                 InventoryItemSlotUI view = Instantiate(itemPrefab, content);
                 view.gameObject.SetActive(true);
-                view.Bind(slot, OnItemClicked);
+                view.Bind(i < occupiedSlotCount ? occupiedSlots[i] : null, OnItemClicked);
                 itemViews.Add(view);
             }
         }
@@ -190,25 +216,44 @@ public class SharedInventoryWindowUI : MonoBehaviour
 
     private void RefreshHeader()
     {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
         if (titleText != null)
         {
             titleText.text = inventoryType == SharedInventoryType.CompanyStorage
-                ? "용병단 창고"
-                : "원정대 인벤토리";
+                ? "Storage"
+                : "원정대 창고";
         }
 
         if (legacyTitleText != null)
         {
             legacyTitleText.text = inventoryType == SharedInventoryType.CompanyStorage
-                ? "용병단 창고"
-                : "원정대 인벤토리";
+                ? "Storage"
+                : "원정대 창고";
         }
 
         if (itemCountText != null)
-            itemCountText.text = itemViews.Count.ToString();
+        {
+            itemCountText.text = inventoryType == SharedInventoryType.CompanyStorage
+                ? $"  {occupiedSlotCount}/{displayedCapacity}"
+                : occupiedSlotCount.ToString();
+        }
 
         if (legacyItemCountText != null)
-            legacyItemCountText.text = itemViews.Count.ToString();
+        {
+            legacyItemCountText.text = inventoryType == SharedInventoryType.CompanyStorage
+                ? $"  {occupiedSlotCount}/{displayedCapacity}"
+                : occupiedSlotCount.ToString();
+        }
+
+        if (legacyGoldText != null)
+        {
+            legacyGoldText.text = playerData != null
+                ? playerData.gold.ToString("N0")
+                : "0";
+        }
 
         if (selectedCharacterText != null)
         {
@@ -227,6 +272,9 @@ public class SharedInventoryWindowUI : MonoBehaviour
 
     private void RefreshButtons()
     {
+        if (inventoryType == SharedInventoryType.CompanyStorage)
+            return;
+
         bool hasSelection = selectedSlot != null;
 
         if (transferButton != null)
@@ -288,4 +336,5 @@ public class SharedInventoryWindowUI : MonoBehaviour
 
         return 1;
     }
+
 }

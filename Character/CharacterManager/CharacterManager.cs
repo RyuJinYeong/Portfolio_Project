@@ -13,19 +13,19 @@ public class CharacterManager : MonoBehaviour
     public CharacterUIHandler characterUIHandler;
 
     public Transform characterPool;
-    public bool isFront; // Ä³¸¯ÅÍÀÇ Àü¿­ ¿©ºÎ¸¦ ³ªÅ¸³»´Â ºÒ¸°Çü ÇÊµå
-    public bool isPlayerTurn; // ÇÃ·¹ÀÌ¾î ÅÏ ¿©ºÎ È®ÀÎ
+    public bool isFront; // ìºë¦­í„°ì˜ ì „ì—´ ì—¬ë¶€ë¥¼ ë‚˜íƒ€ë‚´ëŠ” ë¶ˆë¦°í˜• í•„ë“œ
+    public bool isPlayerTurn; // í”Œë ˆì´ì–´ í„´ ì—¬ë¶€ í™•ì¸
     public bool hasExtraTurn;
 
-    public bool isInMeleeCombat = false;  // °æÇÕ »óÅÂ ¿©ºÎ
-    public CharacterManager meleeTarget = null;  // °æÇÕ Áß Å¸°Ù
+    public bool isInMeleeCombat = false;  // ê²½í•© ìƒíƒœ ì—¬ë¶€
+    public CharacterManager meleeTarget = null;  // ê²½í•© ì¤‘ íƒ€ê²Ÿ
 
     void Awake()
     {
         combatHandler = gameObject.AddComponent<CombatHandler>();        
     }
 
-    public void Start() // UI ÀÛµ¿ Å×½ºÆ®
+    public void Start() // UI ì‘ë™ í…ŒìŠ¤íŠ¸
     {
         if (characterUIHandler != null)
         {
@@ -41,9 +41,9 @@ public class CharacterManager : MonoBehaviour
         statHandler = new StatHandler();
     }
 
-    #region Ä³¸¯ÅÍ µ¥ÀÌÅÍ ÃÊ±âÈ­, ½ºÆù°ü·Ã ·ÎÁ÷ - ¼¼ºÎ ±â´É ±¸Çö ÇÊ¿ä
+    #region ìºë¦­í„° ë°ì´í„° ì´ˆê¸°í™”, ìŠ¤í°ê´€ë ¨ ë¡œì§ - ì„¸ë¶€ ê¸°ëŠ¥ êµ¬í˜„ í•„ìš”
 
-    // Ä³¸¯ÅÍ µ¥ÀÌÅÍ ÃÊ±âÈ­ ¸Ş¼­µå
+    // ìºë¦­í„° ë°ì´í„° ì´ˆê¸°í™” ë©”ì„œë“œ
     public void InitializeCharacter(CharacterData characterData, Camera portraitCamera = null, RenderTexture portraitRenderTexture = null)
     {
         character = characterData;
@@ -51,7 +51,7 @@ public class CharacterManager : MonoBehaviour
         statHandler = new StatHandler();
 
         /*
-        // 3) Àåºñ È¿°ú Àû¿ë(EquipmentHolderÀÇ Àåºñ¸¦ ½ÇÁ¦ Ä³¸¯ÅÍ¿¡ Equip) ( Áßº¹ Àû¿ëÀ¸·Î ÀÎÇØ ÁÖ¼®Ã³¸® )
+        // 3) ì¥ë¹„ íš¨ê³¼ ì ìš©(EquipmentHolderì˜ ì¥ë¹„ë¥¼ ì‹¤ì œ ìºë¦­í„°ì— Equip) ( ì¤‘ë³µ ì ìš©ìœ¼ë¡œ ì¸í•´ ì£¼ì„ì²˜ë¦¬ )
         if (character.CharacterEquipment != null)
         {
             var stacks = character.CharacterEquipment.Stacks;
@@ -63,14 +63,14 @@ public class CharacterManager : MonoBehaviour
         }
 
         
-        //character.ApplyAllTraits(this);               // ÇÊ¿ä ½Ã*/
+        //character.ApplyAllTraits(this);               // í•„ìš” ì‹œ*/
 
-        // 4) Àåºñ/Æ¯¼º ¹İ¿µ ÈÄ °è»ê
+        // 4) ì¥ë¹„/íŠ¹ì„± ë°˜ì˜ í›„ ê³„ì‚°
         EquipmentManager.UpdateAvailableAttributes(character);
         EquipmentManager.UpdateSkillAvailability(character);
         character.UpdateFinalStats();
 
-        // 5) ¿ÜÇü / ÃÊ»óÈ­ / ¾Ö´Ï¸ŞÀÌÅÍ Ã³¸®
+        // 5) ì™¸í˜• / ì´ˆìƒí™” / ì• ë‹ˆë©”ì´í„° ì²˜ë¦¬
         CharacterCustomization customization = GetComponent<CharacterCustomization>();
         
         if (customization != null)
@@ -79,7 +79,7 @@ public class CharacterManager : MonoBehaviour
             customization.UpdateEquipmentAppearance(character);
         }
 
-        // 6) UI °»½Å
+        // 6) UI ê°±ì‹ 
         UpdateCharacterUI();
     }
 
@@ -94,7 +94,7 @@ public class CharacterManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("±âº» ´ëÀÀ ½ºÅ³·Î ¼³Á¤ÇÒ ¼ö ¾ø½À´Ï´Ù. (ÄÚ½ºÆ® ÃÊ°ú)");
+            Debug.Log("ê¸°ë³¸ ëŒ€ì‘ ìŠ¤í‚¬ë¡œ ì„¤ì •í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤. (ì½”ìŠ¤íŠ¸ ì´ˆê³¼)");
         }
     }
 
@@ -105,33 +105,33 @@ public class CharacterManager : MonoBehaviour
         characterUIHandler.UpdateUI();
     }
 
-    #region ÀüÅõ °ü·Ã ·ÎÁ÷ À§ÀÓ
+    #region ì „íˆ¬ ê´€ë ¨ ë¡œì§ ìœ„ì„
 
-    // ÀüÅõ ÇÚµé·¯¿¡ ÅÏ ½ÃÀÛ Àü´Ş
+    // ì „íˆ¬ í•¸ë“¤ëŸ¬ì— í„´ ì‹œì‘ ì „ë‹¬
     public void StartTurn(System.Action onTurnEnd)
     {
         combatHandler.StartTurn(onTurnEnd);
     }
 
-    // ½ºÅ³ ¼±ÅÃ ½Ã CombatHandler·Î Àü´Ş
+    // ìŠ¤í‚¬ ì„ íƒ ì‹œ CombatHandlerë¡œ ì „ë‹¬
     public void SelectSkill(SkillDefinitionSO skill, CharacterManager target, bool isConcealed = false)
     {
         combatHandler.SelectSkill(skill, target, isConcealed);
     }
 
-    // ´ëÀÀ ½ºÅ³ ¼±ÅÃ ½Ã CombatHandler·Î Àü´Ş
+    // ëŒ€ì‘ ìŠ¤í‚¬ ì„ íƒ ì‹œ CombatHandlerë¡œ ì „ë‹¬
     public void SelectCounterSkill(SkillDefinitionSO skill, CharacterManager target)
     {
         combatHandler.SelectCounterSkill(skill, target);
     }
 
-    // AI ÅÏ Ã³¸®
+    // AI í„´ ì²˜ë¦¬
     public IEnumerator HandleAITurn(System.Action onTurnEnd)
     {
         yield return combatHandler.HandleAITurn(onTurnEnd);
     }
 
-    // µ¥¹ÌÁö Ã³¸®
+    // ë°ë¯¸ì§€ ì²˜ë¦¬
     public int TakeDamage(int damage, SkillType damageType, SkillAttribute damageAttribute)
     {
         int finalDamage = damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
@@ -139,7 +139,7 @@ public class CharacterManager : MonoBehaviour
         return finalDamage;
     }
 
-    //½ºÅ³Å¥ Getter ±¸Çö - ¸í½ÃÀû Á¢±ÙÁ¦¾î
+    //ìŠ¤í‚¬í Getter êµ¬í˜„ - ëª…ì‹œì  ì ‘ê·¼ì œì–´
     public List<SkillQueueData> GetSkillQueue()
     {
         return combatHandler.GetSkillQueue();
@@ -149,13 +149,13 @@ public class CharacterManager : MonoBehaviour
 
     #region Character Management
 
-    // ¸®¼Ò½º È¸º¹ ¸Ş¼­µå (Áö±¸·Â, Á¤½Å·Â µî)
+    // ë¦¬ì†ŒìŠ¤ íšŒë³µ ë©”ì„œë“œ (ì§€êµ¬ë ¥, ì •ì‹ ë ¥ ë“±)
     public void RecoverResources()
     {
         character.CurrentStamina += character.FinalStats.StaminaRecovery;
         character.CurrentMentality += character.FinalStats.MentalityRecovery;
 
-        UpdateCharacterUI();  // ¸®¼Ò½º È¸º¹ ÈÄ UI ¾÷µ¥ÀÌÆ®
+        UpdateCharacterUI();  // ë¦¬ì†ŒìŠ¤ íšŒë³µ í›„ UI ì—…ë°ì´íŠ¸
     }
 
     #endregion

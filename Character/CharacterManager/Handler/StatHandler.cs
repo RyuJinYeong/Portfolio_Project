@@ -1,6 +1,6 @@
 public class StatHandler
 {
-    public void InvestStatPoint(CharacterManager manager, string statName, int points) // ½ºÅÈ ÅõÀÚ ¸Ş¼­µå ( º¸³Ê½º ½ºÅÈÀ» ¹Ş¾Æ¼­ ÅõÀÚÇÏ´Â Çü½ÄÀ¸·Î ¼öÁ¤ ÇÊ¿ä )
+    public void InvestStatPoint(CharacterManager manager, string statName, int points) // ìŠ¤íƒ¯ íˆ¬ì ë©”ì„œë“œ ( ë³´ë„ˆìŠ¤ ìŠ¤íƒ¯ì„ ë°›ì•„ì„œ íˆ¬ìí•˜ëŠ” í˜•ì‹ìœ¼ë¡œ ìˆ˜ì • í•„ìš” )
     {
         manager.character.RemoveAllTraits(manager);
 
@@ -15,7 +15,7 @@ public class StatHandler
             case "intelligence":
                 manager.character.BaseStats.Intelligence += points;
                 break;
-                // ´Ù¸¥ ½ºÅÈµéµµ Ãß°¡
+                // ë‹¤ë¥¸ ìŠ¤íƒ¯ë“¤ë„ ì¶”ê°€
         }
 
         manager.character.ApplyAllTraits(manager);

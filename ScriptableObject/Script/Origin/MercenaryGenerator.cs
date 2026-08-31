@@ -3,6 +3,128 @@ using UnityEngine;
 
 public static class MercenaryGenerator
 {
+    public static float CalculateValue(CharacterData character)
+    {
+        if (character == null)
+            return 0f;
+
+        float levelValue = 2.75f * Mathf.Max(0, character.Level - 1);
+        int traitValue = CalculateTraitValue(character);
+        int skillValue = CountAdditionalSkills(character) * 4;
+
+        return Mathf.Max(0f, levelValue + traitValue + skillValue);
+    }
+
+    public static int CalculateContractFee(CharacterData character)
+    {
+        return Mathf.RoundToInt(CalculateValue(character) * 100f);
+    }
+
+    public static int CalculateBaseSortiePay(CharacterData character)
+    {
+        return Mathf.RoundToInt(CalculateValue(character) * 15f);
+    }
+
+    public static int CalculateSortiePay(CharacterData character)
+    {
+        if (character == null)
+            return 0;
+
+        float belongingRate = Mathf.Clamp01(character.Belonging / 100f);
+        return Mathf.RoundToInt(CalculateBaseSortiePay(character) * (1f - belongingRate));
+    }
+
+    public static void RefreshRecruitmentCandidates(PlayerData playerData)
+    {
+        if (playerData == null || GameDataRegistry.Instance == null)
+            return;
+
+        List<MercenaryDefinitionSO> definitions =
+            GameDataRegistry.Instance.GetMercenaryDefinitions();
+
+        if (definitions == null || definitions.Count == 0)
+            return;
+
+        List<MercenaryDefinitionSO> candidates = new List<MercenaryDefinitionSO>();
+
+        foreach (MercenaryDefinitionSO definition in definitions)
+        {
+            if (definition != null)
+                candidates.Add(definition);
+        }
+
+        if (candidates.Count == 0)
+            return;
+
+        if (playerData.recruitmentCandidates == null)
+            playerData.recruitmentCandidates = new List<CharacterData>();
+        else
+            playerData.recruitmentCandidates.Clear();
+
+        playerData.recruitmentCandidatesInitialized = true;
+
+        System.Random random = new System.Random(System.Guid.NewGuid().GetHashCode());
+        int offerCount = Mathf.Min(
+            GameDataRegistry.Instance.recruitmentOfferCount,
+            candidates.Count);
+
+        for (int i = 0; i < offerCount; i++)
+        {
+            int index = random.Next(0, candidates.Count);
+            MercenaryDefinitionSO definition = candidates[index];
+            candidates.RemoveAt(index);
+
+            CharacterData character = Generate(definition, playerData.level);
+
+            if (character != null)
+                playerData.recruitmentCandidates.Add(character);
+        }
+    }
+
+    public static int CountAdditionalSkills(CharacterData character)
+    {
+        if (character == null || character.Skills == null)
+            return 0;
+
+        OriginDefinitionSO origin = GameDataRegistry.Instance.GetOrigin(character.originId);
+        HashSet<int> initialSkillUids = origin != null && origin.initialSkillUids != null
+            ? new HashSet<int>(origin.initialSkillUids)
+            : new HashSet<int>();
+
+        int count = 0;
+
+        foreach (SkillRuntimeData runtime in character.Skills)
+        {
+            if (runtime != null && !initialSkillUids.Contains(runtime.skillUid))
+                count++;
+        }
+
+        return count;
+    }
+
+    private static int CalculateTraitValue(CharacterData character)
+    {
+        if (character.Traits == null)
+            return 0;
+
+        int value = 0;
+
+        foreach (TraitRuntimeData runtime in character.Traits)
+        {
+            if (runtime == null)
+                continue;
+
+            TraitDefinitionSO trait = GameDataRegistry.Instance.GetTrait(runtime.traitId);
+
+            if (trait == null)
+                continue;
+
+            value += TraitGradeUtility.GetSignedValue(runtime.point, trait.polarity);
+        }
+
+        return value;
+    }
+
     public static CharacterData Generate(MercenaryDefinitionSO template, int accountLevel)
     {
         if (template == null || template.baseOrigin == null)
@@ -19,6 +141,16 @@ public static class MercenaryGenerator
                 ? $"{template.baseOrigin.originName} 용병"
                 : template.templateName,
             random);
+
+        int minimumBelonging = Mathf.Min(
+            template.minInitialBelonging,
+            template.maxInitialBelonging);
+        int maximumBelonging = Mathf.Max(
+            template.minInitialBelonging,
+            template.maxInitialBelonging);
+        character.Belonging = random.Next(
+            Mathf.Clamp(minimumBelonging, 0, 100),
+            Mathf.Clamp(maximumBelonging, 0, 100) + 1);
 
         int minimumLevelOffset = Mathf.Min(template.minLevelOffset, template.maxLevelOffset);
         int maximumLevelOffset = Mathf.Max(template.minLevelOffset, template.maxLevelOffset);

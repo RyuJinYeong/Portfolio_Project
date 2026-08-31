@@ -72,7 +72,7 @@ public class CharacterUIHandler : MonoBehaviour
         if (queue == null || caster == null || skillQueuePanel == null || skillIconPrefab == null)
             return;
 
-        Debug.Log(caster.character.Name + "ÀÇ SkillQueue¸¦ ±âÁØÀ¸·Î " + characterManager.character.Name + " UI °»½Å");
+        Debug.Log(caster.character.Name + "ì˜ SkillQueueë¥¼ ê¸°ì¤€ìœ¼ë¡œ " + characterManager.character.Name + " UI ê°±ì‹ ");
 
         ClearChildren(skillQueuePanel.transform);
 
@@ -115,7 +115,7 @@ public class CharacterUIHandler : MonoBehaviour
         if (queue == null || caster == null || counterSkillQueuePanel == null || skillIconPrefab == null)
             return;
 
-        Debug.Log(caster.character.Name + "ÀÇ CounterSkillQueue¸¦ ±âÁØÀ¸·Î " + characterManager.character.Name + " UI °»½Å");
+        Debug.Log(caster.character.Name + "ì˜ CounterSkillQueueë¥¼ ê¸°ì¤€ìœ¼ë¡œ " + characterManager.character.Name + " UI ê°±ì‹ ");
 
         ClearChildren(counterSkillQueuePanel.transform);
 
@@ -150,7 +150,7 @@ public class CharacterUIHandler : MonoBehaviour
                         if (caster.character.DefaultCounterSkill > 0 &&
                             capturedSkill.uid == caster.character.DefaultCounterSkill)
                         {
-                            Debug.Log("±âº» ´ëÀÀ ½ºÅ³Àº Á¦°ÅÇÒ ¼ö ¾ø½À´Ï´Ù: " + capturedSkill.skillName);
+                            Debug.Log("ê¸°ë³¸ ëŒ€ì‘ ìŠ¤í‚¬ì€ ì œê±°í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤: " + capturedSkill.skillName);
                             return;
                         }
 
@@ -258,29 +258,29 @@ public class CharacterUIHandler : MonoBehaviour
 
             case RevealLevel.None:
             default:
-                return "ÀºÆó";
+                return "ì€í";
         }
     }
 
     private string GetPartialSkillInfo(SkillDefinitionSO skill)
     {
         if (skill == null)
-            return "ÀºÆó";
+            return "ì€í";
 
         string style = GetStyleText(skill.style);
         string power = GetPowerRankText(skill.GetTotalDamageMultiplier());
         string speed = GetSpeedRankText(skill.activationSpeed);
 
-        return $"ÀºÆó: {style} / {power} / {speed}";
+        return $"ì€í: {style} / {power} / {speed}";
     }
 
     private string GetStyleText(SkillStyle style)
     {
         return style switch
         {
-            SkillStyle.Strength => "Èû",
-            SkillStyle.Dexterity => "±â±³",
-            SkillStyle.Speed => "¼Óµµ",
+            SkillStyle.Strength => "í˜",
+            SkillStyle.Dexterity => "ê¸°êµ",
+            SkillStyle.Speed => "ì†ë„",
             _ => "-"
         };
     }
@@ -288,23 +288,23 @@ public class CharacterUIHandler : MonoBehaviour
     private string GetPowerRankText(float damageMultiplier)
     {
         if (damageMultiplier >= 1.5f)
-            return "°íÀ§·Â";
+            return "ê³ ìœ„ë ¥";
 
         if (damageMultiplier >= 0.9f)
-            return "ÁßÀ§·Â";
+            return "ì¤‘ìœ„ë ¥";
 
-        return "ÀúÀ§·Â";
+        return "ì €ìœ„ë ¥";
     }
 
     private string GetSpeedRankText(float activationSpeed)
     {
         if (activationSpeed >= 1.2f)
-            return "ºü¸§";
+            return "ë¹ ë¦„";
 
         if (activationSpeed >= 0.9f)
-            return "º¸Åë";
+            return "ë³´í†µ";
 
-        return "´À¸²";
+        return "ëŠë¦¼";
     }
 
     public void UpdateResourceTexts()

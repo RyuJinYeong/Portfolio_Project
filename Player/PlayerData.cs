@@ -10,31 +10,35 @@ public class PositionEntry
 
 public class PlayerData
 {
-    // ÇÃ·¹ÀÌ¾îÀÇ ´Ğ³×ÀÓ - ¿ëº´´Ü ÀÌ¸§
+    // í”Œë ˆì´ì–´ì˜ ë‹‰ë„¤ì„ - ìš©ë³‘ë‹¨ ì´ë¦„
     public string playerName;
 
-    // °èÁ¤ ·¹º§ - ·¹º§¿¡ µû¶ó ÆÄÆ¼ ±¸¼º ÀÎ¿ø¼ö°¡ È®ÀåµÇ°í Ãß°¡ ±â´ÉÀÌ ÇØ±İµÊ
+    // ê³„ì • ë ˆë²¨ - ë ˆë²¨ì— ë”°ë¼ íŒŒí‹° êµ¬ì„± ì¸ì›ìˆ˜ê°€ í™•ì¥ë˜ê³  ì¶”ê°€ ê¸°ëŠ¥ì´ í•´ê¸ˆë¨
     public int level;
 
     public int gold;
 
-    // °èÁ¤ ÀüÃ¼ °øÀ¯ Ã¢°í
+    // ê³„ì • ì „ì²´ ê³µìœ  ì°½ê³ 
     public List<InventorySlotData> accountStorage = new();
 
-    // ÇöÀç ¿øÁ¤´ë/ÆÄÆ¼ ´ÜÀ§ Ã¢°í
+    // í˜„ì¬ ì›ì •ëŒ€/íŒŒí‹° ë‹¨ìœ„ ì°½ê³ 
     public List<InventorySlotData> expeditionStorage = new();
 
-    // »ı¼º Àåºñ ÀÎ½ºÅÏ½º ÀúÀå¼Ò
+    // ìƒì„± ì¥ë¹„ ì¸ìŠ¤í„´ìŠ¤ ì €ì¥ì†Œ
     public List<GeneratedEquipmentData> generatedEquipments = new();
 
-    // º¸À¯ÇÑ Ä³¸¯ÅÍ ID ¸ñ·Ï
+    // ë³´ìœ í•œ ìºë¦­í„° ID ëª©ë¡
     public List<string> characterIds = new List<string>();
 
-    // ÁøÇà ÁßÀÎ ½ºÅ×ÀÌÁö¿Í ÇØ´ç ½ºÅ×ÀÌÁö¸¦ ÁøÇà ÁßÀÎ Ä³¸¯ÅÍ ID ¸ñ·Ï
+    // í˜„ì¬ ê³„ì •ì— ì œì‹œëœ ê³ ìš© ê°€ëŠ¥ ìš©ë³‘ ëª©ë¡
+    public List<CharacterData> recruitmentCandidates = new List<CharacterData>();
+    public bool recruitmentCandidatesInitialized;
+
+    // ì§„í–‰ ì¤‘ì¸ ìŠ¤í…Œì´ì§€ì™€ í•´ë‹¹ ìŠ¤í…Œì´ì§€ë¥¼ ì§„í–‰ ì¤‘ì¸ ìºë¦­í„° ID ëª©ë¡
     public string currentStage = "Town";
     public List<string> activeCharacterIds = new List<string>();
 
-    // Æ÷Áö¼Ç ÀúÀå¿ë
+    // í¬ì§€ì…˜ ì €ì¥ìš©
     public List<PositionEntry> positions = new();
 
     public bool TryGetPosition(string characterId, out bool isFront)

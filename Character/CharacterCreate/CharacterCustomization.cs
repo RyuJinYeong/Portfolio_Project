@@ -148,7 +148,7 @@ public class CharacterCustomization : MonoBehaviour
             .ToArray();
     }
 
-    #region Ä¿½ºÅÍ¸¶ÀÌÂ¡ Àû¿ë
+    #region ì»¤ìŠ¤í„°ë§ˆì´ì§• ì ìš©
 
     public void ApplyCustomization(CharacterData characterData)
     {
@@ -196,7 +196,7 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region ±âÁ¸ ÄÚµå È£È¯¿ë Setter
+    #region ê¸°ì¡´ ì½”ë“œ í˜¸í™˜ìš© Setter
 
     public void SetGender(int genderId)
     {
@@ -262,7 +262,7 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region P09 ¿ÜÇü Àû¿ë ·ÎÁ÷
+    #region P09 ì™¸í˜• ì ìš© ë¡œì§
 
     private void ApplyRendererPart(int currentId, EditPartDataContainer container)
     {
@@ -448,7 +448,7 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region ¹«±â / º¸Á¶¹«±â ¿ÜÇü ·ÎÁ÷
+    #region ë¬´ê¸° / ë³´ì¡°ë¬´ê¸° ì™¸í˜• ë¡œì§
 
     public void UpdateEquipmentAppearance(CharacterData characterData)
     {
@@ -524,19 +524,20 @@ public class CharacterCustomization : MonoBehaviour
 
     private void ActivateArmorPart(EquipmentDefinitionSO equipment, string partSuffix)
     {
-        if (equipment == null)
+        string visualKey = equipment != null
+            ? equipment.visualKey
+            : "Armor_001";
+
+        if (string.IsNullOrEmpty(visualKey))
             return;
 
-        if (string.IsNullOrEmpty(equipment.visualKey))
-            return;
-
-        string parentName = NormalizeArmorVisualKey(equipment.visualKey);
+        string parentName = NormalizeArmorVisualKey(visualKey);
 
         Transform armorRoot = FindChildRecursive(modelRoot, parentName);
 
         if (armorRoot == null)
         {
-            Debug.LogWarning($"¹æ¾î±¸ ¿ÜÇü ºÎ¸ğ¸¦ Ã£Áö ¸øÇß½À´Ï´Ù: {parentName}");
+            Debug.LogWarning($"ë°©ì–´êµ¬ ì™¸í˜• ë¶€ëª¨ë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤: {parentName}");
             return;
         }
 
@@ -556,7 +557,7 @@ public class CharacterCustomization : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"¹æ¾î±¸ ÆÄÃ÷¸¦ Ã£Áö ¸øÇß½À´Ï´Ù: {parentName} / {partSuffix}");
+        Debug.LogWarning($"ë°©ì–´êµ¬ íŒŒì¸ ë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤: {parentName} / {partSuffix}");
     }
 
     private void DeactivateAllArmorVisuals()
@@ -637,7 +638,7 @@ public class CharacterCustomization : MonoBehaviour
 
         if (weaponVisual == null)
         {
-            Debug.LogWarning($"¹«±â ¿ÜÇüÀ» Ã£Áö ¸øÇß½À´Ï´Ù: {equipment.visualKey}");
+            Debug.LogWarning($"ë¬´ê¸° ì™¸í˜•ì„ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤: {equipment.visualKey}");
             return false;
         }
 
@@ -702,7 +703,7 @@ public class CharacterCustomization : MonoBehaviour
                 break;
 
             case WeaponType.Spear:
-                // ÇöÀç ¸ğµ¨ ¾øÀ½
+                // í˜„ì¬ ëª¨ë¸ ì—†ìŒ
                 break;
         }
     }
@@ -720,11 +721,11 @@ public class CharacterCustomization : MonoBehaviour
                 break;
 
             case WeaponType.Orb:
-                // ÇöÀç ¸ğµ¨ ¾øÀ½
+                // í˜„ì¬ ëª¨ë¸ ì—†ìŒ
                 break;
 
             case WeaponType.Book:
-                // ÇöÀç ¸ğµ¨ ¾øÀ½
+                // í˜„ì¬ ëª¨ë¸ ì—†ìŒ
                 break;
         }
     }
@@ -812,7 +813,7 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region Ä³¸¯ÅÍ ÃÊ»óÈ­ ÃÔ¿µ
+    #region ìºë¦­í„° ì´ˆìƒí™” ì´¬ì˜
 
     public Texture2D CapturePortrait(Camera camera, RenderTexture renderTexture)
     {

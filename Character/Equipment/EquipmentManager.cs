@@ -27,13 +27,13 @@ public static class EquipmentManager
         {
             if (equipment.equipType == EquipmentType.Weapon && !character.CanEquipMainWeapon(weapon))
             {
-                Debug.Log("ÀåÂø ºÒ°¡´ÉÇÑ ÁÖ¹«±âÀÔ´Ï´Ù.");
+                Debug.Log("ìž¥ì°© ë¶ˆê°€ëŠ¥í•œ ì£¼ë¬´ê¸°ìž…ë‹ˆë‹¤.");
                 return;
             }
 
             if (equipment.equipType == EquipmentType.SubWeapon && !character.CanEquipSubWeapon())
             {
-                Debug.Log("ÀåÂø ºÒ°¡´ÉÇÑ º¸Á¶¹«±âÀÔ´Ï´Ù.");
+                Debug.Log("ìž¥ì°© ë¶ˆê°€ëŠ¥í•œ ë³´ì¡°ë¬´ê¸°ìž…ë‹ˆë‹¤.");
                 return;
             }
         }

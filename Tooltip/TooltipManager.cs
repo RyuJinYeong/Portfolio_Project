@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 using TMPro;
+using Unity.VisualScripting.Antlr3.Runtime.Misc;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,6 +17,7 @@ public class TooltipManager : MonoBehaviour
     public Text costText;
     public Text descriptionText;
     public GameObject tooltipObject;
+    public GameObject simpleTooltipObject;
 
     public TextMeshProUGUI tooltipText;
 
@@ -25,40 +27,46 @@ public class TooltipManager : MonoBehaviour
     public Vector2 simpleTooltipPadding = new Vector2(8f, 8f);
     private bool isTooltipActive = false;
     private string lastSizedTooltipText;
+    private GameObject activeTooltipObject;
 
     public Dictionary<string, string> keywordTooltips = new Dictionary<string, string>
     {
         { "근력", "무기를 통한 물리 데미지에 영향을 주는 기본 스탯입니다." },
         { "기교", "경량 무기를 통한 물리 데미지에 영향을 주는 기본 스탯입니다." },
-        { "속도", "지구력 수치와 공격 속도에 영향을 주는 기본 스탯입니다." },
+        { "속도", "최대 지구력과 공격 속도에 영향을 주는 기본 스탯입니다." },
         { "지능", "마법 공격력과 정신력 회복량에 영향을 주는 기본 스탯입니다." },
-        { "지혜", "정신력과 시전 속도에 영향을 주는 기본 스탯입니다." },
-        { "건강", "HP와 지구력 회복량에 영향을 주는 기본 스탯입니다." },
-        { "인내", "방어력에 영향을 주는 기본 스탯입니다." },
+        { "지혜", "최대 정신력과 시전 속도에 영향을 주는 기본 스탯입니다." },
+        { "건강", "HP와 상태이상 저항에 영향을 주는 기본 스탯입니다." },
+        { "활력", "최대 체력과 지구력 회복량에 영향을 주는 기본 스탯입니다." },
+        { "인내", "방어력에 영향을 주는 기본 스탯입니다." },        
+        { "LV", "캐릭터의 현재 레벨입니다." },
 
         { "눈썰미", "간파 관련 판정에 영향을 주는 탐지 계열 스탯입니다." },
-        { "통찰력", "간파 관련 판정에 영향을 주는 판단 계열 스탯입니다." },
+        { "통찰력", "통찰 관련 판정에 영향을 주는 탐지 계열 스탯입니다." },
 
+        { "HP", "캐릭터가 보유할 수 있는 최대 체력입니다." },
         { "지구력", "물리 스킬에 사용되는 자원입니다." },
         { "정신력", "마법 스킬과 정신 계열 스킬에 사용되는 자원입니다." },
+        { "턴당 지구력 회복량", "한 턴마다 회복하는 지구력입니다." },
+        { "턴당 정신력 회복량", "한 턴마다 회복하는 정신력입니다." },
 
         { "물리 공격력", "물리 스킬과 무기 공격의 피해량에 영향을 주는 공격 능력치입니다." },
         { "마법 공격력", "마법 스킬의 피해량에 영향을 주는 공격 능력치입니다." },
         { "물리 방어력", "물리 피해를 줄이는 방어 능력치입니다." },
         { "마법 방어력", "마법 피해를 줄이는 방어 능력치입니다." },
+        { "공격 속도", "물리 행동의 속도에 영향을 주는 능력치입니다." },
+        { "시전 속도", "마법 행동의 속도에 영향을 주는 능력치입니다." },
 
         { "화염 저항", "화염 속성 피해를 줄이는 저항 능력치입니다." },
-        { "물 저항", "물 속성 피해를 줄이는 저항 능력치입니다." },
-        { "땅 저항", "땅 속성 피해를 줄이는 저항 능력치입니다." },
-        { "바람 저항", "바람 속성 피해를 줄이는 저항 능력치입니다." },
+        { "번개 저항", "번개 속성 피해를 줄이는 저항 능력치입니다." },
+        { "얼음 저항", "얼음 속성 피해를 줄이는 저항 능력치입니다." },
         { "관통 저항", "관통 계열 피해를 줄이는 저항 능력치입니다." },
         { "참격 저항", "참격 계열 피해를 줄이는 저항 능력치입니다." },
         { "타격 저항", "타격 계열 피해를 줄이는 저항 능력치입니다." },
 
         { "화염 특화", "화염 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
-        { "물 특화", "물 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
-        { "땅 특화", "땅 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
-        { "바람 특화", "바람 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
+        { "번개 특화", "번개 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
+        { "얼음 특화", "얼음 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
         { "관통 특화", "관통 계열 물리 공격의 효율에 영향을 주는 물리 특화 능력치입니다." },
         { "참격 특화", "참격 계열 물리 공격의 효율에 영향을 주는 물리 특화 능력치입니다." },
         { "타격 특화", "타격 계열 물리 공격의 효율에 영향을 주는 물리 특화 능력치입니다." }
@@ -77,11 +85,24 @@ public class TooltipManager : MonoBehaviour
 
             Canvas tooltipCanvas = tooltipObject.GetComponent<Canvas>();
 
-            if (tooltipCanvas == null)
-                tooltipCanvas = tooltipObject.AddComponent<Canvas>();
+            if (tooltipCanvas != null)
+            {
+                tooltipCanvas.overrideSorting = true;
+                tooltipCanvas.sortingOrder = short.MaxValue;
+            }
+        }
 
-            tooltipCanvas.overrideSorting = true;
-            tooltipCanvas.sortingOrder = short.MaxValue;
+        if (simpleTooltipObject != null && simpleTooltipObject != tooltipObject)
+        {
+            simpleTooltipObject.transform.SetAsLastSibling();
+
+            Canvas tooltipCanvas = simpleTooltipObject.GetComponent<Canvas>();
+
+            if (tooltipCanvas != null)
+            {
+                tooltipCanvas.overrideSorting = true;
+                tooltipCanvas.sortingOrder = short.MaxValue;
+            }
         }
     }
 
@@ -147,8 +168,8 @@ public class TooltipManager : MonoBehaviour
 
         UpdateTooltipPosition(position);
 
-        if (skill.uid != 0 && tooltipObject != null)
-            tooltipObject.SetActive(true);
+        if (skill.uid != 0 && activeTooltipObject != null)
+            activeTooltipObject.SetActive(true);
 
         isTooltipActive = true;
     }
@@ -186,8 +207,8 @@ public class TooltipManager : MonoBehaviour
 
         UpdateTooltipPosition(position);
 
-        if (tooltipObject != null)
-            tooltipObject.SetActive(true);
+        if (activeTooltipObject != null)
+            activeTooltipObject.SetActive(true);
 
         isTooltipActive = true;
     }
@@ -247,8 +268,8 @@ public class TooltipManager : MonoBehaviour
 
         UpdateTooltipPosition(position);
 
-        if (tooltipObject != null)
-            tooltipObject.SetActive(true);
+        if (activeTooltipObject != null)
+            activeTooltipObject.SetActive(true);
 
         isTooltipActive = true;
     }
@@ -277,8 +298,8 @@ public class TooltipManager : MonoBehaviour
 
         UpdateTooltipPosition(position);
 
-        if (tooltipObject != null)
-            tooltipObject.SetActive(true);
+        if (activeTooltipObject != null)
+            activeTooltipObject.SetActive(true);
 
         isTooltipActive = true;
     }
@@ -302,25 +323,33 @@ public class TooltipManager : MonoBehaviour
         if (tooltipObject != null)
             tooltipObject.SetActive(false);
 
+        if (simpleTooltipObject != null && simpleTooltipObject != tooltipObject)
+            simpleTooltipObject.SetActive(false);
+
+        activeTooltipObject = null;
         isTooltipActive = false;
     }
 
     public void UpdateTooltipPosition(Vector3 position)
     {
-        if (tooltipObject == null)
+        GameObject currentTooltipObject = activeTooltipObject != null
+            ? activeTooltipObject
+            : tooltipObject;
+
+        if (currentTooltipObject == null)
             return;
 
-        RectTransform tooltipRect = tooltipObject.transform as RectTransform;
+        RectTransform tooltipRect = currentTooltipObject.transform as RectTransform;
 
         if (tooltipRect == null)
         {
-            tooltipObject.transform.position = position + tooltipOffset;
+            currentTooltipObject.transform.position = position + tooltipOffset;
             return;
         }
 
         ResizeSimpleTooltipToContent(tooltipRect);
 
-        Canvas rootCanvas = tooltipObject.GetComponentInParent<Canvas>()?.rootCanvas;
+        Canvas rootCanvas = currentTooltipObject.GetComponentInParent<Canvas>()?.rootCanvas;
         Camera uiCamera = rootCanvas != null && rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay
             ? rootCanvas.worldCamera
             : null;
@@ -637,8 +666,8 @@ public class TooltipManager : MonoBehaviour
 
         UpdateTooltipPosition(position);
 
-        if (tooltipObject != null)
-            tooltipObject.SetActive(true);
+        if (activeTooltipObject != null)
+            activeTooltipObject.SetActive(true);
 
         isTooltipActive = true;
     }
@@ -670,20 +699,32 @@ public class TooltipManager : MonoBehaviour
 
         UpdateTooltipPosition(position);
 
-        if (tooltipObject != null)
-            tooltipObject.SetActive(true);
+        if (activeTooltipObject != null)
+            activeTooltipObject.SetActive(true);
 
         isTooltipActive = true;
     }
 
     private void SetSkillTooltipMode()
     {
+        activeTooltipObject = tooltipObject;
+
+        if (simpleTooltipObject != null && simpleTooltipObject != tooltipObject)
+            simpleTooltipObject.SetActive(false);
+
         if (tooltipText != null)
             tooltipText.text = "";
     }
 
     private void SetTextTooltipMode()
     {
+        activeTooltipObject = simpleTooltipObject != null
+            ? simpleTooltipObject
+            : tooltipObject;
+
+        if (tooltipObject != null && tooltipObject != activeTooltipObject)
+            tooltipObject.SetActive(false);
+
         if (skillIcon != null)
             skillIcon.texture = null;
     }
@@ -747,18 +788,17 @@ public class TooltipManager : MonoBehaviour
         if (skill.isCounterSkill)
         {
             AppendSectionSeparator(text);
-            text.Append($"대응 성능: {GetCounterActionText(skill.counterActionType)}");
 
             if (skill.counterActionType == CounterActionType.Evade)
             {
                 int reductionPercent = Mathf.RoundToInt(skill.minEvadeReductionRate * 100f);
-                text.Append($"\n성공 시 최소 {reductionPercent}% 피해 감소");
+                text.Append($"성공 시 최소 {reductionPercent}% 피해 감소");
             }
             else
             {
                 int armorPercent = Mathf.RoundToInt(skill.successArmorAttackMultiplier * 100f);
                 string armorType = skill.type == SkillType.Magical ? "마법 방어도" : "물리 방어도";
-                text.Append($"\n성공 시 공격력의 {armorPercent}%만큼 {armorType} 획득");
+                text.Append($"성공 시 공격력의 {armorPercent}%만큼 {armorType} 획득");
             }
         }
 

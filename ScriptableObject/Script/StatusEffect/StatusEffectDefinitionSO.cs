@@ -20,16 +20,16 @@ public class StatusEffectDefinitionSO : ScriptableObject
     public StatusEffectType effectType =
         StatusEffectType.None;
 
-    [Tooltip("0ÀÌ¸é ½ºÅÃ Á¦ÇÑ ¾øÀ½")]
+    [Tooltip("0ì´ë©´ ìŠ¤íƒ ì œí•œ ì—†ìŒ")]
     public int maxStack;
 
     [Header("Effect Value")]
     public int fixedDamagePerStack;
 
-    [Tooltip("´ëÀÀ ¼º°ø·ü °¨¼Ò °ø½Ä¿¡¼­ »ç¿ëÇÏ´Â ½ºÅÃ´ç À§·Â")]
+    [Tooltip("ëŒ€ì‘ ì„±ê³µë¥  ê°ì†Œ ê³µì‹ì—ì„œ ì‚¬ìš©í•˜ëŠ” ìŠ¤íƒë‹¹ ìœ„ë ¥")]
     public int counterPenaltyPerStack;
 
     [Header("Status Apply Power")]
-    [Tooltip("°ø°İÀÚ°¡ ÀÌ »óÅÂÀÌ»óÀ» ºÎ¿©ÇÒ ¶§ »ç¿ëÇÏ´Â ´É·ÂÄ¡ °ø½Ä")]
+    [Tooltip("ê³µê²©ìê°€ ì´ ìƒíƒœì´ìƒì„ ë¶€ì—¬í•  ë•Œ ì‚¬ìš©í•˜ëŠ” ëŠ¥ë ¥ì¹˜ ê³µì‹")]
     public List<StatusStatWeightData> attackerStatWeights = new();
 }

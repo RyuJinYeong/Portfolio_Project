@@ -10,6 +10,8 @@ public enum SharedInventoryType
 
 public static class SharedInventoryUtility
 {
+    public const int InitialCompanyStorageCapacity = 100;
+
     public static event Action InventoryChanged;
     public static event Action<CharacterManager> EquipmentChanged;
     public static event Action<CharacterManager> CharacterChanged;
@@ -33,6 +35,15 @@ public static class SharedInventoryUtility
             playerData.expeditionStorage = new List<InventorySlotData>();
 
         return playerData.expeditionStorage;
+    }
+
+    public static int GetStorageCapacity(
+        PlayerData playerData,
+        SharedInventoryType inventoryType)
+    {
+        return inventoryType == SharedInventoryType.CompanyStorage
+            ? InitialCompanyStorageCapacity
+            : int.MaxValue;
     }
 
     public static bool AddItem(
@@ -556,6 +567,9 @@ public static class SharedInventoryUtility
         if (item == null)
             return false;
 
+        if (!HasCapacityFor(storage, item, count, equipmentInstanceId))
+            return false;
+
         if (!string.IsNullOrEmpty(equipmentInstanceId))
         {
             if (count != 1)
@@ -612,6 +626,62 @@ public static class SharedInventoryUtility
         }
 
         return true;
+    }
+
+    private static bool HasCapacityFor(
+        List<InventorySlotData> storage,
+        ItemDefinitionSO item,
+        int count,
+        string equipmentInstanceId)
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        if (playerData == null || !ReferenceEquals(storage, playerData.accountStorage))
+            return true;
+
+        int occupiedSlots = 0;
+
+        foreach (InventorySlotData slot in storage)
+        {
+            if (slot != null && slot.itemUid > 0 && slot.count > 0)
+                occupiedSlots++;
+        }
+
+        int requiredSlots;
+
+        if (!string.IsNullOrEmpty(equipmentInstanceId))
+        {
+            requiredSlots = 1;
+        }
+        else
+        {
+            int remaining = count;
+            int maxStack = Mathf.Max(1, item.maxStack);
+
+            if (maxStack > 1)
+            {
+                foreach (InventorySlotData slot in storage)
+                {
+                    if (slot == null ||
+                        slot.itemUid != item.uid ||
+                        slot.IsGeneratedEquipment())
+                    {
+                        continue;
+                    }
+
+                    remaining -= Mathf.Max(0, maxStack - slot.count);
+
+                    if (remaining <= 0)
+                        return true;
+                }
+            }
+
+            requiredSlots = Mathf.CeilToInt(Mathf.Max(0, remaining) / (float)maxStack);
+        }
+
+        return occupiedSlots + requiredSlots <= InitialCompanyStorageCapacity;
     }
 
     private static bool RemoveItemInternal(

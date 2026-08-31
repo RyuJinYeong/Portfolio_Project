@@ -38,7 +38,7 @@ public class TraitSelectionUI : MonoBehaviour
         if (GameDataRegistry.Instance == null)
             return;
 
-        List<TraitDefinitionSO> traits = GameDataRegistry.Instance.GetAllTraits();
+        List<TraitDefinitionSO> traits = GameDataRegistry.Instance.GetCharacterCreationTraits();
 
         if (traits == null)
             return;
@@ -103,21 +103,7 @@ public class TraitSelectionUI : MonoBehaviour
             return 0;
 
         int baseCost = TraitGradeUtility.GetGradeValue(trait.defaultAcquireGrade);
-
-        switch (trait.polarity)
-        {
-            case TraitPolarity.Positive:
-                return baseCost;
-
-            case TraitPolarity.Negative:
-                return -baseCost;
-
-            case TraitPolarity.Mixed:
-                return 0;
-
-            default:
-                return baseCost;
-        }
+        return TraitGradeUtility.GetSignedValue(baseCost, trait.polarity);
     }
 
     public void MoveTraitToRight(TraitDefinitionSO trait)

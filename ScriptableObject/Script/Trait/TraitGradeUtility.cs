@@ -10,6 +10,17 @@ public static class TraitGradeUtility
         return 1 << (int)grade;
     }
 
+    public static int GetSignedValue(int point, TraitPolarity polarity)
+    {
+        return polarity switch
+        {
+            TraitPolarity.Positive => point,
+            TraitPolarity.Negative => -point,
+            TraitPolarity.Mixed => 0,
+            _ => point
+        };
+    }
+
     public static TraitGrade GetGrade(int point)
     {
         if (point >= 64) return TraitGrade.S;

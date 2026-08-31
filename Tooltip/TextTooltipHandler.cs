@@ -76,7 +76,7 @@ public class TextTooltipHandler : MonoBehaviour, IPointerEnterHandler, IPointerE
 
         string potentialWord = text.Substring(start, end - start);
 
-        // °ø¹é Æ÷ÇÔµÈ ¿©·¯ ´Ü¾î·Î ±¸¼ºµÈ Å°¿öµå Ã¼Å©
+        // ê³µë°± í¬í•¨ëœ ì—¬ëŸ¬ ë‹¨ì–´ë¡œ êµ¬ì„±ëœ í‚¤ì›Œë“œ ì²´í¬
         foreach (var keyword in TooltipManager.Instance.keywordTooltips.Keys)
         {
             if (text.Contains(keyword))

@@ -156,7 +156,7 @@ public static class StatusEffectProcessor
         }
 
         if (totalAdditionalDamage > 0)
-            ApplyFixedDamage(targetManager, totalAdditionalDamage, "¿­»ó Ãß°¡ ÇÇÇØ");
+            ApplyFixedDamage(targetManager, totalAdditionalDamage, "ì—´ìƒ ì¶”ê°€ í”¼í•´");
 
         return totalAdditionalDamage;
     }
@@ -181,7 +181,7 @@ public static class StatusEffectProcessor
                 GameDataRegistry.Instance.GetStatusEffect(
                     runtime.statusEffectId);
 
-            // ºÒ±ÕÇüÀº ÅÏ °æ°ú°¡ ¾Æ´Ï¶ó ´ÙÀ½ ´ëÀÀÀ» Ãë¼ÒÇÒ ¶§ Á¦°Å
+            // ë¶ˆê· í˜•ì€ í„´ ê²½ê³¼ê°€ ì•„ë‹ˆë¼ ë‹¤ìŒ ëŒ€ì‘ì„ ì·¨ì†Œí•  ë•Œ ì œê±°
             if (def != null &&
                 def.effectType == StatusEffectType.CancelNextCounter)
             {
@@ -378,16 +378,16 @@ public static class StatusEffectProcessor
                     resultApplyData);
 
                 Debug.Log(
-                    $"{targetManager.character.Name}¿¡°Ô " +
-                    $"°á°ú »óÅÂÀÌ»ó {effect.resultStatusId} Àû¿ë ¼º°ø " +
-                    $"È®·ü:{chance}% ±¼¸²:{roll}");
+                    $"{targetManager.character.Name}ì—ê²Œ " +
+                    $"ê²°ê³¼ ìƒíƒœì´ìƒ {effect.resultStatusId} ì ìš© ì„±ê³µ " +
+                    $"í™•ë¥ :{chance}% êµ´ë¦¼:{roll}");
             }
             else
             {
                 Debug.Log(
-                    $"{targetManager.character.Name}¿¡°Ô " +
-                    $"°á°ú »óÅÂÀÌ»ó {effect.resultStatusId} Àû¿ë ½ÇÆĞ " +
-                    $"È®·ü:{chance}% ±¼¸²:{roll}");
+                    $"{targetManager.character.Name}ì—ê²Œ " +
+                    $"ê²°ê³¼ ìƒíƒœì´ìƒ {effect.resultStatusId} ì ìš© ì‹¤íŒ¨ " +
+                    $"í™•ë¥ :{chance}% êµ´ë¦¼:{roll}");
             }
         }
 
@@ -435,7 +435,7 @@ public static class StatusEffectProcessor
             target.IsAlive = false;
         }
 
-        Debug.Log($"{target.Name} - {sourceName} °íÁ¤ ÇÇÇØ {damage}");
+        Debug.Log($"{target.Name} - {sourceName} ê³ ì • í”¼í•´ {damage}");
 
         targetManager.UpdateCharacterUI();
     }

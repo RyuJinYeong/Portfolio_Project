@@ -1,58 +1,58 @@
 public enum WeaponCategory
 {
-    HeavyWeapon,   // Áß·® ¹«±â
-    LightWeapon   // °æ·® ¹«±â    
+    HeavyWeapon,   // ì¤‘ëŸ‰ ë¬´ê¸°
+    LightWeapon   // ê²½ëŸ‰ ë¬´ê¸°    
 }
 
 public enum WeaponTag
 {
-    TwoHanded = 0,     // ¾ç¼Õ ¹«±â - È°ÀÇ °æ¿ì º¸Á¶¹«±â ÀåÂøÀÌ ºÒ°¡´ÉÇÏ°Ô ÀÓÀÇ·Î ¼³Á¤
-    MagicWeapon = 1    // ¸¶¹ı ¹«±â - ¸¶¹ı °ø°İ·Â À¯¹«¸¦ °¡¸®´Â ÅÂ±×
+    TwoHanded = 0,     // ì–‘ì† ë¬´ê¸° - í™œì˜ ê²½ìš° ë³´ì¡°ë¬´ê¸° ì¥ì°©ì´ ë¶ˆê°€ëŠ¥í•˜ê²Œ ì„ì˜ë¡œ ì„¤ì •
+    MagicWeapon = 1    // ë§ˆë²• ë¬´ê¸° - ë§ˆë²• ê³µê²©ë ¥ ìœ ë¬´ë¥¼ ê°€ë¦¬ëŠ” íƒœê·¸
 }
 
 public enum WeaponType
 {
-    Two_HandedSword, // ¾ç¼Õ°Ë
-    Greatsword,   // ´ë°Ë
-    LongSword,    // Àå°Ë
-    Dagger,       // ´Ü°Ë
-    Bow,          // È°
-    Mace,         // Ã¶Åğ
-    Hammer,       // ¸ÁÄ¡
-    Shield,       // ¹æÆĞ
-    Axe,          // µµ³¢
-    Spear,        // Ã¢
-    Staff,        // ÁöÆÎÀÌ
-    Book,         // Ã¥
-    Orb           // ¿Àºê
+    Two_HandedSword, // ì–‘ì†ê²€
+    Greatsword,   // ëŒ€ê²€
+    LongSword,    // ì¥ê²€
+    Dagger,       // ë‹¨ê²€
+    Bow,          // í™œ
+    Mace,         // ì² í‡´
+    Hammer,       // ë§ì¹˜
+    Shield,       // ë°©íŒ¨
+    Axe,          // ë„ë¼
+    Spear,        // ì°½
+    Staff,        // ì§€íŒ¡ì´
+    Book,         // ì±…
+    Orb           // ì˜¤ë¸Œ
 }
 
 public enum EquipmentType
 {
-    Helmet,     // Çï¸ä
-    Armor,      // °©¿Ê
-    Gloves,     // Àå°©
-    Shoes,      // ½Å¹ß    
-    Ring,       // ¹İÁö
-    Necklace,   // ¸ñ°ÉÀÌ        
-    Weapon,     // ¹«±â
-    SubWeapon   // º¸Á¶¹«±â
+    Helmet,     // í—¬ë©§
+    Armor,      // ê°‘ì˜·
+    Gloves,     // ì¥ê°‘
+    Shoes,      // ì‹ ë°œ    
+    Ring,       // ë°˜ì§€
+    Necklace,   // ëª©ê±¸ì´        
+    Weapon,     // ë¬´ê¸°
+    SubWeapon   // ë³´ì¡°ë¬´ê¸°
 }
 
 public enum ArmorCategory
 {
-    HeavyArmor,   // Áß°©
-    LightArmor,   // °æ°©
-    ClothArmor    // ÀÇº¹
+    HeavyArmor,   // ì¤‘ê°‘
+    LightArmor,   // ê²½ê°‘
+    ClothArmor    // ì˜ë³µ
 }
 
 public enum EquipmentRarity
 {
-    Common,  //ÀÏ¹İ
-    Uncommon,//°í±Ş
-    Rare,    //Èñ±Í
-    Epic,    //¿µ¿õ
-    Legendary//Àü¼³
+    Common,  //ì¼ë°˜
+    Uncommon,//ê³ ê¸‰
+    Rare,    //í¬ê·€
+    Epic,    //ì˜ì›…
+    Legendary//ì „ì„¤
 }
 public enum EquipmentAffixType
 {

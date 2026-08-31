@@ -13,7 +13,7 @@ public class CounterResolveData
 
     public bool skipStatusEffects;
 
-    // ¿ª»ó¼º ´ëÀÀ ½ÇÆĞ·Î °ø°İ ´ë¼º°øÀÌ ¹ß»ıÇß´ÂÁö
+    // ì—­ìƒì„± ëŒ€ì‘ ì‹¤íŒ¨ë¡œ ê³µê²© ëŒ€ì„±ê³µì´ ë°œìƒí–ˆëŠ”ì§€
     public bool attackGreatSuccess;
 
     public bool IsSuccess

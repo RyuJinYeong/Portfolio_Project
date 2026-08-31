@@ -33,14 +33,14 @@ public class CombatHandler : MonoBehaviour
 
         if (characterManager.character.Type != CharacterType.Character)
         {
-            Debug.Log("AI ÅÏ ½ÃÀÛ");
+            Debug.Log("AI í„´ ì‹œì‘");
             turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd));
             characterManager.UpdateCharacterUI();
             StartCoroutine(HandleAITurn(onTurnEnd));
         }
         else
         {
-            Debug.Log("ÇÃ·¹ÀÌ¾î ÅÏ ½ÃÀÛ");
+            Debug.Log("í”Œë ˆì´ì–´ í„´ ì‹œì‘");
             turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd));
             characterManager.UpdateCharacterUI();
 
@@ -71,13 +71,13 @@ public class CombatHandler : MonoBehaviour
 
         if (skill.isCounterSkill)
         {
-            Debug.Log("´ëÀÀ ½ºÅ³Àº °ø°İ ½ºÅ³ Å¥¿¡ µî·ÏÇÒ ¼ö ¾ø½À´Ï´Ù.");
+            Debug.Log("ëŒ€ì‘ ìŠ¤í‚¬ì€ ê³µê²© ìŠ¤í‚¬ íì— ë“±ë¡í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
             return;
         }
 
         if (characterManager.isInMeleeCombat && skill.isRangedSkill)
         {
-            Debug.Log("°æÇÕ »óÅÂ¿¡¼­´Â ¿ø°Å¸® ½ºÅ³À» »ç¿ëÇÒ ¼ö ¾ø½À´Ï´Ù.");
+            Debug.Log("ê²½í•© ìƒíƒœì—ì„œëŠ” ì›ê±°ë¦¬ ìŠ¤í‚¬ì„ ì‚¬ìš©í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
             return;
         }
 
@@ -95,7 +95,7 @@ public class CombatHandler : MonoBehaviour
 
         skillQueue.Add(data);
 
-        Debug.Log($"{skill.skillName} °ø°İ Å¥ µî·Ï. ÀºÆó: {isConcealed}");
+        Debug.Log($"{skill.skillName} ê³µê²© í ë“±ë¡. ì€í: {isConcealed}");
 
         RefreshSkillQueueUI(target);
         characterManager.UpdateCharacterUI();
@@ -125,7 +125,7 @@ public class CombatHandler : MonoBehaviour
             characterManager.isInMeleeCombat = false;
             characterManager.meleeTarget = null;
 
-            Debug.Log("°æÇÕ »óÅÂ ÇØÁ¦");
+            Debug.Log("ê²½í•© ìƒíƒœ í•´ì œ");
 
             if (UIManager.Instance.characterTargeting.lineRenderer != null)
                 UIManager.Instance.characterTargeting.lineRenderer.enabled = false;
@@ -142,7 +142,7 @@ public class CombatHandler : MonoBehaviour
 
         if (!skill.isCounterSkill)
         {
-            Debug.Log("´ëÀÀ ½ºÅ³ÀÌ ¾Æ´Õ´Ï´Ù.");
+            Debug.Log("ëŒ€ì‘ ìŠ¤í‚¬ì´ ì•„ë‹™ë‹ˆë‹¤.");
             return;
         }
 
@@ -154,7 +154,7 @@ public class CombatHandler : MonoBehaviour
 
         counterSkillQueue.Add(data);
 
-        Debug.Log($"{skill.skillName} ´ëÀÀ Å¥ µî·Ï");
+        Debug.Log($"{skill.skillName} ëŒ€ì‘ í ë“±ë¡");
 
         RefreshCounterSkillQueueUI(target);
         characterManager.UpdateCharacterUI();
@@ -183,7 +183,7 @@ public class CombatHandler : MonoBehaviour
 
         if (defaultCounter == null)
         {
-            Debug.Log("±âº» ´ëÀÀ ½ºÅ³ÀÌ ¾ø½À´Ï´Ù.");
+            Debug.Log("ê¸°ë³¸ ëŒ€ì‘ ìŠ¤í‚¬ì´ ì—†ìŠµë‹ˆë‹¤.");
             return;
         }
 
@@ -235,7 +235,7 @@ public class CombatHandler : MonoBehaviour
         if (characterManager.character.CurrentStamina < staminaCost ||
             characterManager.character.CurrentMentality < mentalCost)
         {
-            Debug.Log("¸®¼Ò½º°¡ ºÎÁ·ÇÏ¿© ½ºÅ³À» »ç¿ëÇÒ ¼ö ¾ø½À´Ï´Ù.");
+            Debug.Log("ë¦¬ì†ŒìŠ¤ê°€ ë¶€ì¡±í•˜ì—¬ ìŠ¤í‚¬ì„ ì‚¬ìš©í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
             return false;
         }
 
@@ -271,7 +271,7 @@ public class CombatHandler : MonoBehaviour
             characterManager.meleeTarget != null &&
             !characterManager.meleeTarget.character.IsAlive)
         {
-            Debug.Log($"{characterManager.meleeTarget.character.Name} Ã³Ä¡ ¼º°ø. ½ºÅ³ Å¥ Ãë¼Ò ¹× ¸®¼Ò½º ¹İÈ¯.");
+            Debug.Log($"{characterManager.meleeTarget.character.Name} ì²˜ì¹˜ ì„±ê³µ. ìŠ¤í‚¬ í ì·¨ì†Œ ë° ë¦¬ì†ŒìŠ¤ ë°˜í™˜.");
 
             CancelRemainingSkills();
 
@@ -308,7 +308,7 @@ public class CombatHandler : MonoBehaviour
 
         characterManager.UpdateCharacterUI();
 
-        Debug.Log($"½ºÅ³ ½ÃÀü ¿¹¾à Ãë¼Ò Áö±¸·Â: {characterManager.character.CurrentStamina}, Á¤½Å·Â: {characterManager.character.CurrentMentality}");
+        Debug.Log($"ìŠ¤í‚¬ ì‹œì „ ì˜ˆì•½ ì·¨ì†Œ ì§€êµ¬ë ¥: {characterManager.character.CurrentStamina}, ì •ì‹ ë ¥: {characterManager.character.CurrentMentality}");
     }
 
     public void ExecuteSkillQueue(System.Action onTurnEnd)
@@ -322,7 +322,7 @@ public class CombatHandler : MonoBehaviour
         }
         else
         {
-            Debug.Log("¼±ÅÃµÈ ½ºÅ³ÀÌ ¾ø½À´Ï´Ù. ÅÏ Á¾·á");
+            Debug.Log("ì„ íƒëœ ìŠ¤í‚¬ì´ ì—†ìŠµë‹ˆë‹¤. í„´ ì¢…ë£Œ");
             onTurnEnd();
         }
     }
@@ -337,7 +337,7 @@ public class CombatHandler : MonoBehaviour
             {
                 cancelNextSkill = false;
 
-                Debug.Log($"{item.skill.skillName} ½ºÅ³ÀÌ ÆĞ¸µ ´ë¼º°ø È¿°ú·Î Ãë¼ÒµÊ");
+                Debug.Log($"{item.skill.skillName} ìŠ¤í‚¬ì´ íŒ¨ë§ ëŒ€ì„±ê³µ íš¨ê³¼ë¡œ ì·¨ì†Œë¨");
 
                 skillQueue.RemoveAt(0);
                 RefreshSkillQueueUI(item.target);
@@ -392,7 +392,7 @@ public class CombatHandler : MonoBehaviour
         target.combatHandler.isDefenseTarget = true;
         TurnManager.Instance.defenseTarget = target;
 
-        Debug.Log($"¹æ¾îÀÚ : {characterManager.character.Name} - ¹æ¾î´ë»ó : {target.character.Name}");
+        Debug.Log($"ë°©ì–´ì : {characterManager.character.Name} - ë°©ì–´ëŒ€ìƒ : {target.character.Name}");
 
         if (TurnManager.Instance.defenseCharacter != null &&
             TurnManager.Instance.defenseTarget != null)
@@ -436,7 +436,7 @@ public class CombatHandler : MonoBehaviour
                     appliedCounter = defenseCounter;
                     if (defenseCounter.cancelCurrentSkill)
                     {
-                        Debug.Log($"{defenseCharacter.character.Name}ÀÇ ÆÄÈÑ ´ë¼º°ø. {attackSkill.skillName} ¹«È¿È­");
+                        Debug.Log($"{defenseCharacter.character.Name}ì˜ íŒŒí›¼ ëŒ€ì„±ê³µ. {attackSkill.skillName} ë¬´íš¨í™”");
                         EndSynergyEffects();
                         return;
                     }
@@ -485,7 +485,7 @@ public class CombatHandler : MonoBehaviour
 
                 if (targetCounter.cancelCurrentSkill)
                 {
-                    Debug.Log($"{actualTarget.character.Name}ÀÇ ÆÄÈÑ ´ë¼º°ø. {attackSkill.skillName} ¹«È¿È­");
+                    Debug.Log($"{actualTarget.character.Name}ì˜ íŒŒí›¼ ëŒ€ì„±ê³µ. {attackSkill.skillName} ë¬´íš¨í™”");
                     EndSynergyEffects();
                     return;
                 }
@@ -508,8 +508,8 @@ public class CombatHandler : MonoBehaviour
             appliedCounter.attackGreatSuccess)
         {
             Debug.Log(
-                $"{characterManager.character.Name} °ø°İ ´ë¼º°ø. " +
-                $"{attackSkill.skillName} ÇÇÇØ ¹èÀ² " +
+                $"{characterManager.character.Name} ê³µê²© ëŒ€ì„±ê³µ. " +
+                $"{attackSkill.skillName} í”¼í•´ ë°°ìœ¨ " +
                 $"{attackGreatSuccessDamageMultiplier:F2}");
         }
 
@@ -545,8 +545,8 @@ public class CombatHandler : MonoBehaviour
         if (protectorCounter.attackGreatSuccess)
         {
             Debug.Log(
-                $"{characterManager.character.Name} µ¹ÆÄ °ø°İ ´ë¼º°ø. " +
-                $"{attackSkill.skillName} ÇÇÇØ ¹èÀ² " +
+                $"{characterManager.character.Name} ëŒíŒŒ ê³µê²© ëŒ€ì„±ê³µ. " +
+                $"{attackSkill.skillName} í”¼í•´ ë°°ìœ¨ " +
                 $"{attackGreatSuccessDamageMultiplier:F2}");
         }
 
@@ -556,7 +556,7 @@ public class CombatHandler : MonoBehaviour
 
         if (stopsBreakthrough)
         {
-            Debug.Log($"{protector.character.Name}ÀÌ µ¹ÆÄ¸¦ ÀúÁöÇÔ");
+            Debug.Log($"{protector.character.Name}ì´ ëŒíŒŒë¥¼ ì €ì§€í•¨");
 
             ApplyMeleeTargetChangeAfterProtection(
                 attackSkill,
@@ -568,7 +568,7 @@ public class CombatHandler : MonoBehaviour
 
         CancelProtectionAfterBreakthrough(originalTarget, protector);
 
-        Debug.Log($"{attackSkill.skillName} µ¹ÆÄ ¼º°ø. {protector.character.Name}ÀÇ º¸È£¼±À» µ¹ÆÄÇÔ");
+        Debug.Log($"{attackSkill.skillName} ëŒíŒŒ ì„±ê³µ. {protector.character.Name}ì˜ ë³´í˜¸ì„ ì„ ëŒíŒŒí•¨");
     }
 
     private CounterResolveData TryUseCounterSkill(
@@ -601,7 +601,7 @@ public class CombatHandler : MonoBehaviour
 
         if (StatusEffectProcessor.ConsumeCancelNextCounterStatus(counterUser.character))
         {
-            Debug.Log($"{counterUser.character.Name}ÀÇ ´ëÀÀÀÌ ºÒ±ÕÇüÀ¸·Î Ãë¼ÒµÊ");
+            Debug.Log($"{counterUser.character.Name}ì˜ ëŒ€ì‘ì´ ë¶ˆê· í˜•ìœ¼ë¡œ ì·¨ì†Œë¨");
 
             RefreshCounterSkillQueueUI(counterUser);
             return resolveData;
@@ -609,7 +609,7 @@ public class CombatHandler : MonoBehaviour
 
         if (!CanUseCounterAgainst(attackSkill, counterSkill, isProtectingOther))
         {
-            Debug.Log($"{counterUser.character.Name}ÀÇ {counterSkill.skillName} ´ëÀÀ ºÒ°¡");
+            Debug.Log($"{counterUser.character.Name}ì˜ {counterSkill.skillName} ëŒ€ì‘ ë¶ˆê°€");
 
             RefreshCounterSkillQueueUI(counterUser);
             return resolveData;
@@ -715,15 +715,15 @@ public class CombatHandler : MonoBehaviour
                         attackGreatSuccessRoll <= attackGreatSuccessChance;
 
                     Debug.Log(
-                        $"{attacker.character.Name} °ø°İ ´ë¼º°ø ÆÇÁ¤ " +
-                        $"È®·ü:{attackGreatSuccessChance}% " +
-                        $"±¼¸²:{attackGreatSuccessRoll} " +
-                        $"°á°ú:{resolveData.attackGreatSuccess}");
+                        $"{attacker.character.Name} ê³µê²© ëŒ€ì„±ê³µ íŒì • " +
+                        $"í™•ë¥ :{attackGreatSuccessChance}% " +
+                        $"êµ´ë¦¼:{attackGreatSuccessRoll} " +
+                        $"ê²°ê³¼:{resolveData.attackGreatSuccess}");
                 }
 
                 Debug.Log(
-                    $"{counterUser.character.Name} {counterSkill.skillName} ´ëÀÀ ½ÇÆĞ " +
-                    $"¼º°ø·ü:{chance}% ´ë¼º°ø·ü:{greatSuccessChance}% À§·Âºñ:{counterPowerRatio:F2}");
+                    $"{counterUser.character.Name} {counterSkill.skillName} ëŒ€ì‘ ì‹¤íŒ¨ " +
+                    $"ì„±ê³µë¥ :{chance}% ëŒ€ì„±ê³µë¥ :{greatSuccessChance}% ìœ„ë ¥ë¹„:{counterPowerRatio:F2}");
                 break;
 
             case CounterResult.Success:
@@ -744,16 +744,16 @@ public class CombatHandler : MonoBehaviour
                 }
 
                 Debug.Log(
-                    $"{counterUser.character.Name} {counterSkill.skillName} ´ëÀÀ ¼º°ø " +
-                    $"¼º°ø·ü:{chance}% ´ë¼º°ø·ü:{greatSuccessChance}% À§·Âºñ:{counterPowerRatio:F2}");
+                    $"{counterUser.character.Name} {counterSkill.skillName} ëŒ€ì‘ ì„±ê³µ " +
+                    $"ì„±ê³µë¥ :{chance}% ëŒ€ì„±ê³µë¥ :{greatSuccessChance}% ìœ„ë ¥ë¹„:{counterPowerRatio:F2}");
                 break;
 
             case CounterResult.GreatSuccess:
                 ApplyCounterGreatSuccess(resolveData, counterUser, counterSkill, attackSkill);
 
                 Debug.Log(
-                    $"{counterUser.character.Name} {counterSkill.skillName} ´ëÀÀ ´ë¼º°ø " +
-                    $"¼º°ø·ü:{chance}% ´ë¼º°ø·ü:{greatSuccessChance}% À§·Âºñ:{counterPowerRatio:F2}");
+                    $"{counterUser.character.Name} {counterSkill.skillName} ëŒ€ì‘ ëŒ€ì„±ê³µ " +
+                    $"ì„±ê³µë¥ :{chance}% ëŒ€ì„±ê³µë¥ :{greatSuccessChance}% ìœ„ë ¥ë¹„:{counterPowerRatio:F2}");
                 break;
         }
 
@@ -835,7 +835,7 @@ public class CombatHandler : MonoBehaviour
         else
             counterUser.character.PhysicalArmor += armorGain;
 
-        Debug.Log($"{counterUser.character.Name} {counterSkill.skillName} ´ëÀÀ ¹æ¾îµµ È¹µæ: {armorGain}");
+        Debug.Log($"{counterUser.character.Name} {counterSkill.skillName} ëŒ€ì‘ ë°©ì–´ë„ íšë“: {armorGain}");
     }
 
     private void ApplyMeleeTargetChangeAfterProtection(
@@ -867,7 +867,7 @@ public class CombatHandler : MonoBehaviour
 
         characterManager.meleeTarget = defenseCharacter;
 
-        Debug.Log($"°ø°İÀÚ {characterManager.character.Name} -> {originalTarget.character.Name}¿¡¼­ {defenseCharacter.character.Name}·Î °æÇÕ ´ë»ó º¯°æ");
+        Debug.Log($"ê³µê²©ì {characterManager.character.Name} -> {originalTarget.character.Name}ì—ì„œ {defenseCharacter.character.Name}ë¡œ ê²½í•© ëŒ€ìƒ ë³€ê²½");
     }
 
     private void ApplyAttackDamage(
@@ -920,14 +920,14 @@ public class CombatHandler : MonoBehaviour
                 totalFinalDamage += statusAdditionalDamage;
 
                 Debug.Log(
-                    $"{characterManager.character.Name} - {skill.skillName} »ç¿ë -> {target.character.Name}, " +
-                    $"{component.attribute} {damageType} ÇÇÇØ {finalDamage}");
+                    $"{characterManager.character.Name} - {skill.skillName} ì‚¬ìš© -> {target.character.Name}, " +
+                    $"{component.attribute} {damageType} í”¼í•´ {finalDamage}");
             }
         }
 
         RegisterSkillRuntimeResult(skill, totalFinalDamage, target);
 
-        Debug.Log($"{characterManager.character.Name} - {skill.skillName} ÃÑ ÇÇÇØ {totalFinalDamage}");
+        Debug.Log($"{characterManager.character.Name} - {skill.skillName} ì´ í”¼í•´ {totalFinalDamage}");
     }
 
     private int CalculateComponentDamage(SkillDamageComponentData component, float damageMultiplier)
@@ -1077,16 +1077,16 @@ public class CombatHandler : MonoBehaviour
             if (success)
             {
                 Debug.Log(
-                    $"{target.character.Name}¿¡°Ô »óÅÂÀÌ»ó {effect.statusEffectId} Àû¿ë ¼º°ø " +
-                    $"È®·ü:{chance}% ±¼¸²:{roll}");
+                    $"{target.character.Name}ì—ê²Œ ìƒíƒœì´ìƒ {effect.statusEffectId} ì ìš© ì„±ê³µ " +
+                    $"í™•ë¥ :{chance}% êµ´ë¦¼:{roll}");
 
                 StatusEffectProcessor.ApplyStatus(target.character, effect);
             }
             else
             {
                 Debug.Log(
-                    $"{target.character.Name}¿¡°Ô »óÅÂÀÌ»ó {effect.statusEffectId} Àû¿ë ½ÇÆĞ " +
-                    $"È®·ü:{chance}% ±¼¸²:{roll}");
+                    $"{target.character.Name}ì—ê²Œ ìƒíƒœì´ìƒ {effect.statusEffectId} ì ìš© ì‹¤íŒ¨ " +
+                    $"í™•ë¥ :{chance}% êµ´ë¦¼:{roll}");
             }
         }
     }
@@ -1272,7 +1272,7 @@ public class CombatHandler : MonoBehaviour
         if (TurnManager.Instance.defenseCharacter == protector)
             TurnManager.Instance.defenseCharacter = null;
 
-        Debug.Log($"{protector.character.Name}ÀÇ º¸È£¿ë ´ëÀÀ Å¥°¡ µ¹ÆÄ·Î Ãë¼ÒµÊ");
+        Debug.Log($"{protector.character.Name}ì˜ ë³´í˜¸ìš© ëŒ€ì‘ íê°€ ëŒíŒŒë¡œ ì·¨ì†Œë¨");
     }
 
     private void RegisterSkillRuntimeResult(
@@ -1331,7 +1331,7 @@ public class CombatHandler : MonoBehaviour
         runtime.killCount = 0;
         runtime.damageCount = 0;
 
-        Debug.Log($"{skill.skillName} -> {evolvedSkill.skillName} ÁøÈ­");
+        Debug.Log($"{skill.skillName} -> {evolvedSkill.skillName} ì§„í™”");
     }
 
     public void ResolveConcealForSkillQueue()
@@ -1381,7 +1381,7 @@ public class CombatHandler : MonoBehaviour
         queuedSkill.revealLevel = SkillConcealUtility.GetRevealLevelByRoll(chance, roll);
         queuedSkill.concealResolved = true;
 
-        Debug.Log($"{queuedSkill.skill.skillName} ÀºÆó °£ÆÄ ÆÇÁ¤: {queuedSkill.revealLevel} / È®·ü {chance}, ±¼¸² {roll}");
+        Debug.Log($"{queuedSkill.skill.skillName} ì€í ê°„íŒŒ íŒì •: {queuedSkill.revealLevel} / í™•ë¥  {chance}, êµ´ë¦¼ {roll}");
     }
 
     public void AutoAssignDefaultCounterSkills()
@@ -1405,7 +1405,7 @@ public class CombatHandler : MonoBehaviour
             target.combatHandler.counterSkillQueue.Add(data);
             target.combatHandler.RefreshCounterSkillQueueUI(target);
 
-            Debug.Log($"{target.character.Name} - {defaultCounterSkill.skillName} ÀÚµ¿ ´ëÀÀ ½ºÅ³ µî·Ï");
+            Debug.Log($"{target.character.Name} - {defaultCounterSkill.skillName} ìë™ ëŒ€ì‘ ìŠ¤í‚¬ ë“±ë¡");
         }
     }
 
@@ -1423,11 +1423,11 @@ public class CombatHandler : MonoBehaviour
     private void UpdateSynergies()
     {
         // TODO:
-        // SynergyManager°¡ SkillBase ±âÁØÀÌ¸é ¿©±â¼­ ÀÓ½Ã ºñÈ°¼ºÈ­.
-        // ÀÌÈÄ SynergyManager¸¦ SkillDefinitionSO ±âÁØÀ¸·Î ¹Ù²Û µÚ ¿¬°á.
+        // SynergyManagerê°€ SkillBase ê¸°ì¤€ì´ë©´ ì—¬ê¸°ì„œ ì„ì‹œ ë¹„í™œì„±í™”.
+        // ì´í›„ SynergyManagerë¥¼ SkillDefinitionSO ê¸°ì¤€ìœ¼ë¡œ ë°”ê¾¼ ë’¤ ì—°ê²°.
     }
 
-    private void EndSynergyEffects() // ½Ã³ÊÁö ÀÌÆåÆ® ±¸Çö º¸·ù·Î ÀÓ½Ã ºñÈ°¼ºÈ­   
+    private void EndSynergyEffects() // ì‹œë„ˆì§€ ì´í™íŠ¸ êµ¬í˜„ ë³´ë¥˜ë¡œ ì„ì‹œ ë¹„í™œì„±í™”   
     {
         /*
         foreach (var effect in activeSynergyEffects)
@@ -1461,7 +1461,7 @@ public class CombatHandler : MonoBehaviour
 
         if (availableSkills.Count == 0)
         {
-            Debug.Log("»ç¿ë °¡´ÉÇÑ ½ºÅ³ÀÌ ¾ø½À´Ï´Ù.");
+            Debug.Log("ì‚¬ìš© ê°€ëŠ¥í•œ ìŠ¤í‚¬ì´ ì—†ìŠµë‹ˆë‹¤.");
             return null;
         }
 
@@ -1579,7 +1579,7 @@ public class CombatHandler : MonoBehaviour
 
         if (enemies.Count == 0)
         {
-            Debug.Log("°ø°İÇÒ ´ë»óÀÌ ¾ø½À´Ï´Ù.");
+            Debug.Log("ê³µê²©í•  ëŒ€ìƒì´ ì—†ìŠµë‹ˆë‹¤.");
             return null;
         }
 

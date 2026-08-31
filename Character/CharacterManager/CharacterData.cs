@@ -975,10 +975,13 @@ public class CharacterData
         int baseMaxMentality = stats.MaxMentality + stats.Wisdom / 5 + 1;
         int baseMaxStamina = stats.MaxStamina + stats.Speed / 5 + 1;
 
+        // 레벨업마다 인내 +1
+        int baseEndurance = stats.Endurance + Level - 1;
+
         int baseStaminaRecovery = stats.StaminaRecovery + stats.Vitality / 10 + 1;
         int baseMentalityRecovery = stats.MentalityRecovery + stats.Intelligence / 10 + 1;
-        int basePhysicalDefense = stats.PhysicalDefense + stats.Endurance / 5;
-        int baseMagicalDefense = stats.MagicalDefense + stats.Endurance / 5;
+        int basePhysicalDefense = stats.PhysicalDefense + baseEndurance / 5;
+        int baseMagicalDefense = stats.MagicalDefense + baseEndurance / 5;
         int basePhysicalAttack = stats.PhysicalAttack;
         int baseMagicalAttack = stats.MagicalAttack + stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
         int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));
@@ -1032,6 +1035,7 @@ public class CharacterData
         // 새로운 값으로 업데이트
         stats.StaminaRecovery = baseStaminaRecovery;
         stats.MentalityRecovery = baseMentalityRecovery;
+        stats.Endurance = baseEndurance;
         stats.PhysicalDefense = basePhysicalDefense;
         stats.MagicalDefense = baseMagicalDefense;
         stats.PhysicalAttack = basePhysicalAttack;

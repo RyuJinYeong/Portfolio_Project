@@ -6,8 +6,8 @@ public class InventorySlotData
     public int itemUid;
     public int count;
 
-    // ÀåºñÀÏ °æ¿ì¿¡¸¸ »ç¿ë.
-    // ¼ÒºñÇ°/Àç·á/±âÅ¸ ¾ÆÀÌÅÛÀÌ¸é null ¶Ç´Â ºó ¹®ÀÚ¿­.
+    // ì¥ë¹„ì¼ ê²½ìš°ì—ë§Œ ì‚¬ìš©.
+    // ì†Œë¹„í’ˆ/ì¬ë£Œ/ê¸°íƒ€ ì•„ì´í…œì´ë©´ null ë˜ëŠ” ë¹ˆ ë¬¸ìì—´.
     public string equipmentInstanceId;
 
     public bool IsGeneratedEquipment()

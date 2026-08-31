@@ -12,7 +12,7 @@ public static class TraitManager
 
         if (def == null)
         {
-            Debug.LogWarning($"Á¸ÀçÇÏÁö ¾Ê´Â Æ¯¼º IDÀÔ´Ï´Ù: {traitId}");
+            Debug.LogWarning($"ì¡´ì¬í•˜ì§€ ì•ŠëŠ” íŠ¹ì„± IDì…ë‹ˆë‹¤: {traitId}");
             return;
         }
 
@@ -43,7 +43,7 @@ public static class TraitManager
 
         if (def == null)
         {
-            Debug.LogWarning($"Á¸ÀçÇÏÁö ¾Ê´Â Æ¯¼º IDÀÔ´Ï´Ù: {traitId}");
+            Debug.LogWarning($"ì¡´ì¬í•˜ì§€ ì•ŠëŠ” íŠ¹ì„± IDì…ë‹ˆë‹¤: {traitId}");
             return;
         }
 

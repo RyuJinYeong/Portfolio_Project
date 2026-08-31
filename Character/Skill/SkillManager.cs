@@ -23,7 +23,7 @@ public static class SkillManager
 
         if (character.Skills.Any(s => s.skillUid == skillUid))
         {
-            Debug.Log("ÀÌ¹Ì Á¸ÀçÇÏ´Â ½ºÅ³ ½Àµæ ½Ãµµ");
+            Debug.Log("ì´ë¯¸ ì¡´ì¬í•˜ëŠ” ìŠ¤í‚¬ ìŠµë“ ì‹œë„");
             return false;
         }
 
@@ -31,7 +31,7 @@ public static class SkillManager
 
         if (def == null)
         {
-            Debug.LogWarning($"Á¸ÀçÇÏÁö ¾Ê´Â ½ºÅ³ UIDÀÔ´Ï´Ù: {skillUid}");
+            Debug.LogWarning($"ì¡´ì¬í•˜ì§€ ì•ŠëŠ” ìŠ¤í‚¬ UIDì…ë‹ˆë‹¤: {skillUid}");
             return false;
         }
 
@@ -47,7 +47,7 @@ public static class SkillManager
 
         TryAutoRegisterQuickSlot(character, runtime);
 
-        Debug.Log($"{def.skillName} ½ºÅ³ ½Àµæ");
+        Debug.Log($"{def.skillName} ìŠ¤í‚¬ ìŠµë“");
 
         return true;
     }
@@ -69,7 +69,7 @@ public static class SkillManager
 
         if (runtime == null)
         {
-            Debug.Log("Á¸ÀçÇÏÁö ¾Ê´Â ½ºÅ³ »èÁ¦ ½Ãµµ");
+            Debug.Log("ì¡´ì¬í•˜ì§€ ì•ŠëŠ” ìŠ¤í‚¬ ì‚­ì œ ì‹œë„");
             return false;
         }
 

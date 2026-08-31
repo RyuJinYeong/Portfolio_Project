@@ -6,31 +6,31 @@ public class DamageHandler
 {
     public int TakeDamage(CharacterData character, int damage, SkillType damageType, SkillAttribute damageAttribute)
     {
-        //ÀúÇ×·Â, ¹æ¾î·Â, ¼Ó¼º Æ¯È­ °è»ê
+        //ì €í•­ë ¥, ë°©ì–´ë ¥, ì†ì„± íŠ¹í™” ê³„ì‚°
         int reducedDamage = CalculateDamage(damage, character.FinalStats, damageType, damageAttribute);
 
-        //¹æ¾îµµ Àû¿ë - ¸¶¹ı ¹æ¾îµµ°¡ ¿ì¼± Àû¿ë
+        //ë°©ì–´ë„ ì ìš© - ë§ˆë²• ë°©ì–´ë„ê°€ ìš°ì„  ì ìš©
         int remainingDamage = ApplyArmor(character, reducedDamage);
 
-        // ³²Àº µ¥¹ÌÁö¸¦ Ã¼·Â¿¡¼­ Â÷°¨
+        // ë‚¨ì€ ë°ë¯¸ì§€ë¥¼ ì²´ë ¥ì—ì„œ ì°¨ê°
         character.CurrentHp -= remainingDamage;
 
         if (character.CurrentHp <= 0)
         {
             character.CurrentHp = 0;
             character.IsAlive = false;
-            // Ä³¸¯ÅÍ »ç¸Á Ã³¸® ·ÎÁ÷ Ãß°¡
+            // ìºë¦­í„° ì‚¬ë§ ì²˜ë¦¬ ë¡œì§ ì¶”ê°€
         }
 
-        return reducedDamage; // ÃÖÁ¾ µ¥¹ÌÁö ¹İÈ¯
+        return reducedDamage; // ìµœì¢… ë°ë¯¸ì§€ ë°˜í™˜
     }
 
-    // ¹æ¾îµµ Àû¿ë ¸Ş¼­µå
+    // ë°©ì–´ë„ ì ìš© ë©”ì„œë“œ
     private int ApplyArmor(CharacterData character, int damage)
     {
         int remainingDamage = damage;
 
-        // ¸¶¹ı ¹æ¾îµµ Àû¿ë - ¹°¸® ¹æ¾îµµ º¸´Ù ¸ÕÀú Àû¿ë
+        // ë§ˆë²• ë°©ì–´ë„ ì ìš© - ë¬¼ë¦¬ ë°©ì–´ë„ ë³´ë‹¤ ë¨¼ì € ì ìš©
         if (character.MagicalArmor > 0)
         {
             if (remainingDamage <= character.MagicalArmor)
@@ -45,7 +45,7 @@ public class DamageHandler
             }
         }
 
-        // ¹°¸® ¹æ¾îµµ Àû¿ë
+        // ë¬¼ë¦¬ ë°©ì–´ë„ ì ìš©
         if (character.PhysicalArmor > 0)
         {
             if (remainingDamage <= character.PhysicalArmor)
@@ -66,9 +66,9 @@ public class DamageHandler
     public int CalculateDamage(int baseDamage, CharacterStats stats, SkillType type, SkillAttribute attribute)
     {
         int resistance = 0;
-        int affinityBonus = 0;  // ¼Ó¼º Æ¯È­·Î ÀÎÇÑ Ãß°¡ µ¥¹ÌÁö
+        int affinityBonus = 0;  // ì†ì„± íŠ¹í™”ë¡œ ì¸í•œ ì¶”ê°€ ë°ë¯¸ì§€
 
-        // ¼Ó¼º ÀúÇ× Àû¿ë
+        // ì†ì„± ì €í•­ ì ìš©
         switch (attribute)
         {
             case SkillAttribute.Fire:
@@ -95,16 +95,16 @@ public class DamageHandler
                 resistance = stats.SmashResistance;
                 affinityBonus = stats.SmashAffinity;
                 break;
-                // ÇÊ¿ä¿¡ µû¶ó ¼Ó¼º Ãß°¡...
+                // í•„ìš”ì— ë”°ë¼ ì†ì„± ì¶”ê°€...
         }
 
-        // ¼Ó¼º ÀúÇ×¿¡ µû¸¥ µ¥¹ÌÁö °¨¼Ò
+        // ì†ì„± ì €í•­ì— ë”°ë¥¸ ë°ë¯¸ì§€ ê°ì†Œ
         int reducedDamage = baseDamage * (100 - resistance) / 100;
 
-        // ¼Ó¼º Æ¯È­¿¡ µû¸¥ Ãß°¡ µ¥¹ÌÁö Àû¿ë
-        reducedDamage += reducedDamage * affinityBonus / 100; // ¼Ó¼º Æ¯È­¿¡ µû¸¥ µ¥¹ÌÁö ¹èÀ² Àû¿ë
+        // ì†ì„± íŠ¹í™”ì— ë”°ë¥¸ ì¶”ê°€ ë°ë¯¸ì§€ ì ìš©
+        reducedDamage += reducedDamage * affinityBonus / 100; // ì†ì„± íŠ¹í™”ì— ë”°ë¥¸ ë°ë¯¸ì§€ ë°°ìœ¨ ì ìš©
 
-        // ¹°¸®/¸¶¹ı ¹æ¾î¿¡ µû¸¥ µ¥¹ÌÁö °¨¼Ò
+        // ë¬¼ë¦¬/ë§ˆë²• ë°©ì–´ì— ë”°ë¥¸ ë°ë¯¸ì§€ ê°ì†Œ
         switch (type)
         {
             case SkillType.Physical:
@@ -115,6 +115,6 @@ public class DamageHandler
                 break;
         }
 
-        return reducedDamage < 0 ? 0 : reducedDamage; // µ¥¹ÌÁö´Â 0º¸´Ù ÀÛ¾ÆÁú ¼ö ¾ø½À´Ï´Ù.
+        return reducedDamage < 0 ? 0 : reducedDamage; // ë°ë¯¸ì§€ëŠ” 0ë³´ë‹¤ ì‘ì•„ì§ˆ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.
     }
 }

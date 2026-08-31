@@ -15,8 +15,15 @@ public class GameDataRegistry : MonoBehaviour
     [Header("Traits")]
     public List<TraitDefinitionSO> traits = new();
 
+    [Header("Character Creation Traits")]
+    public List<TraitDefinitionSO> characterCreationTraits = new();
+
     [Header("Origins")]
     public List<OriginDefinitionSO> origins = new();
+
+    [Header("Mercenaries")]
+    public List<MercenaryDefinitionSO> mercenaryDefinitions = new();
+    [Min(1)] public int recruitmentOfferCount = 5;
 
     [Header("Status Effects")]
     [SerializeField] private List<StatusEffectDefinitionSO> statusEffects = new();
@@ -384,6 +391,12 @@ public class GameDataRegistry : MonoBehaviour
     }
 
 
+    public List<TraitDefinitionSO> GetCharacterCreationTraits()
+    {
+        return characterCreationTraits;
+    }
+
+
     public List<TraitDefinitionSO> GetTraitsByGrade(TraitGrade grade)
     {
         if (traitGradeMap.TryGetValue(grade, out List<TraitDefinitionSO> list))
@@ -427,6 +440,11 @@ public class GameDataRegistry : MonoBehaviour
     public List<OriginDefinitionSO> GetAllOrigins()
     {
         return origins;
+    }
+
+    public List<MercenaryDefinitionSO> GetMercenaryDefinitions()
+    {
+        return mercenaryDefinitions;
     }
 
     #endregion

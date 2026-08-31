@@ -10,7 +10,9 @@ public class InventoryItemSlotUI : MonoBehaviour,
     IPointerExitHandler
 {
     public RawImage icon;
+    public Texture emptyIcon;
     public Image frame;
+    public Color emptyFrameColor = Color.white;
     public TMP_Text nameText;
     public TMP_Text countText;
     public Text legacyNameText;
@@ -34,8 +36,8 @@ public class InventoryItemSlotUI : MonoBehaviour,
 
         if (icon != null)
         {
-            icon.texture = item != null ? item.icon : null;
-            icon.enabled = item != null && item.icon != null;
+            icon.texture = item != null && item.icon != null ? item.icon : emptyIcon;
+            icon.enabled = icon.texture != null;
         }
 
         if (nameText != null)
@@ -59,7 +61,7 @@ public class InventoryItemSlotUI : MonoBehaviour,
         }
 
         if (frame != null)
-            frame.color = GetFrameColor(slot, item);
+            frame.color = slot == null ? emptyFrameColor : GetFrameColor(slot, item);
 
         SetSelected(false);
     }
@@ -80,12 +82,34 @@ public class InventoryItemSlotUI : MonoBehaviour,
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (Slot != null && TooltipManager.Instance != null)
+        if (Slot == null)
+            return;
+
+        if (InventoryItemTooltipUI.Instance != null)
+        {
+            InventoryUIController controller = InventoryUIController.Instance;
+            CharacterManager comparisonCharacter = controller != null &&
+                                                   controller.equipmentWindow != null &&
+                                                   controller.equipmentWindow.gameObject.activeInHierarchy
+                ? controller.SelectedCharacter
+                : null;
+
+            InventoryItemTooltipUI.Instance.Show(
+                Slot,
+                comparisonCharacter,
+                Input.mousePosition);
+        }
+        else if (TooltipManager.Instance != null)
+        {
             TooltipManager.Instance.ShowItemTooltip(Slot, Input.mousePosition);
+        }
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
+        if (InventoryItemTooltipUI.Instance != null)
+            InventoryItemTooltipUI.Instance.Hide();
+
         if (TooltipManager.Instance != null)
             TooltipManager.Instance.HideTooltip();
     }

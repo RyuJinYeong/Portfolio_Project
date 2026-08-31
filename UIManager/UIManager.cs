@@ -1,9 +1,7 @@
-using SoftKitty.InventoryEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,36 +10,49 @@ public class UIManager : MonoBehaviour
     public static UIManager Instance { get; private set; }
 
     [Header("Roots")]
-    public GameObject battleUiRoot; // ÀüÅõ UI ·çÆ®
-    public GameObject townUiRoot;   // ¸¶À» UI ·çÆ®
-    public GameObject TownMenuCanvas; // ¸¶À» UI - ¿ùµå ½ºÆäÀÌ½º ¸Ş´º Äµ¹ö½º
+    public GameObject battleUiRoot; // ì „íˆ¬ UI ë£¨íŠ¸
+    public GameObject townUiRoot;   // ë§ˆì„ UI ë£¨íŠ¸
+    public GameObject TownMenuCanvas; // ë§ˆì„ UI - ì›”ë“œ ìŠ¤í˜ì´ìŠ¤ ë©”ë‰´ ìº”ë²„ìŠ¤
 
-    [Header("Town Panel - Menu")]
-    public GameObject CharacterManagePanel; // TownUI ÇÏÀ§ ¸Ş´º ÆĞ³Î (Ä³¸¯ÅÍ °ü¸®)
-    public GameObject RecruitPanel;         // TownUI ÇÏÀ§ ¸Ş´º ÆĞ³Î (°í¿ë)
-    public GameObject QuestBoardPanel;      // TownUI ÇÏÀ§ ¸Ş´º ÆĞ³Î (Äù½ºÆ® °Ô½ÃÆÇ)
+    [Header("Town Buttons")]
+    public Button storageButton;
+    public Button characterManagementButton;
+    public Button questButton;
+    public Button recruitButton;
 
-    // ¿ÜºÎ(ÆÄÆ¼Æí¼º/°ÔÀÓ¸Å´ÏÀú)·Î ÀÌº¥Æ® ³Ñ°ÜÁÙ ÈÅ
+    [Header("Town Windows")]
+    public TownCharacterManagementPanel characterManagementPanel;
+    public InventoryUIController inventoryUIController;
+    public GameObject questPanel;
+    public GameObject recruitPanel;
+
+    [Header("Camera Focus")]
+    public string storageFocusKey = "Storage";
+    public string characterManagementFocusKey = "CharacterManage";
+    public string questFocusKey = "Quest";
+    public string recruitFocusKey = "Employ";
+
+    // ì™¸ë¶€(íŒŒí‹°í¸ì„±/ê²Œì„ë§¤ë‹ˆì €)ë¡œ ì´ë²¤íŠ¸ ë„˜ê²¨ì¤„ í›…
     public System.Action<QuestDef> onQuestAcceptRequest;
 
-    CharacterManagementPanel _characterManagePanel;
     QuestPanel _questPanel;
+    private bool townWindowSession;
 
-    public GameObject turnOrderPanel;  // »ó´Ü ÅÏ Å¥ ÆĞ³Î
-    public GameObject characterPortraitPrefab;  // Ä³¸¯ÅÍ ÃÊ»óÈ­ ÇÁ¸®ÆÕ
+    public GameObject turnOrderPanel;  // ìƒë‹¨ í„´ í íŒ¨ë„
+    public GameObject characterPortraitPrefab;  // ìºë¦­í„° ì´ˆìƒí™” í”„ë¦¬íŒ¹
 
-    public TextMeshProUGUI turnTimerText; // ³²Àº ÅÏ ½Ã°£À» Ç¥½ÃÇÏ´Â ÅØ½ºÆ®
+    public TextMeshProUGUI turnTimerText; // ë‚¨ì€ í„´ ì‹œê°„ì„ í‘œì‹œí•˜ëŠ” í…ìŠ¤íŠ¸
 
-    public GameObject damageTextPrefab;  // µ¥¹ÌÁö ÅØ½ºÆ® ÇÁ¸®ÆÕ
+    public GameObject damageTextPrefab;  // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ í”„ë¦¬íŒ¹
 
-    public Button turnEndButton; // ÅÏ Á¾·á ¹öÆ° Ãß°¡
-    public Button counterTurnEndButton; // ÀÚµ¿ ´ëÀÀ ¹öÆ° Ãß°¡
+    public Button turnEndButton; // í„´ ì¢…ë£Œ ë²„íŠ¼ ì¶”ê°€
+    public Button counterTurnEndButton; // ìë™ ëŒ€ì‘ ë²„íŠ¼ ì¶”ê°€
 
-    public GameObject synergyInfoPanel; // ½Ã³ÊÁö Á¤º¸°¡ Ç¥½ÃµÇ´Â ÆĞ³Î
+    public GameObject synergyInfoPanel; // ì‹œë„ˆì§€ ì •ë³´ê°€ í‘œì‹œë˜ëŠ” íŒ¨ë„
 
-    public GameObject skillQueueFramePrefab; // ½ºÅ³ Å¥¸¦ Ç¥½ÃÇÒ ÇÁ·¹ÀÓ Prefab
-    public GameObject skillIconPrefab; // ½ºÅ³ ¾ÆÀÌÄÜ Prefab
-    public Transform counterSkillPanel; // ÇÏ´ÜºÎÀÇ ¹æ¾îÀÚ, ¹æ¾î ´ë»ó ½ºÅ³ Á¤º¸ ÆĞ³Î    
+    public GameObject skillQueueFramePrefab; // ìŠ¤í‚¬ íë¥¼ í‘œì‹œí•  í”„ë ˆì„ Prefab
+    public GameObject skillIconPrefab; // ìŠ¤í‚¬ ì•„ì´ì½˜ Prefab
+    public Transform counterSkillPanel; // í•˜ë‹¨ë¶€ì˜ ë°©ì–´ì, ë°©ì–´ ëŒ€ìƒ ìŠ¤í‚¬ ì •ë³´ íŒ¨ë„    
 
     public RawImage characterPortrait;
     public TextMeshProUGUI characterName;
@@ -62,118 +73,308 @@ public class UIManager : MonoBehaviour
     public GameObject skillBar;
     public GameObject infoPanel;
     
-    // ÇÖ¹Ù ¹öÆ° ¿¬°áÀ» À§ÇÑ ¹è¿­
-    public GameObject[] hotbarButtons = new GameObject[12]; // 12°³ÀÇ ÇÖ¹Ù ¹öÆ°À» À§ÇÑ GameObject ¹è¿­
+    // í•«ë°” ë²„íŠ¼ ì—°ê²°ì„ ìœ„í•œ ë°°ì—´
+    public GameObject[] hotbarButtons = new GameObject[12]; // 12ê°œì˜ í•«ë°” ë²„íŠ¼ì„ ìœ„í•œ GameObject ë°°ì—´
 
     public CharacterTargeting characterTargeting;
 
-    public InventoryHolder storage_temp;
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
 
-        _characterManagePanel = CharacterManagePanel.GetComponent<CharacterManagementPanel>();
+        Instance = this;
 
-        _questPanel = QuestBoardPanel.GetComponent<QuestPanel>();
+        if (storageButton != null &&
+            characterManagementPanel != null &&
+            storageButton.transform.IsChildOf(characterManagementPanel.transform))
+        {
+            GameObject townMenuCanvas = GameObject.Find("TownMenuCanvas");
+            Transform townStorageButton = townMenuCanvas != null
+                ? townMenuCanvas.transform.Find("StorageButton")
+                : null;
+
+            if (townStorageButton != null)
+                storageButton = townStorageButton.GetComponent<Button>();
+        }
+
+        if (characterManagementPanel != null)
+            characterManagementPanel.uiManager = this;
+
+        _questPanel = questPanel != null ? questPanel.GetComponent<QuestPanel>() : null;
 
         WireQuestPanel();
+    }
+
+    private void OnEnable()
+    {
+        if (storageButton != null)
+            storageButton.onClick.AddListener(OpenCompanyStorage);
+
+        if (characterManagementButton != null)
+            characterManagementButton.onClick.AddListener(OpenCharacterManagement);
+
+        if (questButton != null)
+            questButton.onClick.AddListener(OpenQuest);
+
+        if (recruitButton != null)
+            recruitButton.onClick.AddListener(OpenRecruit);
+    }
+
+    private void OnDisable()
+    {
+        if (storageButton != null)
+            storageButton.onClick.RemoveListener(OpenCompanyStorage);
+
+        if (characterManagementButton != null)
+            characterManagementButton.onClick.RemoveListener(OpenCharacterManagement);
+
+        if (questButton != null)
+            questButton.onClick.RemoveListener(OpenQuest);
+
+        if (recruitButton != null)
+            recruitButton.onClick.RemoveListener(OpenRecruit);
     }
 
     private void WireQuestPanel()
     {
         if (_questPanel == null) return;
 
-        // Äù½ºÆ® Ä«µå¿¡¼­ "¼ö¶ô" ´­·¶À» ¶§ ¡æ »óÃşÀ¸·Î ÀÌº¥Æ® Àü´Ş(ÆÄÆ¼ Æí¼º È­¸éÀÌ ¹Ş°Ô)
+        // í€˜ìŠ¤íŠ¸ ì¹´ë“œì—ì„œ "ìˆ˜ë½" ëˆŒë €ì„ ë•Œ â†’ ìƒì¸µìœ¼ë¡œ ì´ë²¤íŠ¸ ì „ë‹¬(íŒŒí‹° í¸ì„± í™”ë©´ì´ ë°›ê²Œ)
         _questPanel.OnAcceptRequest = def =>
         {
-            CloseAllTownOverlays();
-            // ¿©±â¼­ ¹Ù·Î Accept±îÁö ÅÂ¿ìÁö ¸»°í, ÆÄÆ¼ Æí¼ºÀ¸·Î À§ÀÓ
+            CloseManagedWindows();
+            ReturnCameraWhenAllWindowsClosed();
+            // ì—¬ê¸°ì„œ ë°”ë¡œ Acceptê¹Œì§€ íƒœìš°ì§€ ë§ê³ , íŒŒí‹° í¸ì„±ìœ¼ë¡œ ìœ„ì„
             onQuestAcceptRequest?.Invoke(def);
         };
     }
 
     public void Update()
     {
-        // ESC: Å¸¿î ÆĞ³Î > ´İ±â, ±× ¿Ü¿£ Æ÷Ä¿½º È¨
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (townUiRoot && townUiRoot.activeInHierarchy &&
-                ((RecruitPanel && RecruitPanel.activeSelf) || (CharacterManagePanel && CharacterManagePanel.activeSelf)))
-            {
-                CloseAllTownOverlays();
-                CameraFocusRig.Instance?.FocusHome();
-            }
+            if (townWindowSession)
+                CloseTopWindow();
             else if (CameraFocusRig.Instance && CameraFocusRig.Instance.isFocused)
-            {
                 CameraFocusRig.Instance.FocusHome();
-            }
         }
+
+        if (townWindowSession)
+            ReturnCameraWhenAllWindowsClosed();
     }
 
     public void UISwitch(UIMode mode)
     {
         bool isTown = (mode == UIMode.Town);
 
-        // ·çÆ® Åä±Û
+        // ë£¨íŠ¸ í† ê¸€
         if (townUiRoot) townUiRoot.SetActive(isTown);
         if (TownMenuCanvas) TownMenuCanvas.SetActive(isTown);
         if (battleUiRoot) battleUiRoot.SetActive(!isTown);
 
-        // Å¸¿î ÁøÀÔ ½Ã¿£ ¸ğµç ¼­ºê ÆĞ³Î ´İ°í ±âº» »óÅÂ·Î
-        if (isTown) CloseAllTownOverlays();
+        // íƒ€ìš´ ì§„ì… ì‹œì—” ëª¨ë“  ì„œë¸Œ íŒ¨ë„ ë‹«ê³  ê¸°ë³¸ ìƒíƒœë¡œ
+        if (isTown)
+        {
+            CloseManagedWindows();
+            townWindowSession = false;
+        }
     }
 
-    #region ¸¶À»³» UI ¹öÆ° Á¶ÀÛ
+    #region ë§ˆì„ë‚´ UI ë²„íŠ¼ ì¡°ì‘
 
-    public void OnClick_Storage()
+    public void OpenCompanyStorage()
     {
-        CameraFocusRig.Instance?.Focus("Storage");
+        bool keepCharacterManagement = characterManagementPanel != null &&
+                                       characterManagementPanel.gameObject.activeInHierarchy;
 
-        CloseAllTownOverlays();
+        BeginTownWindowSession(
+            keepCharacterManagement ? characterManagementFocusKey : storageFocusKey);
 
-        storage_temp.OpenWindow(); // ÀÓ½Ã Ã¢°í ¿­±â - PlayerDataÀÇ InventoryHolder ÇÊµå¿Í ¿¬µ¿ ÇÊ¿ä -> DB ¹é¾÷¿ë
+        if (keepCharacterManagement)
+            inventoryUIController?.CloseAll();
+        else
+            CloseManagedWindows();
 
-        /*
-        PlayerData currentPlayer = PlayerManager.Instance.GetCurrentPlayerData();
-        
-        currentPlayer.storage.OpenWindow();  // Ã¢°í ¿­±â
-        */
+        if (inventoryUIController == null)
+            return;
+
+        inventoryUIController.SetSelectedCharacter(null);
+        SetWindowPosition(inventoryUIController.companyStorageWindow, Vector2.zero);
+        inventoryUIController.OpenCompanyStorage();
+
+        if (keepCharacterManagement && inventoryUIController.companyStorageWindow != null)
+            inventoryUIController.companyStorageWindow.transform.SetAsLastSibling();
     }
 
-    public void Open_Storage()
+    public void OpenCharacterManagement()
     {
-        storage_temp.OpenWindow();
+        BeginTownWindowSession(characterManagementFocusKey);
+        CloseManagedWindows();
+
+        if (characterManagementPanel != null)
+            characterManagementPanel.OpenAndBuild();
     }
 
-    public void OnClick_CharacterManage()
+    public void OpenQuest()
     {
-        CloseAllTownOverlays();
+        BeginTownWindowSession(questFocusKey);
+        CloseManagedWindows();
 
-        CharacterManagePanel?.SetActive(true);
-        _characterManagePanel.OpenAndBuild();
+        if (questPanel != null)
+            questPanel.SetActive(true);
     }
 
-    public void OnClick_Recruit()
+    public void OpenRecruit()
     {
-        CloseAllTownOverlays();        
-        RecruitPanel?.SetActive(true);
+        BeginTownWindowSession(recruitFocusKey);
+        CloseManagedWindows();
+
+        if (recruitPanel != null)
+            recruitPanel.SetActive(true);
     }
 
-    public void OnClick_QuestBoard()
+    public void OpenCharacterEquipment(CharacterManager characterManager)
     {
-        CameraFocusRig.Instance?.Focus("Quest"); // Ä«¸Ş¶ó Æ÷Ä¿½º ÀÌµ¿ - Äù½ºÆ® ÆĞ³ÎÀº ¿ùµå ½ºÆäÀÌ½º Äµ¹ö½º¿¡ ÀÖ±â ¶§¹®¿¡ µû·Î ÆĞ³Î È°¼ºÈ­°¡ ÇÊ¿äÇÏÁö ¾ÊÀ½.
+        if (characterManager == null || inventoryUIController == null)
+            return;
+
+        BeginTownWindowSession(characterManagementFocusKey);
+        inventoryUIController.SetSelectedCharacter(characterManager);
+        inventoryUIController.CloseAttachedStorage();
+        SetWindowPosition(inventoryUIController.equipmentWindow, Vector2.zero);
+        inventoryUIController.OpenEquipment();
     }
-    public void CloseAllTownOverlays()
-    {        
-        CharacterManagePanel?.SetActive(false);
-        RecruitPanel?.SetActive(false);
+
+    public void OpenCharacterSkills(CharacterManager characterManager)
+    {
+        if (characterManager == null || inventoryUIController == null)
+            return;
+
+        BeginTownWindowSession(characterManagementFocusKey);
+        inventoryUIController.SetSelectedCharacter(characterManager);
+        inventoryUIController.OpenSkills();
+    }
+
+    public void CloseCharacterManagement()
+    {
+        if (characterManagementPanel != null)
+            characterManagementPanel.gameObject.SetActive(false);
+
+        ReturnCameraWhenAllWindowsClosed();
+    }
+
+    public void ReturnToTownCameraWhenIdle()
+    {
+        ReturnCameraWhenAllWindowsClosed();
+    }
+
+    public void CloseTopWindow()
+    {
+        if (inventoryUIController != null && IsOpen(inventoryUIController.skillWindow))
+        {
+            inventoryUIController.skillWindow.Close();
+            return;
+        }
+
+        if (inventoryUIController != null && IsOpen(inventoryUIController.equipmentWindow))
+        {
+            inventoryUIController.equipmentWindow.Close();
+            return;
+        }
+
+        if (inventoryUIController != null && IsOpen(inventoryUIController.companyStorageWindow))
+        {
+            inventoryUIController.companyStorageWindow.Close();
+            return;
+        }
+
+        if (inventoryUIController != null && IsOpen(inventoryUIController.expeditionInventoryWindow))
+        {
+            inventoryUIController.expeditionInventoryWindow.Close();
+            return;
+        }
+
+        if (characterManagementPanel != null &&
+            characterManagementPanel.gameObject.activeInHierarchy)
+        {
+            characterManagementPanel.gameObject.SetActive(false);
+            return;
+        }
+
+        if (recruitPanel != null && recruitPanel.activeInHierarchy)
+        {
+            recruitPanel.SetActive(false);
+            return;
+        }
+
+        if (questPanel != null && questPanel.activeInHierarchy)
+            questPanel.SetActive(false);
+    }
+
+    public void CloseManagedWindows()
+    {
+        if (inventoryUIController != null)
+            inventoryUIController.CloseAll();
+
+        if (characterManagementPanel != null)
+            characterManagementPanel.gameObject.SetActive(false);
+
+        if (recruitPanel != null)
+            recruitPanel.SetActive(false);
+
+        if (questPanel != null)
+            questPanel.SetActive(false);
+    }
+
+    private void BeginTownWindowSession(string focusKey)
+    {
+        townWindowSession = true;
+        CameraFocusRig.Instance?.Focus(focusKey);
+    }
+
+    private void ReturnCameraWhenAllWindowsClosed()
+    {
+        if (!townWindowSession || HasOpenManagedWindow())
+            return;
+
+        townWindowSession = false;
+        CameraFocusRig.Instance?.FocusHome();
+    }
+
+    private bool HasOpenManagedWindow()
+    {
+        if (characterManagementPanel != null &&
+            characterManagementPanel.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
+        if ((recruitPanel != null && recruitPanel.activeInHierarchy) ||
+            (questPanel != null && questPanel.activeInHierarchy))
+        {
+            return true;
+        }
+
+        return inventoryUIController != null &&
+               (IsOpen(inventoryUIController.companyStorageWindow) ||
+                IsOpen(inventoryUIController.expeditionInventoryWindow) ||
+                IsOpen(inventoryUIController.equipmentWindow) ||
+                IsOpen(inventoryUIController.skillWindow));
+    }
+
+    private static bool IsOpen(MonoBehaviour window)
+    {
+        return window != null && window.gameObject.activeInHierarchy;
+    }
+
+    private static void SetWindowPosition(MonoBehaviour window, Vector2 position)
+    {
+        if (window != null && window.transform is RectTransform rect)
+            rect.anchoredPosition = position;
     }
 
     #endregion
@@ -182,61 +383,61 @@ public class UIManager : MonoBehaviour
 
 
 
-    // µ¥¹ÌÁö ÆË¾÷ »ı¼º
+    // ë°ë¯¸ì§€ íŒì—… ìƒì„±
     public void ShowDamage(int damageAmount, Vector3 worldPosition)
     {
-        // ¿ùµå ÁÂÇ¥¸¦ ½ºÅ©¸° ÁÂÇ¥·Î º¯È¯
-        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2);  // Ä³¸¯ÅÍ À§ÂÊ¿¡ Ç¥½ÃµÇµµ·Ï À§Ä¡ Á¶Á¤
+        // ì›”ë“œ ì¢Œí‘œë¥¼ ìŠ¤í¬ë¦° ì¢Œí‘œë¡œ ë³€í™˜
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2);  // ìºë¦­í„° ìœ„ìª½ì— í‘œì‹œë˜ë„ë¡ ìœ„ì¹˜ ì¡°ì •
 
-        // µ¥¹ÌÁö ÅØ½ºÆ® ÀÎ½ºÅÏ½º »ı¼º ¹× Äµ¹ö½ºÀÇ ÀÚ½ÄÀ¸·Î Ãß°¡
+        // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ ì¸ìŠ¤í„´ìŠ¤ ìƒì„± ë° ìº”ë²„ìŠ¤ì˜ ìì‹ìœ¼ë¡œ ì¶”ê°€
         GameObject damageTextInstance = Instantiate(damageTextPrefab, this.transform);
         damageTextInstance.transform.position = screenPosition;
 
         TextMeshProUGUI damageText = damageTextInstance.GetComponent<TextMeshProUGUI>();
 
-        // µ¥¹ÌÁö ÅØ½ºÆ® ¼³Á¤ (-n Çü½Ä, »¡°£»ö)
+        // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ ì„¤ì • (-n í˜•ì‹, ë¹¨ê°„ìƒ‰)
         damageText.text = $"-{damageAmount}";
         damageText.color = Color.red;
 
-        // ÅØ½ºÆ®¸¦ ÀÏÁ¤ ½Ã°£ µ¿¾È Ç¥½Ã ÈÄ »ç¶óÁö°Ô ÇÏ´Â ÄÚ·çÆ¾ È£Ãâ
+        // í…ìŠ¤íŠ¸ë¥¼ ì¼ì • ì‹œê°„ ë™ì•ˆ í‘œì‹œ í›„ ì‚¬ë¼ì§€ê²Œ í•˜ëŠ” ì½”ë£¨í‹´ í˜¸ì¶œ
         StartCoroutine(PopDamage(damageTextInstance));
     }
 
-    // µ¥¹ÌÁö ÅØ½ºÆ® Ç¥½Ã È¿°ú (ÆË¾÷ ÈÄ ¼­¼­È÷ »ç¶óÁü)
+    // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ í‘œì‹œ íš¨ê³¼ (íŒì—… í›„ ì„œì„œíˆ ì‚¬ë¼ì§)
     private IEnumerator PopDamage(GameObject damageTextInstance)
     {
         TextMeshProUGUI damageText = damageTextInstance.GetComponent<TextMeshProUGUI>();
 
-        // ÅØ½ºÆ® ÆË¾÷ È¿°ú
+        // í…ìŠ¤íŠ¸ íŒì—… íš¨ê³¼
         float t = 0f;
         Vector3 originalScale = damageText.transform.localScale;
 
         while (t < 1f)
         {
-            t += Time.deltaTime * 5f;  // ºü¸£°Ô ÆË¾÷ÇÏ´Â È¿°ú
-            damageText.transform.localScale = originalScale * (1f + t * 0.2f); // ½ºÄÉÀÏ Áõ°¡
-            damageText.transform.position += Vector3.up * Time.deltaTime * 20; // ¾à°£ À§·Î ÀÌµ¿
+            t += Time.deltaTime * 5f;  // ë¹ ë¥´ê²Œ íŒì—…í•˜ëŠ” íš¨ê³¼
+            damageText.transform.localScale = originalScale * (1f + t * 0.2f); // ìŠ¤ì¼€ì¼ ì¦ê°€
+            damageText.transform.position += Vector3.up * Time.deltaTime * 20; // ì•½ê°„ ìœ„ë¡œ ì´ë™
             yield return null;
         }
 
         yield return new WaitForSeconds(0.5f);
 
-        // ÅØ½ºÆ®°¡ ¼­¼­È÷ »ç¶óÁö¸ç Ãà¼ÒµÇ´Â È¿°ú
+        // í…ìŠ¤íŠ¸ê°€ ì„œì„œíˆ ì‚¬ë¼ì§€ë©° ì¶•ì†Œë˜ëŠ” íš¨ê³¼
         t = 1f;
         while (t > 0f)
         {
-            t -= Time.deltaTime * 3f;  // ¼­¼­È÷ »ç¶óÁö´Â ¼Óµµ
-            damageText.color = new Color(damageText.color.r, damageText.color.g, damageText.color.b, t); // ¾ËÆÄ °ª Á¶Á¤
+            t -= Time.deltaTime * 3f;  // ì„œì„œíˆ ì‚¬ë¼ì§€ëŠ” ì†ë„
+            damageText.color = new Color(damageText.color.r, damageText.color.g, damageText.color.b, t); // ì•ŒíŒŒ ê°’ ì¡°ì •
             damageText.transform.localScale = originalScale * (1f + t * 0.2f);
             yield return null;
         }
 
-        // ÅØ½ºÆ® ¿ÀºêÁ§Æ® »èÁ¦
+        // í…ìŠ¤íŠ¸ ì˜¤ë¸Œì íŠ¸ ì‚­ì œ
         Destroy(damageTextInstance);
     }
 
 
-    // ³²Àº ÅÏ ½Ã°£À» ¾÷µ¥ÀÌÆ®ÇÏ´Â ¸Ş¼­µå
+    // ë‚¨ì€ í„´ ì‹œê°„ì„ ì—…ë°ì´íŠ¸í•˜ëŠ” ë©”ì„œë“œ
     public void UpdateTurnTimer(float timeRemaining)
     {
         if (turnTimerText != null)
@@ -285,30 +486,30 @@ public class UIManager : MonoBehaviour
     }
 
 
-    // ÅÏ Å¥ ÀÌ¹ÌÁö ¾÷µ¥ÀÌÆ® ¸Ş¼­µå
+    // í„´ í ì´ë¯¸ì§€ ì—…ë°ì´íŠ¸ ë©”ì„œë“œ
     public void UpdateTurnOrder(List<CharacterManager> turnQueue, CharacterManager currentCharacter)
     {
-        // ±âÁ¸ ÅÏ Å¥ UI ÃÊ±âÈ­
+        // ê¸°ì¡´ í„´ í UI ì´ˆê¸°í™”
         foreach (Transform child in turnOrderPanel.transform)
         {
-            Destroy(child.gameObject);  // ±âÁ¸ ÃÊ»óÈ­ Á¦°Å
+            Destroy(child.gameObject);  // ê¸°ì¡´ ì´ˆìƒí™” ì œê±°
         }
 
-        // ÅÏ Å¥¿¡ ÀÖ´Â ¸ğµç Ä³¸¯ÅÍÀÇ ÃÊ»óÈ­ Ãß°¡
+        // í„´ íì— ìˆëŠ” ëª¨ë“  ìºë¦­í„°ì˜ ì´ˆìƒí™” ì¶”ê°€
         foreach (var characterManager in turnQueue)
         {
             GameObject portraitObj = Instantiate(characterPortraitPrefab, turnOrderPanel.transform);
             RawImage portraitImage = portraitObj.GetComponent<RawImage>();
             portraitImage.texture = characterManager.character.Portrait;
 
-            // ÇöÀç ÅÏÀÎ Ä³¸¯ÅÍ °­Á¶ Ç¥½Ã
+            // í˜„ì¬ í„´ì¸ ìºë¦­í„° ê°•ì¡° í‘œì‹œ
             if (characterManager == currentCharacter)
             {
-                portraitObj.transform.localScale = Vector3.one * 1.15f; // Å©±â 1.1¹è Áõ°¡
+                portraitObj.transform.localScale = Vector3.one * 1.15f; // í¬ê¸° 1.1ë°° ì¦ê°€
             }
             else
             {
-                portraitObj.transform.localScale = Vector3.one; // ±âº» Å©±â
+                portraitObj.transform.localScale = Vector3.one; // ê¸°ë³¸ í¬ê¸°
             }
         }
     }
@@ -335,13 +536,13 @@ public class UIManager : MonoBehaviour
         characterPhysicalDefense.text = $"{characterData.FinalStats.PhysicalDefense}";
         characterMagicDefense.text = $"{characterData.FinalStats.MagicalDefense}";
 
-        skillBar.SetActive(characterData.IsMine); // Ä³¸¯ÅÍ°¡ ÀÚ½ÅÀÇ °ÍÀÏ °æ¿ì ½ºÅ³¹Ù È°¼ºÈ­
+        skillBar.SetActive(characterData.IsMine); // ìºë¦­í„°ê°€ ìì‹ ì˜ ê²ƒì¼ ê²½ìš° ìŠ¤í‚¬ë°” í™œì„±í™”
 
-        // ÇÖ¹Ù ½ºÅ³ ¾÷µ¥ÀÌÆ®
+        // í•«ë°” ìŠ¤í‚¬ ì—…ë°ì´íŠ¸
         UpdateHotbarSkills(characterManager);
     }
 
-    // ÇÖ¹Ù ½ºÅ³ ¾÷µ¥ÀÌÆ® ¸Ş¼­µå
+    // í•«ë°” ìŠ¤í‚¬ ì—…ë°ì´íŠ¸ ë©”ì„œë“œ
     public void UpdateHotbarSkills(CharacterManager characterManager)
     {
         if (characterManager == null || characterManager.character == null)
@@ -510,9 +711,9 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    #region Ä«¿îÅÍ ½ºÅ³ ÆĞ³Î Á¶ÀÛ
+    #region ì¹´ìš´í„° ìŠ¤í‚¬ íŒ¨ë„ ì¡°ì‘
 
-    // ¹æ¾î ´ë»ó°ú ¹æ¾îÀÚ¸¦ ±â¹İÀ¸·Î ÆĞ³ÎÀ» ÃÊ±âÈ­ - ¹æ¾î´ë»ó ¼±ÅÃ ½Ã È£Ãâ
+    // ë°©ì–´ ëŒ€ìƒê³¼ ë°©ì–´ìë¥¼ ê¸°ë°˜ìœ¼ë¡œ íŒ¨ë„ì„ ì´ˆê¸°í™” - ë°©ì–´ëŒ€ìƒ ì„ íƒ ì‹œ í˜¸ì¶œ
     public void UpdateCounterSkillPanel(CharacterManager defender, CharacterManager target)
     {
         ClearCounterSkillPanel();
@@ -546,7 +747,7 @@ public class UIManager : MonoBehaviour
                 AddSkillFrame(target, filteredSkillQueue);
         }
     }
-    // ÆĞ³Î ÃÊ±âÈ­ (±âÁ¸ ÀÚ½Ä ¿ÀºêÁ§Æ® »èÁ¦)
+    // íŒ¨ë„ ì´ˆê¸°í™” (ê¸°ì¡´ ìì‹ ì˜¤ë¸Œì íŠ¸ ì‚­ì œ)
     public void ClearCounterSkillPanel()
     {
         foreach (Transform child in counterSkillPanel)
@@ -555,7 +756,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // ½ºÅ³ Å¥ ÇÁ·¹ÀÓ Ãß°¡
+    // ìŠ¤í‚¬ í í”„ë ˆì„ ì¶”ê°€
     private void AddSkillFrame(CharacterManager owner, List<SkillQueueData> skillQueue)
     {
         GameObject frame = Instantiate(skillQueueFramePrefab, counterSkillPanel);
@@ -569,7 +770,7 @@ public class UIManager : MonoBehaviour
         Transform skillPanel = frame.transform.Find("SkillPanel");
         if (skillPanel == null)
         {
-            Debug.LogWarning("SkillPanelÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù. Prefab ±¸Á¶ È®ÀÎ ÇÊ¿ä.");
+            Debug.LogWarning("SkillPanelì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤. Prefab êµ¬ì¡° í™•ì¸ í•„ìš”.");
             return;
         }
 
@@ -585,7 +786,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // ½ºÅ³ ¾ÆÀÌÄÜ Ãß°¡ (°ø°İ½ºÅ³)
+    // ìŠ¤í‚¬ ì•„ì´ì½˜ ì¶”ê°€ (ê³µê²©ìŠ¤í‚¬)
     private void AddSkillIcon(
     Transform parent,
     SkillQueueData attackQueueData,
@@ -707,21 +908,21 @@ public class UIManager : MonoBehaviour
     #endregion 
 
 
-    // ½Ã³ÊÁö Á¤º¸¸¦ UI¿¡ Ç¥½ÃÇÏ´Â ¸Ş¼­µå - ±¸Çö º¸·ù
+    // ì‹œë„ˆì§€ ì •ë³´ë¥¼ UIì— í‘œì‹œí•˜ëŠ” ë©”ì„œë“œ - êµ¬í˜„ ë³´ë¥˜
     public void UpdateSynergyUI()//List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)
     {
-        // È°¼ºÈ­µÈ ½Ã³ÊÁö¸¦ UI¿¡ Ç¥½Ã
+        // í™œì„±í™”ëœ ì‹œë„ˆì§€ë¥¼ UIì— í‘œì‹œ
         foreach (Transform child in synergyInfoPanel.transform)
         {
-            Destroy(child.gameObject);  // ±âÁ¸ UI ¾ÆÀÌÅÛ »èÁ¦
+            Destroy(child.gameObject);  // ê¸°ì¡´ UI ì•„ì´í…œ ì‚­ì œ
         }
         /*
         foreach (var synergy in allSynergies)
         {
-            //string status = activeSynergies.Contains(synergy.Name) ? " (È°¼ºÈ­)" : " (ºñÈ°¼º)";
+            //string status = activeSynergies.Contains(synergy.Name) ? " (í™œì„±í™”)" : " (ë¹„í™œì„±)";
             GameObject newSynergyText = new GameObject(synergy.Name + status);
             newSynergyText.transform.SetParent(synergyInfoPanel.transform);
-            newSynergyText.AddComponent<Text>().text = synergy.Name + status; // ÅØ½ºÆ® Ç¥½Ã
+            newSynergyText.AddComponent<Text>().text = synergy.Name + status; // í…ìŠ¤íŠ¸ í‘œì‹œ
         }*/
     }
 }

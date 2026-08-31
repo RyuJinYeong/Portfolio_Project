@@ -1,9 +1,9 @@
-public enum Personality // ¼ºÇâ
+public enum Personality // ì„±í–¥
 {
-    Simple,     // ´Ü¼øÇÑ
-    Aggressive, // °ø°İÀûÀÎ
-    Cautious,   // ½ÅÁßÇÑ
-    Cunning    // ±³È°ÇÑ
+    Simple,     // ë‹¨ìˆœí•œ
+    Aggressive, // ê³µê²©ì ì¸
+    Cautious,   // ì‹ ì¤‘í•œ
+    Cunning    // êµí™œí•œ
 }
 
 public enum CharacterType

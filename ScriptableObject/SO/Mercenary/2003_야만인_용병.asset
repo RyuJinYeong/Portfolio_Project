@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c46a4109daa3399428ae4d49c959a989, type: 3}
+  m_Name: "2003_야만인_용병"
+  m_EditorClassIdentifier: 
+  id: 2003
+  templateName: 
+  baseOrigin: {fileID: 11400000, guid: 224356dff020d647e28cebd7c1fc47e7, type: 2}
+  identityPool: {maleChance: 50, maleNames: [], femaleNames: [], maleFaceTypeIds: [], femaleFaceTypeIds: [], maleHairStyleIds: [], femaleHairStyleIds: [], hairColorIds: [], skinColorIds: [], eyeColorIds: [], facialHairIds: [], bustSizeIds: []}
+  fixedTraitIds: []
+  fixedSkillUids: []
+  fixedEquipments: []
+  traitGeneration: {tier: 1, fixedTraitPool: [1000, 1001], fixedTraitCount: 1, additionalTraitChance: 0, additionalTraitChanceDecrease: 10, maxTraitCount: 1, traitGradeBonus: 0}
+  randomSkillPool: []
+  randomSkillCount: 0
+  randomEquipmentPool: []
+  randomEquipmentCount: 0
+  minLevelOffset: 0
+  maxLevelOffset: 2
+  minInitialBelonging: 0
+  maxInitialBelonging: 30

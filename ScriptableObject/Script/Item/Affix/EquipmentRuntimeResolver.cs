@@ -48,8 +48,8 @@ public static class EquipmentRuntimeResolver
             };
         }
 
-        // ¿¹¿Ü fallback:
-        // ±¸¹öÀü ÀúÀå µ¥ÀÌÅÍ³ª Á÷Á¢ SO Àåºñ¸¦ ÂüÁ¶ÇÏ´Â °æ¿ì.
+        // ì˜ˆì™¸ fallback:
+        // êµ¬ë²„ì „ ì €ì¥ ë°ì´í„°ë‚˜ ì§ì ‘ SO ì¥ë¹„ë¥¼ ì°¸ì¡°í•˜ëŠ” ê²½ìš°.
         return new EquipmentRuntimeData
         {
             definition = definition,

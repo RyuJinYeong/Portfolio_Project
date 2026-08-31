@@ -1,8 +1,8 @@
 
 public enum StatusDurationType
 {
-    QueueTurn,   // ÇöÀç ÀüÅõÅÏ/½ºÅ³Å¥ ¾È¿¡¼­¸¸ Áö¼Ó
-    FullTurn     // ¿©·¯ ÅÏ Áö¼Ó
+    QueueTurn,   // í˜„ì¬ ì „íˆ¬í„´/ìŠ¤í‚¬í ì•ˆì—ì„œë§Œ ì§€ì†
+    FullTurn     // ì—¬ëŸ¬ í„´ ì§€ì†
 }
 
 public enum StatusStackType

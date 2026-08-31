@@ -15,10 +15,10 @@ public abstract class EquipmentDefinitionSO : ItemDefinitionSO
     [Header("Generation")]
     public bool canGenerateAffix = true;
 
-    [Tooltip("Àü¼³/°íÀ¯ ÀåºñÃ³·³ ·£´ı »ı¼ºÀÌ ¾Æ´Ï¶ó ¼öµ¿ ¼³°èµÈ ÀåºñÀÎÁö ¿©ºÎ")]
+    [Tooltip("ì „ì„¤/ê³ ìœ  ì¥ë¹„ì²˜ëŸ¼ ëœë¤ ìƒì„±ì´ ì•„ë‹ˆë¼ ìˆ˜ë™ ì„¤ê³„ëœ ì¥ë¹„ì¸ì§€ ì—¬ë¶€")]
     public bool isUnique = false;
 
-    [Tooltip("¸ó½ºÅÍ Ã³Ä¡ µå·Ó, Äù½ºÆ® º¸»ó Ç®, ·£´ı »óÁ¡ Ç® µî¿¡ Æ÷ÇÔµÉ ¼ö ÀÖ´Â ÀåºñÀÎÁö ¿©ºÎ")]
+    [Tooltip("ëª¬ìŠ¤í„° ì²˜ì¹˜ ë“œë¡­, í€˜ìŠ¤íŠ¸ ë³´ìƒ í’€, ëœë¤ ìƒì  í’€ ë“±ì— í¬í•¨ë  ìˆ˜ ìˆëŠ” ì¥ë¹„ì¸ì§€ ì—¬ë¶€")]
     public bool canDrop = true;
 
     [Header("Fixed Equipment Traits")]

@@ -10,7 +10,7 @@ public class CharacterPoolManager : MonoBehaviour
     public GameObject characterPrefab_M;
     public GameObject characterPrefab_F;
 
-    public Transform poolRoot; // È­¸é ¹Û ÀÓ½Ã º¸°ü À§Ä¡
+    public Transform poolRoot; // í™”ë©´ ë°– ìž„ì‹œ ë³´ê´€ ìœ„ì¹˜
 
     [Header("Portrait Capture")]
     public Camera portraitCamera;
@@ -26,6 +26,11 @@ public class CharacterPoolManager : MonoBehaviour
     public bool IsBuilt { get; private set; }
     bool _building = false;
     readonly List<Action> _waiters = new();
+
+    readonly Queue<CharacterManager> _portraitRefreshQueue = new();
+    readonly Dictionary<CharacterManager, Action> _pendingPortraitRefreshCallbacks = new();
+    Coroutine _portraitRefreshQueueRoutine;
+    bool _portraitCaptureInProgress;
 
     void Awake()
     {
@@ -118,36 +123,7 @@ public class CharacterPoolManager : MonoBehaviour
         cm.InitializeCharacter(ch);
 
         Texture2D portrait = null;
-
-        bool isMale = ch.customizationData?.IsMale ?? true;
-
-        if (malePortraitDummy != null)
-            malePortraitDummy.gameObject.SetActive(false);
-
-        if (femalePortraitDummy != null)
-            femalePortraitDummy.gameObject.SetActive(false);
-
-        CharacterCustomization dummy = isMale ? malePortraitDummy : femalePortraitDummy;
-
-        if (dummy != null)
-        {
-            dummy.gameObject.SetActive(true);
-
-            dummy.ApplyCustomization(ch);
-            dummy.UpdateEquipmentAppearance(ch);
-
-            // ´õ¹Ì È°¼ºÈ­ + Ä¿½ºÅÍ¸¶ÀÌÂ¡ + ½ºÅ²µå ¸Þ½Ã ¹Ý¿µ ´ë±â
-            yield return null;
-            yield return null;
-            yield return new WaitForEndOfFrame();
-
-            portrait = dummy.CapturePortrait(portraitCamera, portraitRenderTexture);
-
-            // ¸¶Áö¸· Ä³¸¯ÅÍ ÃÔ¿µ Á÷ÈÄ ¹Ù·Î ºñÈ°¼ºÈ­/FinishBuild·Î ³Ñ¾î°¡´Â °Í ¹æÁö
-            yield return null;
-
-            dummy.gameObject.SetActive(false);
-        }
+        yield return CapturePortraitSequentially(ch, captured => portrait = captured);
 
         if (portrait != null)
         {
@@ -182,6 +158,171 @@ public class CharacterPoolManager : MonoBehaviour
     public IEnumerable<CharacterManager> All()
     {
         return _pool.Values;
+    }
+
+    public void RefreshPortrait(CharacterManager characterManager, Action onDone = null)
+    {
+        if (characterManager == null || characterManager.character == null)
+        {
+            onDone?.Invoke();
+            return;
+        }
+
+        if (_pendingPortraitRefreshCallbacks.TryGetValue(characterManager, out Action pendingCallback))
+        {
+            _pendingPortraitRefreshCallbacks[characterManager] = pendingCallback + onDone;
+        }
+        else
+        {
+            _pendingPortraitRefreshCallbacks.Add(characterManager, onDone);
+            _portraitRefreshQueue.Enqueue(characterManager);
+        }
+
+        if (_portraitRefreshQueueRoutine == null)
+            _portraitRefreshQueueRoutine = StartCoroutine(ProcessPortraitRefreshQueue());
+    }
+
+    public void CapturePortrait(CharacterData character, Action onDone = null)
+    {
+        if (character == null)
+        {
+            onDone?.Invoke();
+            return;
+        }
+
+        StartCoroutine(CapturePortraitRoutine(character, onDone));
+    }
+
+    private IEnumerator CapturePortraitRoutine(CharacterData character, Action onDone)
+    {
+        Texture2D portrait = null;
+        yield return CapturePortraitSequentially(character, captured => portrait = captured);
+
+        if (portrait != null)
+        {
+            character.Portrait = portrait;
+            character.Portrait.name = $"Portrait_{character.ID}";
+        }
+
+        onDone?.Invoke();
+    }
+
+    public void AddCharacterToPool(CharacterData character, Action onDone = null)
+    {
+        if (character == null || string.IsNullOrEmpty(character.ID))
+        {
+            onDone?.Invoke();
+            return;
+        }
+
+        if (_pool.ContainsKey(character.ID))
+        {
+            onDone?.Invoke();
+            return;
+        }
+
+        StartCoroutine(AddCharacterToPoolRoutine(character, onDone));
+    }
+
+    private IEnumerator AddCharacterToPoolRoutine(CharacterData character, Action onDone)
+    {
+        yield return CreatePooled(character);
+        onDone?.Invoke();
+    }
+
+    private IEnumerator ProcessPortraitRefreshQueue()
+    {
+        while (_portraitRefreshQueue.Count > 0)
+        {
+            CharacterManager characterManager = _portraitRefreshQueue.Dequeue();
+
+            if (!_pendingPortraitRefreshCallbacks.TryGetValue(
+                    characterManager,
+                    out Action onDone))
+            {
+                continue;
+            }
+
+            _pendingPortraitRefreshCallbacks.Remove(characterManager);
+
+            yield return RefreshPortraitRoutine(characterManager, onDone);
+        }
+
+        _portraitRefreshQueueRoutine = null;
+    }
+
+    private IEnumerator RefreshPortraitRoutine(
+        CharacterManager characterManager,
+        Action onDone)
+    {
+        CharacterData character = characterManager.character;
+        Texture2D portrait = null;
+
+        yield return CapturePortraitSequentially(character, captured => portrait = captured);
+
+        if (portrait != null)
+        {
+            Texture2D previousPortrait = character.Portrait;
+
+            character.Portrait = portrait;
+            character.Portrait.name = $"Portrait_{character.ID}";
+
+            onDone?.Invoke();
+
+            if (previousPortrait != null &&
+                previousPortrait != portrait &&
+                previousPortrait.name.StartsWith("Portrait_"))
+            {
+                Destroy(previousPortrait);
+            }
+        }
+        else
+        {
+            onDone?.Invoke();
+        }
+    }
+
+    private IEnumerator CapturePortraitSequentially(
+        CharacterData character,
+        Action<Texture2D> onCaptured)
+    {
+        while (_portraitCaptureInProgress)
+            yield return null;
+
+        _portraitCaptureInProgress = true;
+
+        bool isMale = character.customizationData?.IsMale ?? true;
+
+        if (malePortraitDummy != null)
+            malePortraitDummy.gameObject.SetActive(false);
+
+        if (femalePortraitDummy != null)
+            femalePortraitDummy.gameObject.SetActive(false);
+
+        CharacterCustomization dummy = isMale ? malePortraitDummy : femalePortraitDummy;
+
+        if (dummy == null)
+        {
+            _portraitCaptureInProgress = false;
+            onCaptured?.Invoke(null);
+            yield break;
+        }
+
+        dummy.gameObject.SetActive(true);
+        dummy.ApplyCustomization(character);
+        dummy.UpdateEquipmentAppearance(character);
+
+        yield return null;
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        Texture2D portrait = dummy.CapturePortrait(portraitCamera, portraitRenderTexture);
+
+        yield return null;
+        dummy.gameObject.SetActive(false);
+
+        _portraitCaptureInProgress = false;
+        onCaptured?.Invoke(portrait);
     }
 
     public void PlaceActive(string charId, Transform spawnPoint, bool active = true)

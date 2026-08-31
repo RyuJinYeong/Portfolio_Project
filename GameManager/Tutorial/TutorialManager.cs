@@ -12,7 +12,7 @@ public class TutorialManager : MonoBehaviour
 
     public void OnTutorialCompleted()
     {
-        // Æ©Åä¸®¾ó ¿Ï·á
+        // íŠœí† ë¦¬ì–¼ ì™„ë£Œ
     }
 
     private void ShowTutorial()
@@ -20,6 +20,6 @@ public class TutorialManager : MonoBehaviour
         dialogueUI.SetActive(true);
         tutorialQuestUI.SetActive(true);
 
-        // ´ëÈ­ ¹× Æ©Åä¸®¾ó Äù½ºÆ® ·ÎÁ÷ ±¸Çö
+        // ëŒ€í™” ë° íŠœí† ë¦¬ì–¼ í€˜ìŠ¤íŠ¸ ë¡œì§ êµ¬í˜„
     }
 }

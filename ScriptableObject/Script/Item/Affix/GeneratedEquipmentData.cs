@@ -6,25 +6,25 @@ public class GeneratedEquipmentData
 {
     public string instanceId;
 
-    // ¿øº» EquipmentDefinitionSO uid
+    // ì›ë³¸ EquipmentDefinitionSO uid
     public int definitionUid;
 
     public int tier;
     public EquipmentRarity rarity;
 
-    // ¼ö½Ä¾î±îÁö ¹İ¿µµÈ ÃÖÁ¾ ÀÌ¸§
+    // ìˆ˜ì‹ì–´ê¹Œì§€ ë°˜ì˜ëœ ìµœì¢… ì´ë¦„
     public string generatedName;
 
-    // ÃÖÁ¾ ÇÕ»ê ½ºÅÈ
+    // ìµœì¢… í•©ì‚° ìŠ¤íƒ¯
     public CharacterStats statModifiers = new CharacterStats();
     public CharacterSpecialStats specialStatModifiers = new CharacterSpecialStats();
 
-    // °íÁ¤ Àåºñ Trait + Special Affix Trait ÇÕ»ê
+    // ê³ ì • ì¥ë¹„ Trait + Special Affix Trait í•©ì‚°
     public List<int> grantedTraitIds = new();
 
-    // ¾î¶² ¼ö½Ä¾î°¡ ¾î¶² ´É·ÂÄ¡¸¦ Áá´ÂÁö ÃßÀû
+    // ì–´ë–¤ ìˆ˜ì‹ì–´ê°€ ì–´ë–¤ ëŠ¥ë ¥ì¹˜ë¥¼ ì¤¬ëŠ”ì§€ ì¶”ì 
     public List<EquipmentAffixRollData> appliedAffixes = new();
 
-    // ½ÇÁ¦ »ı¼ºµÈ Àåºñ ÀÎ½ºÅÏ½º°¡ »ç¿ëÇÒ ¿ÜÇü Å°
+    // ì‹¤ì œ ìƒì„±ëœ ì¥ë¹„ ì¸ìŠ¤í„´ìŠ¤ê°€ ì‚¬ìš©í•  ì™¸í˜• í‚¤
     public string visualKey;
 }

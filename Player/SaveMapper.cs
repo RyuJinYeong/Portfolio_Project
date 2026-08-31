@@ -31,6 +31,9 @@ public static class SaveMapper
                 ? new List<string>(src.activeCharacterIds)
                 : new List<string>(),
 
+            recruitmentCandidates = ToCharacterDtos(src.recruitmentCandidates),
+            recruitmentCandidatesInitialized = src.recruitmentCandidatesInitialized,
+
             positions = ClonePositions(src.positions),
 
             questState = ToDto(QuestManager.Instance)
@@ -66,12 +69,51 @@ public static class SaveMapper
                 ? new List<string>(dto.activeCharacterIds)
                 : new List<string>(),
 
+            recruitmentCandidates = FromCharacterDtos(dto.recruitmentCandidates),
+            recruitmentCandidatesInitialized = dto.recruitmentCandidatesInitialized,
+
             positions = ClonePositions(dto.positions)
         };
 
         FromDto(dto.questState);
 
         return pd;
+    }
+
+    private static List<CharacterSaveDTO> ToCharacterDtos(List<CharacterData> source)
+    {
+        List<CharacterSaveDTO> result = new List<CharacterSaveDTO>();
+
+        if (source == null)
+            return result;
+
+        foreach (CharacterData character in source)
+        {
+            CharacterSaveDTO dto = ToDto(character);
+
+            if (dto != null)
+                result.Add(dto);
+        }
+
+        return result;
+    }
+
+    private static List<CharacterData> FromCharacterDtos(List<CharacterSaveDTO> source)
+    {
+        List<CharacterData> result = new List<CharacterData>();
+
+        if (source == null)
+            return result;
+
+        foreach (CharacterSaveDTO dto in source)
+        {
+            CharacterData character = FromDto(dto);
+
+            if (character != null)
+                result.Add(character);
+        }
+
+        return result;
     }
 
     private static List<PositionEntry> ClonePositions(List<PositionEntry> source)

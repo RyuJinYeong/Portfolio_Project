@@ -37,7 +37,7 @@ public static class LevelGrowthUtility
         List<StatRequirementType> candidates = new List<StatRequirementType>(DefaultStats);
         List<LevelUpStatChoice> result = new List<LevelUpStatChoice>();
 
-        int minimum = Math.Max(1, minAmount);
+        int minimum = Math.Max(0, minAmount);
         int maximum = Math.Max(minimum, maxAmount);
 
         while (result.Count < 3 && candidates.Count > 0)

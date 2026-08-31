@@ -1,8 +1,8 @@
 public enum SkillStyle
 {
-    Strength,   // Èû
-    Dexterity,  // ±â±³
-    Speed       // ¼Óµµ
+    Strength,   // í˜
+    Dexterity,  // ê¸°êµ
+    Speed       // ì†ë„
 }
 
 public enum CounterActionType
@@ -40,34 +40,34 @@ public enum SkillDamageKind
     Magical
 }
 
-public enum SkillType // ½ºÅ³ Å¸ÀÔ (¹°¸®/¸¶¹ı)
+public enum SkillType // ìŠ¤í‚¬ íƒ€ì… (ë¬¼ë¦¬/ë§ˆë²•)
 {
     Physical,
     Magical,
-    Mixed // È¥ÇÕ Å¸ÀÔ (¹°¸®+¸¶¹ı)
+    Mixed // í˜¼í•© íƒ€ì… (ë¬¼ë¦¬+ë§ˆë²•)
 }
 
-public enum SkillAttribute // ½ºÅ³ ¼¼ºÎ ¼Ó¼º
+public enum SkillAttribute // ìŠ¤í‚¬ ì„¸ë¶€ ì†ì„±
 {
     Fire,
     Ice,
     Lightning,
-    Magic, // ¼Ó¼ºÀÌ ºÎ¿©µÇÁö ¾ÊÀº ÀÏ¹İ ¸¶¹ı °ø°İ ¼Ó¼º, ¹öÇÁ ½ºÅ³¿ë
-    Pierce, // °üÅë
-    Slash, // Âü°İ
-    Smash, // Å¸°İ
-    None // ¹°¸® ¹öÇÁ ½ºÅ³¿ë ¹«¼Ó¼º Å¸ÀÔ Ãß°¡
+    Magic, // ì†ì„±ì´ ë¶€ì—¬ë˜ì§€ ì•Šì€ ì¼ë°˜ ë§ˆë²• ê³µê²© ì†ì„±, ë²„í”„ ìŠ¤í‚¬ìš©
+    Pierce, // ê´€í†µ
+    Slash, // ì°¸ê²©
+    Smash, // íƒ€ê²©
+    None // ë¬¼ë¦¬ ë²„í”„ ìŠ¤í‚¬ìš© ë¬´ì†ì„± íƒ€ì… ì¶”ê°€
 }
 
-public enum SkillDiscipline // ui Ç¥Çö¿ë ½ºÅ³ ÇÊ¿ä ¹«±â ¿­°ÅÇü
+public enum SkillDiscipline // ui í‘œí˜„ìš© ìŠ¤í‚¬ í•„ìš” ë¬´ê¸° ì—´ê±°í˜•
 {
-    Basic,          // ±âº»±â
-    WeaponArt,      // ¹«±â¼ú
-    Swordsmanship,  // °Ë¼ú
-    Archery,        // ±Ã¼ú
-    ShieldArt,      // ¹æÆĞ¼ú
-    MartialArt,     // Ã¼¼ú
-    HeavyWeapon,    // Áß·® ¹«±â¼ú
-    Magic,          // ¸¶¹ı
-    Monster         // ¸ó½ºÅÍ Àü¿ë
+    Basic,          // ê¸°ë³¸ê¸°
+    WeaponArt,      // ë¬´ê¸°ìˆ 
+    Swordsmanship,  // ê²€ìˆ 
+    Archery,        // ê¶ìˆ 
+    ShieldArt,      // ë°©íŒ¨ìˆ 
+    MartialArt,     // ì²´ìˆ 
+    HeavyWeapon,    // ì¤‘ëŸ‰ ë¬´ê¸°ìˆ 
+    Magic,          // ë§ˆë²•
+    Monster         // ëª¬ìŠ¤í„° ì „ìš©
 }

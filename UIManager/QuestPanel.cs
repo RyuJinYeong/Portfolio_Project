@@ -6,21 +6,21 @@ using UnityEngine.UI;
 public class QuestPanel : MonoBehaviour
 {
     [Header("Wiring")]
-    public Transform cardContainer;         // Ä«µå°¡ µé¾î°¥ ºÎ¸ğ(Grid/Vertical Layout)
-    public QuestPanelItem cardPrefab;            // Ä«µå ÇÁ¸®ÆÕ
+    public Transform cardContainer;         // ì¹´ë“œê°€ ë“¤ì–´ê°ˆ ë¶€ëª¨(Grid/Vertical Layout)
+    public QuestPanelItem cardPrefab;            // ì¹´ë“œ í”„ë¦¬íŒ¹
 
     [Header("Toolbar")]
-    public Button refreshButton;            // ±ÍÈ¯ ÈÄ ¼öµ¿ »õ·Î°íÄ§ ¿ë(Å×½ºÆ®)
+    public Button refreshButton;            // ê·€í™˜ í›„ ìˆ˜ë™ ìƒˆë¡œê³ ì¹¨ ìš©(í…ŒìŠ¤íŠ¸)
 
-    // ¿ÜºÎ·Î ´øÁö´Â ÀÌº¥Æ®(ÆÄÆ¼ ±¸¼ºÃ¢À¸·Î ÀüÈ¯)
+    // ì™¸ë¶€ë¡œ ë˜ì§€ëŠ” ì´ë²¤íŠ¸(íŒŒí‹° êµ¬ì„±ì°½ìœ¼ë¡œ ì „í™˜)
     public System.Action<QuestDef> OnAcceptRequest;
 
-    // Ä³½Ì
+    // ìºì‹±
     private readonly List<QuestPanelItem> _cards = new();
 
     void OnEnable()
     {
-        // ÀÌº¥Æ® ±¸µ¶
+        // ì´ë²¤íŠ¸ êµ¬ë…
         if (QuestManager.Instance != null)
         {
             QuestManager.Instance.OnBoardChanged += Rebuild;
@@ -29,7 +29,7 @@ public class QuestPanel : MonoBehaviour
         if (refreshButton != null)
             refreshButton.onClick.AddListener(OnClickRefresh);
 
-        // ÃÊ±â ºôµå
+        // ì´ˆê¸° ë¹Œë“œ
         Rebuild();
     }
 
@@ -45,11 +45,11 @@ public class QuestPanel : MonoBehaviour
 
     void OnClickRefresh()
     {
-        // Å×½ºÆ®¿ë ¼öµ¿ °»½Å(½ÇÁ¦ °ÔÀÓ¿¡¼­´Â ±ÍÈ¯ ½Ã GameManager¿¡¼­ È£Ãâ)
+        // í…ŒìŠ¤íŠ¸ìš© ìˆ˜ë™ ê°±ì‹ (ì‹¤ì œ ê²Œì„ì—ì„œëŠ” ê·€í™˜ ì‹œ GameManagerì—ì„œ í˜¸ì¶œ)
         QuestManager.Instance.RefreshBoard(
             targetCount: 8
         );
-        // Save È£ÃâÀº »óÃş(ÇÃ·¹ÀÌ¾î ¸Å´ÏÀú)¿¡¼­ ÀÏ°ı·Î ÇØµµ µÊ
+        // Save í˜¸ì¶œì€ ìƒì¸µ(í”Œë ˆì´ì–´ ë§¤ë‹ˆì €)ì—ì„œ ì¼ê´„ë¡œ í•´ë„ ë¨
     }
 
     void ClearCards()
@@ -84,16 +84,16 @@ public class QuestPanel : MonoBehaviour
     {
         QuestManager.Instance.ReserveToggle(entry.def.id);
 
-        // ÀüÃ¼ Rebuild
+        // ì „ì²´ Rebuild
         Rebuild();
 
-        // ÇÊ¿ä ½Ã ÀúÀå(»óÃş ÇÃ·¹ÀÌ¾î ¸Å´ÏÀú¿¡¼­ SavePlayerDataToPlayFab È£Ãâ)
+        // í•„ìš” ì‹œ ì €ì¥(ìƒì¸µ í”Œë ˆì´ì–´ ë§¤ë‹ˆì €ì—ì„œ SavePlayerDataToPlayFab í˜¸ì¶œ)
     }
 
     void HandleAccept(QuestBoardEntry entry)
     {
-        // ÆÄÆ¼ ±¸¼º È­¸éÀ¸·Î ³Ñ°Ü »óÃş¿¡¼­
-        // QuestManager.Instance.Accept(questId, leaderId, partyIds) È£ÃâÇÏµµ·Ï À§ÀÓ
+        // íŒŒí‹° êµ¬ì„± í™”ë©´ìœ¼ë¡œ ë„˜ê²¨ ìƒì¸µì—ì„œ
+        // QuestManager.Instance.Accept(questId, leaderId, partyIds) í˜¸ì¶œí•˜ë„ë¡ ìœ„ì„
         OnAcceptRequest?.Invoke(entry.def);
     }
 }

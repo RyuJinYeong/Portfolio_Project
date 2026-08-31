@@ -20,7 +20,7 @@ public class StageVisualProfile
     public float fogDensity = 0.01f;
 
     [Header("UI Mode")]
-    public UIMode uiMode = UIMode.Battle;   // TownÀÌ¸é Town, ±× ¿Ü Battle
+    public UIMode uiMode = UIMode.Battle;   // Townì´ë©´ Town, ê·¸ ì™¸ Battle
 }
 
 public class StageManager : MonoBehaviour
@@ -32,10 +32,10 @@ public class StageManager : MonoBehaviour
     public List<GameObject> forestBackgrounds;
     public List<GameObject> dungeonBackgrounds;
     public List<GameObject> tutorialBackgrounds;
-    // ÇÊ¿ä ½Ã desertBackgrounds µî Ãß°¡
+    // í•„ìš” ì‹œ desertBackgrounds ë“± ì¶”ê°€
 
     [Header("Profiles")]
-    public List<StageVisualProfile> profiles = new(); // ÀÎ½ºÆåÅÍ·Î Å°º° µî·Ï
+    public List<StageVisualProfile> profiles = new(); // ì¸ìŠ¤í™í„°ë¡œ í‚¤ë³„ ë“±ë¡
 
     private void Awake()
     {
@@ -133,7 +133,7 @@ public class StageManager : MonoBehaviour
 
 public static class StagePreloadPolicy
 {
-    // ½ºÅ×ÀÌÁö Å¸ÀÔº°·Î ¾î¶² Ä³¸¯ÅÍµéÀÇ ½ºÅ³ ¾ÆÀÌÄÜÀ» ¹Ì¸® ·ÎµåÇÒÁö Á¤ÀÇ
+    // ìŠ¤í…Œì´ì§€ íƒ€ì…ë³„ë¡œ ì–´ë–¤ ìºë¦­í„°ë“¤ì˜ ìŠ¤í‚¬ ì•„ì´ì½˜ì„ ë¯¸ë¦¬ ë¡œë“œí• ì§€ ì •ì˜
     public static IEnumerable<string> GetPreloadCharacterIds(PlayerData pd, string stageType)
     {
         if (pd == null) yield break;
@@ -141,13 +141,13 @@ public static class StagePreloadPolicy
         switch (stageType)
         {
             case "Town":
-                // ·Îºñ: º¸À¯(ÇÃ·¹ÀÌ¾îºí) ÀüÃ¼
+                // ë¡œë¹„: ë³´ìœ (í”Œë ˆì´ì–´ë¸”) ì „ì²´
                 foreach (var id in pd.characterIds) yield return id;
                 break;
 
-            // ÇÊ¿äÇÏ¸é ÄÉÀÌ½º Ãß°¡: "PvP", "Field", "Raid" µî
+            // í•„ìš”í•˜ë©´ ì¼€ì´ìŠ¤ ì¶”ê°€: "PvP", "Field", "Raid" ë“±
             default:
-                // ÀüÅõ·ù ±âº»°ª: ÃâÁ¤ ¸â¹ö¸¸
+                // ì „íˆ¬ë¥˜ ê¸°ë³¸ê°’: ì¶œì • ë©¤ë²„ë§Œ
                 foreach (var id in pd.activeCharacterIds) yield return id;
                 break;
         }

@@ -10,7 +10,7 @@ public class CharacterInfoPanel : MonoBehaviour
     public TMP_Text levelText;
     public TMP_Text hpText;
 
-    // UI ¼ø¼­: Èû, ±â±³, ¼Óµµ, ´«½ä¹Ì, ÀÎ³», Áö´É, ÁöÇı, °Ç°­, ÅëÂû
+    // UI ìˆœì„œ: í˜, ê¸°êµ, ì†ë„, ëˆˆì°ë¯¸, ì¸ë‚´, ì§€ëŠ¥, ì§€í˜œ, ê±´ê°•, í†µì°°
     public TMP_Text[] baseStats;
 
     [Header("Buttons")]
@@ -19,14 +19,25 @@ public class CharacterInfoPanel : MonoBehaviour
     public Button btnSkills;
 
     CharacterManager characterManager;
+    CharacterData characterData;
 
     public void Bind(CharacterManager cm)
     {
         characterManager = cm;
+        characterData = cm != null ? cm.character : null;
 
         WireButtons(false);
         UpdateBasics();
         WireButtons(true);
+    }
+
+    public void Bind(CharacterData data)
+    {
+        characterManager = null;
+        characterData = data;
+
+        WireButtons(false);
+        UpdateBasics();
     }
 
     void WireButtons(bool on)
@@ -46,10 +57,10 @@ public class CharacterInfoPanel : MonoBehaviour
 
     void UpdateBasics()
     {
-        if (characterManager == null || characterManager.character == null)
+        if (characterData == null)
             return;
 
-        CharacterData c = characterManager.character;
+        CharacterData c = characterData;
 
         if (portrait != null)
             portrait.texture = c.Portrait;
@@ -77,7 +88,8 @@ public class CharacterInfoPanel : MonoBehaviour
                 fs.Intelligence.ToString(),
                 fs.Wisdom.ToString(),
                 fs.Health.ToString(),
-                fs.Insight.ToString()
+                fs.Insight.ToString(),
+                fs.Vitality.ToString()
             };
 
             for (int i = 0; i < baseStats.Length && i < vals.Length; i++)
@@ -93,17 +105,17 @@ public class CharacterInfoPanel : MonoBehaviour
         if (characterManager == null)
             return;
 
-        Debug.Log("SO ±â¹İ Àåºñ ÆĞ³Î ¿¬°á ÇÊ¿ä");
+        Debug.Log("SO ê¸°ë°˜ ì¥ë¹„ íŒ¨ë„ ì—°ê²° í•„ìš”");
 
-        // ¿¹½Ã:
+        // ì˜ˆì‹œ:
         // UIManager.Instance.OpenCharacterEquipmentPanel(characterManager);
     }
 
     void OpenInventory()
     {
-        Debug.Log("Ä³¸¯ÅÍ °³º° ÀÎº¥Åä¸®´Â Á¦°ÅµÊ. °èÁ¤/¿øÁ¤´ë Ã¢°í ÆĞ³Î·Î ¿¬°á ÇÊ¿ä");
+        Debug.Log("ìºë¦­í„° ê°œë³„ ì¸ë²¤í† ë¦¬ëŠ” ì œê±°ë¨. ê³„ì •/ì›ì •ëŒ€ ì°½ê³  íŒ¨ë„ë¡œ ì—°ê²° í•„ìš”");
 
-        // ¿¹½Ã:
+        // ì˜ˆì‹œ:
         // UIManager.Instance.OpenStoragePanel();
     }
 
@@ -112,9 +124,9 @@ public class CharacterInfoPanel : MonoBehaviour
         if (characterManager == null)
             return;
 
-        Debug.Log("SO ±â¹İ ½ºÅ³ ÆĞ³Î ¿¬°á ÇÊ¿ä");
+        Debug.Log("SO ê¸°ë°˜ ìŠ¤í‚¬ íŒ¨ë„ ì—°ê²° í•„ìš”");
 
-        // ¿¹½Ã:
+        // ì˜ˆì‹œ:
         // UIManager.Instance.OpenSkillPanel(characterManager);
     }
 

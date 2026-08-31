@@ -128,7 +128,7 @@ public class CharacterTargeting : MonoBehaviour
     {
         //CharacterInventory.OpenWindow();
 
-        Debug.Log("¿øÁ¤´ë Ã¢°í ¿­¶÷");
+        Debug.Log("ì›ì •ëŒ€ ì°½ê³  ì—´ëŒ");
     }
 
     public void OpenPlayerEquipment()
@@ -327,7 +327,7 @@ public class CharacterTargeting : MonoBehaviour
         selectedCharacter = defenseCharacter;
         ChangeCursor("Deff");
 
-        Debug.Log($"{defenseCharacter.character.Name}ÀÇ ¹æ¾î ´ë»ó Å¸°ÙÆÃÀ» ½ÃÀÛÇÕ´Ï´Ù.");
+        Debug.Log($"{defenseCharacter.character.Name}ì˜ ë°©ì–´ ëŒ€ìƒ íƒ€ê²ŸíŒ…ì„ ì‹œì‘í•©ë‹ˆë‹¤.");
 
         UpdateBezierCurve();
     }
@@ -344,7 +344,7 @@ public class CharacterTargeting : MonoBehaviour
 
             UpdateBezierCurve();
 
-            Debug.Log($"{selectedCharacter.character.Name}°¡ {target.character.Name}À» ¹æ¾îÇÕ´Ï´Ù.");
+            Debug.Log($"{selectedCharacter.character.Name}ê°€ {target.character.Name}ì„ ë°©ì–´í•©ë‹ˆë‹¤.");
 
             selectedCharacter.combatHandler.SetDefenseTarget(target);
             StopTargeting();

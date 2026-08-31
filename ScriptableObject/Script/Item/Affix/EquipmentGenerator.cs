@@ -11,8 +11,8 @@ public static class EquipmentGenerator
 
         GeneratedEquipmentData generated = CreateBaseGeneratedEquipment(baseEquipment, rarity);
 
-        // Legendary´Â ¼öµ¿ ¼³°è Àåºñ·Î °£ÁÖÇÏ°í ·£´ı »ı¼º ¾øÀÌ ±×´ë·Î »ç¿ë
-        // Affix ·£´ı »ı¼º ¾øÀÌ SO¿¡ ÀÔ·ÂµÈ ÀÌ¸§/½ºÅÈ/Trait ±×´ë·Î »ç¿ëÇÑ´Ù.
+        // LegendaryëŠ” ìˆ˜ë™ ì„¤ê³„ ì¥ë¹„ë¡œ ê°„ì£¼í•˜ê³  ëœë¤ ìƒì„± ì—†ì´ ê·¸ëŒ€ë¡œ ì‚¬ìš©
+        // Affix ëœë¤ ìƒì„± ì—†ì´ SOì— ì…ë ¥ëœ ì´ë¦„/ìŠ¤íƒ¯/Trait ê·¸ëŒ€ë¡œ ì‚¬ìš©í•œë‹¤.
         if (rarity == EquipmentRarity.Legendary)
             return generated;
 

@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class TownCharacterManagementPanel : MonoBehaviour
@@ -47,16 +49,40 @@ public class TownCharacterManagementPanel : MonoBehaviour
     public TownSkillPreviewCardUI skillCardTemplate;
 
     public InventoryUIController inventoryUIController;
-    public TownInventoryCoordinator townCoordinator;
+    [FormerlySerializedAs("townCoordinator")]
+    public UIManager uiManager;
 
     public CharacterManager SelectedCharacter { get; private set; }
+    public CharacterData SelectedCharacterData { get; private set; }
+    public Action closeRequested;
 
     private readonly List<CharacterInfoPanel> infoPanels = new();
-    private readonly Dictionary<CharacterInfoPanel, Color> panelColors = new();
+    private readonly Dictionary<Image, Color> panelColors = new();
     private readonly Dictionary<CharacterInfoPanel, CharacterManager> panelCharacters = new();
+    private readonly Dictionary<CharacterInfoPanel, CharacterData> panelData = new();
     private readonly List<TownTraitPreviewCardUI> traitCards = new();
     private readonly List<TownSkillPreviewCardUI> skillCards = new();
+    private readonly Dictionary<RectTransform, RectTransformLayout> statsRectLayouts = new();
+    private readonly Dictionary<RectTransform, float> statRowHeights = new();
     private DetailSection selectedDetailSection = DetailSection.Stats;
+    private Action<CharacterData> externalSelectionChanged;
+    private bool showingExternalCharacters;
+
+    private struct RectTransformLayout
+    {
+        public Vector2 anchorMin;
+        public Vector2 anchorMax;
+        public Vector2 anchoredPosition;
+        public Vector2 sizeDelta;
+
+        public RectTransformLayout(RectTransform rectTransform)
+        {
+            anchorMin = rectTransform.anchorMin;
+            anchorMax = rectTransform.anchorMax;
+            anchoredPosition = rectTransform.anchoredPosition;
+            sizeDelta = rectTransform.sizeDelta;
+        }
+    }
 
     private enum DetailSection
     {
@@ -132,23 +158,37 @@ public class TownCharacterManagementPanel : MonoBehaviour
             if (firstCharacter == null)
                 firstCharacter = characterManager;
 
-            GameObject cardObject = Instantiate(cardPrefab, content);
-            CharacterInfoPanel panel = cardObject.GetComponent<CharacterInfoPanel>();
+            CreateCharacterCard(characterManager.character, characterManager);
+        }
 
-            if (panel == null)
+        SelectCharacter(firstCharacter);
+    }
+
+    public void BuildCharacters(
+        IReadOnlyList<CharacterData> characters,
+        Action<CharacterData> onSelectionChanged)
+    {
+        Clear();
+        showingExternalCharacters = true;
+        externalSelectionChanged = onSelectionChanged;
+
+        if (characters == null || content == null || cardPrefab == null)
+        {
+            RefreshSelectedCharacter();
+            return;
+        }
+
+        CharacterData firstCharacter = null;
+
+        foreach (CharacterData character in characters)
+        {
+            if (character == null)
                 continue;
 
-            panel.Bind(characterManager);
-            RewireCardButtons(panel, characterManager);
-            WireCardSelection(cardObject, characterManager);
+            if (firstCharacter == null)
+                firstCharacter = character;
 
-            Image panelImage = cardObject.GetComponent<Image>();
-
-            if (panelImage != null)
-                panelColors[panel] = panelImage.color;
-
-            panelCharacters[panel] = characterManager;
-            infoPanels.Add(panel);
+            CreateCharacterCard(character, null);
         }
 
         SelectCharacter(firstCharacter);
@@ -157,9 +197,15 @@ public class TownCharacterManagementPanel : MonoBehaviour
     public void SelectCharacter(CharacterManager characterManager)
     {
         SelectedCharacter = characterManager;
+        SelectCharacter(characterManager != null ? characterManager.character : null);
 
         if (inventoryUIController != null)
             inventoryUIController.SetSelectedCharacter(characterManager);
+    }
+
+    private void SelectCharacter(CharacterData character)
+    {
+        SelectedCharacterData = character;
 
         foreach (CharacterInfoPanel panel in infoPanels)
         {
@@ -168,15 +214,28 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
             Image image = panel.GetComponent<Image>();
 
-            if (image == null || !panelColors.TryGetValue(panel, out Color normalColor))
-                continue;
+            bool selected = GetPanelData(panel) == character;
 
-            image.color = GetPanelCharacter(panel) == characterManager
-                ? new Color(0.72f, 0.52f, 0.2f, normalColor.a)
-                : normalColor;
+            if (image != null && panelColors.TryGetValue(image, out Color normalColor))
+            {
+                image.color = selected
+                    ? new Color(0.72f, 0.52f, 0.2f, normalColor.a)
+                    : normalColor;
+            }
+
+            Transform descriptionBar = panel.transform.Find("DescriptionBar");
+            Image descriptionImage = descriptionBar != null ? descriptionBar.GetComponent<Image>() : null;
+
+            if (descriptionImage != null && panelColors.TryGetValue(descriptionImage, out Color descriptionColor))
+            {
+                descriptionImage.color = selected
+                    ? new Color(0.72f, 0.52f, 0.2f, descriptionColor.a)
+                    : descriptionColor;
+            }
         }
 
         RefreshSelectedCharacter();
+        externalSelectionChanged?.Invoke(character);
     }
 
     public void RefreshAll()
@@ -193,26 +252,72 @@ public class TownCharacterManagementPanel : MonoBehaviour
     public void OpenSelectedEquipment()
     {
         if (SelectedCharacter != null)
-            townCoordinator?.OpenCharacterEquipment(SelectedCharacter);
+            uiManager?.OpenCharacterEquipment(SelectedCharacter);
     }
 
     public void OpenSelectedSkills()
     {
         if (SelectedCharacter != null)
-            townCoordinator?.OpenCharacterSkills(SelectedCharacter);
+            uiManager?.OpenCharacterSkills(SelectedCharacter);
     }
 
     public void OpenStorage()
     {
-        townCoordinator?.OpenCompanyStorage();
+        uiManager?.OpenCompanyStorage();
     }
 
     public void ClosePanel()
     {
-        if (townCoordinator != null)
-            townCoordinator.CloseCharacterManagement();
+        if (closeRequested != null)
+            closeRequested.Invoke();
+        else if (uiManager != null)
+            uiManager.CloseCharacterManagement();
         else
             gameObject.SetActive(false);
+    }
+
+    private void CreateCharacterCard(
+        CharacterData character,
+        CharacterManager characterManager)
+    {
+        if (character == null)
+            return;
+
+        GameObject cardObject = Instantiate(cardPrefab, content);
+        CharacterInfoPanel panel = cardObject.GetComponent<CharacterInfoPanel>();
+
+        if (panel == null)
+        {
+            Destroy(cardObject);
+            return;
+        }
+
+        if (characterManager != null)
+        {
+            panel.Bind(characterManager);
+            RewireCardButtons(panel, characterManager);
+            panelCharacters[panel] = characterManager;
+        }
+        else
+        {
+            panel.Bind(character);
+        }
+
+        WireCardSelection(cardObject, character);
+
+        Image panelImage = cardObject.GetComponent<Image>();
+
+        if (panelImage != null)
+            panelColors[panelImage] = panelImage.color;
+
+        Transform descriptionBar = cardObject.transform.Find("DescriptionBar");
+        Image descriptionImage = descriptionBar != null ? descriptionBar.GetComponent<Image>() : null;
+
+        if (descriptionImage != null)
+            panelColors[descriptionImage] = descriptionImage.color;
+
+        panelData[panel] = character;
+        infoPanels.Add(panel);
     }
 
     private void RewireCardButtons(
@@ -223,7 +328,7 @@ public class TownCharacterManagementPanel : MonoBehaviour
         {
             panel.btnEquipment.onClick.RemoveAllListeners();
             panel.btnEquipment.onClick.AddListener(() =>
-                townCoordinator?.OpenCharacterEquipment(characterManager));
+                uiManager?.OpenCharacterEquipment(characterManager));
         }
 
         if (panel.btnInventory != null)
@@ -232,7 +337,7 @@ public class TownCharacterManagementPanel : MonoBehaviour
             panel.btnInventory.onClick.AddListener(() =>
             {
                 inventoryUIController?.SetSelectedCharacter(characterManager);
-                townCoordinator?.OpenCompanyStorage();
+                uiManager?.OpenCompanyStorage();
             });
         }
 
@@ -240,13 +345,13 @@ public class TownCharacterManagementPanel : MonoBehaviour
         {
             panel.btnSkills.onClick.RemoveAllListeners();
             panel.btnSkills.onClick.AddListener(() =>
-                townCoordinator?.OpenCharacterSkills(characterManager));
+                uiManager?.OpenCharacterSkills(characterManager));
         }
     }
 
     private void WireCardSelection(
         GameObject cardObject,
-        CharacterManager characterManager)
+        CharacterData character)
     {
         Button selectButton = cardObject.GetComponent<Button>();
 
@@ -255,21 +360,19 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
         selectButton.targetGraphic = cardObject.GetComponent<Graphic>();
         selectButton.onClick.RemoveAllListeners();
-        selectButton.onClick.AddListener(() => SelectCharacter(characterManager));
+        selectButton.onClick.AddListener(() => SelectCharacter(character));
     }
 
-    private CharacterManager GetPanelCharacter(CharacterInfoPanel panel)
+    private CharacterData GetPanelData(CharacterInfoPanel panel)
     {
-        return panel != null && panelCharacters.TryGetValue(panel, out CharacterManager manager)
-            ? manager
+        return panel != null && panelData.TryGetValue(panel, out CharacterData character)
+            ? character
             : null;
     }
 
     private void RefreshSelectedCharacter()
     {
-        CharacterData character = SelectedCharacter != null
-            ? SelectedCharacter.character
-            : null;
+        CharacterData character = SelectedCharacterData;
 
         if (selectedPortrait != null)
         {
@@ -283,13 +386,16 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
         CharacterStats stats = character != null ? character.FinalStats : null;
 
-        SetText(
-            selectedResourceText,
-            stats != null
-                ? $"체력  {character.CurrentHp} / {stats.MaxHp}    " +
-                  $"지구력  {character.CurrentStamina} / {stats.MaxStamina}    " +
-                  $"정신력  {character.CurrentMentality} / {stats.MaxMentality}"
-                : "");
+        string resourceText = stats != null
+            ? $"체력  {character.CurrentHp} / {stats.MaxHp}    " +
+              $"지구력  {character.CurrentStamina} / {stats.MaxStamina}    " +
+              $"정신력  {character.CurrentMentality} / {stats.MaxMentality}"
+            : "";
+
+        if (character != null && showingExternalCharacters)
+            resourceText += $"    소속감  {character.Belonging}";
+
+        SetText(selectedResourceText, resourceText);
 
         SetText(skillSummaryText, BuildSkillSummaryText(character));
         SetText(traitSummaryText, BuildTraitSummaryText(character));
@@ -387,23 +493,148 @@ public class TownCharacterManagementPanel : MonoBehaviour
         selectedDetailSection = section;
 
         const float gap = 0.01f;
-        float statsWidth = selectedDetailSection == DetailSection.Stats ? 0.40f : 0.12f;
+        float statsWidth = selectedDetailSection == DetailSection.Stats ? 0.40f : 0.216f;
         float traitsWidth = selectedDetailSection == DetailSection.Traits
             ? 0.50f
-            : selectedDetailSection == DetailSection.Stats ? 0.29f : 0.36f;
+            : selectedDetailSection == DetailSection.Stats ? 0.29f : 0.264f;
         float skillsWidth = selectedDetailSection == DetailSection.Skills
             ? 0.50f
-            : selectedDetailSection == DetailSection.Stats ? 0.29f : 0.36f;
+            : selectedDetailSection == DetailSection.Stats ? 0.29f : 0.264f;
         float currentX = 0f;
 
         SetDetailPanelLayout(statsPreview, ref currentX, statsWidth, gap);
         SetDetailPanelLayout(traitsPreview, ref currentX, traitsWidth, gap);
         SetDetailPanelLayout(skillsPreview, ref currentX, skillsWidth, 0f);
+        UpdateStatsPreviewColumns(selectedDetailSection != DetailSection.Stats);
 
         SetTabVisual(overviewButton, selectedDetailSection == DetailSection.Stats);
         SetTabVisual(equipmentButton, selectedDetailSection == DetailSection.Traits);
         SetTabVisual(skillsButton, selectedDetailSection == DetailSection.Skills);
         UpdatePreviewGridColumns();
+    }
+
+    private void UpdateStatsPreviewColumns(bool useSingleColumn)
+    {
+        if (statsPreview == null)
+            return;
+
+        ScrollRect scrollRect = statsPreview.GetComponentInChildren<ScrollRect>(true);
+
+        if (scrollRect == null || scrollRect.content == null)
+            return;
+
+        RectTransform statsContent = scrollRect.content;
+        statsContent.anchorMin = new Vector2(0f, statsContent.anchorMin.y);
+        statsContent.anchorMax = new Vector2(1f, statsContent.anchorMax.y);
+        statsContent.anchoredPosition = new Vector2(0f, statsContent.anchoredPosition.y);
+        statsContent.sizeDelta = new Vector2(0f, statsContent.sizeDelta.y);
+
+        for (int rowIndex = 0; rowIndex < statsContent.childCount; rowIndex++)
+        {
+            RectTransform row = statsContent.GetChild(rowIndex) as RectTransform;
+
+            if (row == null)
+                continue;
+
+            List<RectTransform> statItems = new();
+            RectTransform columnSeparator = null;
+
+            for (int childIndex = 0; childIndex < row.childCount; childIndex++)
+            {
+                RectTransform child = row.GetChild(childIndex) as RectTransform;
+
+                if (child == null)
+                    continue;
+
+                if (child.GetComponent<TownCharacterStatValueUI>() != null)
+                    statItems.Add(child);
+                else if (child.name == "ColumnSeparator")
+                    columnSeparator = child;
+            }
+
+            if (statItems.Count == 0)
+                continue;
+
+            LayoutElement rowLayout = row.GetComponent<LayoutElement>();
+
+            if (!statRowHeights.TryGetValue(row, out float normalHeight))
+            {
+                normalHeight = rowLayout != null && rowLayout.preferredHeight > 0f
+                    ? rowLayout.preferredHeight
+                    : row.sizeDelta.y;
+                statRowHeights.Add(row, normalHeight);
+            }
+
+            float rowHeight = useSingleColumn ? normalHeight * statItems.Count : normalHeight;
+            row.sizeDelta = new Vector2(row.sizeDelta.x, rowHeight);
+
+            if (rowLayout != null)
+            {
+                rowLayout.minHeight = rowHeight;
+                rowLayout.preferredHeight = rowHeight;
+            }
+
+            for (int statIndex = 0; statIndex < statItems.Count; statIndex++)
+            {
+                RectTransform statItem = statItems[statIndex];
+
+                if (!statsRectLayouts.TryGetValue(statItem, out RectTransformLayout normalLayout))
+                {
+                    normalLayout = new RectTransformLayout(statItem);
+                    statsRectLayouts.Add(statItem, normalLayout);
+                }
+
+                if (useSingleColumn)
+                {
+                    float anchorMaxY = 1f - (float)statIndex / statItems.Count;
+                    float anchorMinY = 1f - (float)(statIndex + 1) / statItems.Count;
+                    statItem.anchorMin = new Vector2(0f, anchorMinY);
+                    statItem.anchorMax = new Vector2(1f, anchorMaxY);
+                    statItem.anchoredPosition = Vector2.zero;
+                    statItem.sizeDelta = Vector2.zero;
+                }
+                else
+                {
+                    ApplyRectTransformLayout(statItem, normalLayout);
+                }
+            }
+
+            if (columnSeparator != null)
+            {
+                if (!statsRectLayouts.TryGetValue(columnSeparator, out RectTransformLayout separatorLayout))
+                {
+                    separatorLayout = new RectTransformLayout(columnSeparator);
+                    statsRectLayouts.Add(columnSeparator, separatorLayout);
+                }
+
+                columnSeparator.gameObject.SetActive(!useSingleColumn || statItems.Count > 1);
+
+                if (useSingleColumn && statItems.Count > 1)
+                {
+                    columnSeparator.anchorMin = new Vector2(0.02f, 0.5f);
+                    columnSeparator.anchorMax = new Vector2(0.98f, 0.5f);
+                    columnSeparator.anchoredPosition = Vector2.zero;
+                    columnSeparator.sizeDelta = new Vector2(0f, 1f);
+                }
+                else
+                {
+                    ApplyRectTransformLayout(columnSeparator, separatorLayout);
+                }
+            }
+        }
+
+        scrollRect.verticalNormalizedPosition = 1f;
+        LayoutRebuilder.ForceRebuildLayoutImmediate(statsContent);
+    }
+
+    private static void ApplyRectTransformLayout(
+        RectTransform rectTransform,
+        RectTransformLayout layout)
+    {
+        rectTransform.anchorMin = layout.anchorMin;
+        rectTransform.anchorMax = layout.anchorMax;
+        rectTransform.anchoredPosition = layout.anchoredPosition;
+        rectTransform.sizeDelta = layout.sizeDelta;
     }
 
     private void UpdatePreviewGridColumns()
@@ -633,8 +864,12 @@ public class TownCharacterManagementPanel : MonoBehaviour
         infoPanels.Clear();
         panelColors.Clear();
         panelCharacters.Clear();
+        panelData.Clear();
         ClearPreviewCards(traitCards);
         ClearPreviewCards(skillCards);
         SelectedCharacter = null;
+        SelectedCharacterData = null;
+        externalSelectionChanged = null;
+        showingExternalCharacters = false;
     }
 }

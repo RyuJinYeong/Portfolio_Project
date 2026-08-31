@@ -4,8 +4,8 @@ using UnityEngine;
 public class CharacterManagementPanel : MonoBehaviour
 {
     [Header("Layout")]
-    public RectTransform content;       // ·¹ÀÌ¾Æ¿ô ÄÁÅ×ÀÌ³Ê
-    public GameObject cardPrefab;     // CharacterInfoCard°¡ ºÙ¾îÀÖ´Â ÇÁ¸®ÆÕ
+    public RectTransform content;       // ë ˆì´ì•„ì›ƒ ì»¨í…Œì´ë„ˆ
+    public GameObject cardPrefab;     // CharacterInfoCardê°€ ë¶™ì–´ìˆëŠ” í”„ë¦¬íŒ¹
 
     readonly List<CharacterInfoPanel> _infoPanel = new();
 

@@ -12,7 +12,7 @@ public class PlayfabLogin : MonoBehaviour
     public GameObject LoginCanvas;
     public GameObject MenuCanvas;
 
-    // PlayFab ·Î±×ÀÎÀ» ½ÃµµÇÏ´Â ¸Ş¼­µå
+    // PlayFab ë¡œê·¸ì¸ì„ ì‹œë„í•˜ëŠ” ë©”ì„œë“œ
     public void LoginOrCreatePlayer()
     {
         string playerName = id_info.text;
@@ -22,22 +22,22 @@ public class PlayfabLogin : MonoBehaviour
 
         var request = new LoginWithPlayFabRequest
         {
-            Username = playerName, // ¾ÆÀÌµğ
-            Password = password // ºñ¹Ğ¹øÈ£
+            Username = playerName, // ì•„ì´ë””
+            Password = password // ë¹„ë°€ë²ˆí˜¸
         };
 
-        // PlayFab API¸¦ »ç¿ëÇÏ¿© ·Î±×ÀÎÀ» ½ÃµµÇÏ°í ÀÀ´äÀ» Ã³¸®ÇÏ´Â Äİ¹é ¸Ş¼­µå¸¦ ÁöÁ¤ÇÕ´Ï´Ù.
+        // PlayFab APIë¥¼ ì‚¬ìš©í•˜ì—¬ ë¡œê·¸ì¸ì„ ì‹œë„í•˜ê³  ì‘ë‹µì„ ì²˜ë¦¬í•˜ëŠ” ì½œë°± ë©”ì„œë“œë¥¼ ì§€ì •í•©ë‹ˆë‹¤.
         PlayFabClientAPI.LoginWithPlayFab(request,
             result => OnLoginSuccess(result, playerName),
             error => OnLoginFailure(error, playerName,password));
     }
 
-    public void LoginOrCreatePlayer(string playerName, string password) // ¸Ş¼Òµå ¿À¹ö·ÎµùÀ¸·Î ¾ÆÀÌµğ¿Í ÆĞ½º¿öµå°ª Àü´Ş
+    public void LoginOrCreatePlayer(string playerName, string password) // ë©”ì†Œë“œ ì˜¤ë²„ë¡œë”©ìœ¼ë¡œ ì•„ì´ë””ì™€ íŒ¨ìŠ¤ì›Œë“œê°’ ì „ë‹¬
     {
         var request = new LoginWithPlayFabRequest
         {
-            Username = playerName, // ¾ÆÀÌµğ
-            Password = password // ºñ¹Ğ¹øÈ£
+            Username = playerName, // ì•„ì´ë””
+            Password = password // ë¹„ë°€ë²ˆí˜¸
         };
 
         PlayFabClientAPI.LoginWithPlayFab(request,
@@ -45,7 +45,7 @@ public class PlayfabLogin : MonoBehaviour
             error => OnLoginFailure(error, playerName, password));
     }
 
-    // ·Î±×ÀÎÀÌ ¼º°øÇßÀ» ¶§ È£ÃâµÇ´Â Äİ¹é ¸Ş¼­µå
+    // ë¡œê·¸ì¸ì´ ì„±ê³µí–ˆì„ ë•Œ í˜¸ì¶œë˜ëŠ” ì½œë°± ë©”ì„œë“œ
     private void OnLoginSuccess(LoginResult result, string playerName)
     {
         Debug.Log("Login successful!");
@@ -54,10 +54,10 @@ public class PlayfabLogin : MonoBehaviour
         MenuCanvas.SetActive(true);
     }
 
-    // ·Î±×ÀÎÀÌ ½ÇÆĞÇßÀ» ¶§ È£ÃâµÇ´Â Äİ¹é ¸Ş¼­µå
+    // ë¡œê·¸ì¸ì´ ì‹¤íŒ¨í–ˆì„ ë•Œ í˜¸ì¶œë˜ëŠ” ì½œë°± ë©”ì„œë“œ
     private void OnLoginFailure(PlayFabError error, string playerName,string password)
     {
-        // ¾ÆÀÌµğ°¡ Á¸ÀçÇÏÁö ¾ÊÀ» °æ¿ì »õ·Î¿î ÇÃ·¹ÀÌ¾î¸¦ »ı¼ºÇÕ´Ï´Ù.
+        // ì•„ì´ë””ê°€ ì¡´ì¬í•˜ì§€ ì•Šì„ ê²½ìš° ìƒˆë¡œìš´ í”Œë ˆì´ì–´ë¥¼ ìƒì„±í•©ë‹ˆë‹¤.
         if (error.Error == PlayFabErrorCode.AccountNotFound)
         {
             RegisterNewPlayer(playerName,password);
@@ -71,23 +71,23 @@ public class PlayfabLogin : MonoBehaviour
         }
     }
 
-    // »õ·Î¿î ÇÃ·¹ÀÌ¾î¸¦ »ı¼ºÇÏ´Â ¸Ş¼­µå
+    // ìƒˆë¡œìš´ í”Œë ˆì´ì–´ë¥¼ ìƒì„±í•˜ëŠ” ë©”ì„œë“œ
     private void RegisterNewPlayer(string playerName, string password)
     {
         var request = new RegisterPlayFabUserRequest
         {
-            Username = playerName, // ¾ÆÀÌµğ
-            Password = password, // ºñ¹Ğ¹øÈ£
-            RequireBothUsernameAndEmail = false // ÀÌ¸ŞÀÏ ÇÊµå°¡ ºñ¾îÀÖ¾îµµ ÇÃ·¹ÀÌ¾î »ı¼º Çã¿ë
+            Username = playerName, // ì•„ì´ë””
+            Password = password, // ë¹„ë°€ë²ˆí˜¸
+            RequireBothUsernameAndEmail = false // ì´ë©”ì¼ í•„ë“œê°€ ë¹„ì–´ìˆì–´ë„ í”Œë ˆì´ì–´ ìƒì„± í—ˆìš©
         };
 
-        // PlayFab API¸¦ »ç¿ëÇÏ¿© »õ·Î¿î ÇÃ·¹ÀÌ¾î¸¦ »ı¼ºÇÏ°í ÀÀ´äÀ» Ã³¸®ÇÏ´Â Äİ¹é ¸Ş¼­µå¸¦ ÁöÁ¤ÇÕ´Ï´Ù.
+        // PlayFab APIë¥¼ ì‚¬ìš©í•˜ì—¬ ìƒˆë¡œìš´ í”Œë ˆì´ì–´ë¥¼ ìƒì„±í•˜ê³  ì‘ë‹µì„ ì²˜ë¦¬í•˜ëŠ” ì½œë°± ë©”ì„œë“œë¥¼ ì§€ì •í•©ë‹ˆë‹¤.
         PlayFabClientAPI.RegisterPlayFabUser(request,
             result => OnRegisterSuccess(playerName,password),
             error => Debug.LogError("Failed to register new player: " + error.ErrorMessage));
     }
 
-    // »õ·Î¿î ÇÃ·¹ÀÌ¾î »ı¼ºÀÌ ¼º°øÇßÀ» ¶§ È£ÃâµÇ´Â Äİ¹é ¸Ş¼­µå
+    // ìƒˆë¡œìš´ í”Œë ˆì´ì–´ ìƒì„±ì´ ì„±ê³µí–ˆì„ ë•Œ í˜¸ì¶œë˜ëŠ” ì½œë°± ë©”ì„œë“œ
     private void OnRegisterSuccess(string playerName, string password)
     {
         Debug.Log("New player registered: " + playerName);
