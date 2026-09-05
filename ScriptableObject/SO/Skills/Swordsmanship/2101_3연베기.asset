@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2101_3연베기"
+  m_Name: "2101_3\uC5F0\uBCA0\uAE30"
   m_EditorClassIdentifier: 
   uid: 2101
-  skillName: "3연베기"
-  description: "연속으로 세 번 베어 다타격 참격 피해를 준다."
-  icon: {fileID: 0}
-  activationSpeed: 1.0
+  skillName: "3\uC5F0\uBCA0\uAE30"
+  description: "\uC5F0\uC18D\uC73C\uB85C \uC138 \uBC88 \uBCA0\uC5B4 \uB2E4\uD0C0\uACA9
+    \uCC38\uACA9 \uD53C\uD574\uB97C \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: 6fc06901055f82142ac78fc943700896, type: 3}
+  composer: {fileID: 11400000, guid: f3bb221077c3965e414fa41f82886e33, type: 2}
+  activationSpeed: 1
   staminaCost: 2
   mentalCost: 0
   type: 0
   style: 1
   discipline: 2
+  firstRewardTier: 1
   damageComponents:
   - damageType: 0
     attribute: 5

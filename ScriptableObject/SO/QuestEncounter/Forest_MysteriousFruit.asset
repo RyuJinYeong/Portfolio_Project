@@ -1,0 +1,322 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6478899aabbccddeeff01, type: 3}
+  m_Name: Forest_MysteriousFruit
+  m_EditorClassIdentifier: 
+  encounterId: forest_mysterious_fruit
+  nodeType: 4
+  weight: 3
+  availableInAllStages: 0
+  stageKeys:
+  - Forest
+  title: "\uC2E0\uBE44\uD55C \uB098\uBB34\uC5F4\uB9E4"
+  description: "\uC232\uAE38 \uD55C\uD3B8\uC5D0\uC11C \uCC98\uC74C \uBCF4\uB294 \uC0C9\uC0C1\uC758
+    \uC5F4\uB9E4\uB97C \uBC1C\uACAC\uD588\uC2B5\uB2C8\uB2E4. \uBA39\uC5B4 \uBCF4\uAE30
+    \uC804\uC5D0\uB294 \uC5B4\uB5A4 \uD6A8\uACFC\uAC00 \uC788\uC744\uC9C0 \uC54C
+    \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  encounterMapPrefab: {fileID: 0}
+  encounterPropsPrefab: {fileID: 0}
+  insight:
+    enabled: 1
+    baseChancePercent: 5
+    chancePerDetection: 0.6
+    chancePerInsight: 0.8
+    tierPenaltyPercent: 3
+    difficultyPenaltyPercent: 5
+    maxChancePercent: 35
+    revealedText: "\uC5F4\uB9E4\uC758 \uD5A5\uACFC \uD45C\uBA74 \uC0C1\uD0DC\uAC00
+      \uC77C\uC815\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uBA39\uC740 \uC0AC\uB78C\uC758
+      \uB2A5\uB825\uC744 \uB192\uC77C \uC218\uB3C4 \uC788\uC9C0\uB9CC, \uB2A5\uB825\uC744
+      \uC57D\uD654\uC2DC\uD0A4\uAC70\uB098 \uBA87 \uAC1C \uBC29 \uB3D9\uC548 \uC790\uC6D0\uC744
+      \uAC10\uC18C\uC2DC\uD0A4\uB294 \uB3C5\uC131\uB3C4 \uC9C0\uB2CC \uB4EF\uD569\uB2C8\uB2E4."
+  choices:
+  - text: "\uBA39\uB294\uB2E4"
+    requiresCharacter: 1
+    abilityCheck:
+      enabled: 0
+      stat: 0
+      baseSuccessChancePercent: 50
+      chancePerStatPoint: 2
+      tierPenaltyPercent: 5
+      difficultyPenaltyPercent: 10
+      minimumSuccessChancePercent: 5
+      maximumSuccessChancePercent: 95
+    outcomes:
+    - weight: 40
+      resultText: "{character}\uC758 {stat} \uB2A5\uB825\uCE58\uAC00 {amount} \uC99D\uAC00\uD588\uC2B5\uB2C8\uB2E4."
+      effectType: 1
+      targetScope: 1
+      candidateStats: 
+      minAmount: 1
+      maxAmount: 3
+      temporaryEffectName: 
+      durationRooms: 1
+      temporaryStatModifiers:
+        Strength: 0
+        Dexterity: 0
+        Speed: 0
+        Intelligence: 0
+        Wisdom: 0
+        Health: 0
+        Vitality: 0
+        Endurance: 0
+        Detection: 0
+        Insight: 0
+        AttackSpeed: 0
+        CastSpeed: 0
+        WeaponAttackSpeedMultiplier: 0
+        WeaponCastSpeedMultiplier: 0
+        MaxHp: 0
+        MaxMentality: 0
+        MaxStamina: 0
+        StaminaRecovery: 0
+        MentalityRecovery: 0
+        FireResistance: 0
+        IceResistance: 0
+        LightningResistance: 0
+        PierceResistance: 0
+        SlashResistance: 0
+        SmashResistance: 0
+        FireAffinity: 0
+        IceAffinity: 0
+        LightningAffinity: 0
+        PierceAffinity: 0
+        SlashAffinity: 0
+        SmashAffinity: 0
+        PhysicalAttack: 0
+        MagicalAttack: 0
+        PhysicalDefense: 0
+        MagicalDefense: 0
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: 
+      itemCount: 1
+      monsterRoleIds: 
+    - weight: 30
+      resultText: "{character}\uC758 {stat} \uB2A5\uB825\uCE58\uAC00 {amount} \uAC10\uC18C\uD588\uC2B5\uB2C8\uB2E4."
+      effectType: 1
+      targetScope: 1
+      candidateStats: 
+      minAmount: -2
+      maxAmount: -1
+      temporaryEffectName: 
+      durationRooms: 1
+      temporaryStatModifiers:
+        Strength: 0
+        Dexterity: 0
+        Speed: 0
+        Intelligence: 0
+        Wisdom: 0
+        Health: 0
+        Vitality: 0
+        Endurance: 0
+        Detection: 0
+        Insight: 0
+        AttackSpeed: 0
+        CastSpeed: 0
+        WeaponAttackSpeedMultiplier: 0
+        WeaponCastSpeedMultiplier: 0
+        MaxHp: 0
+        MaxMentality: 0
+        MaxStamina: 0
+        StaminaRecovery: 0
+        MentalityRecovery: 0
+        FireResistance: 0
+        IceResistance: 0
+        LightningResistance: 0
+        PierceResistance: 0
+        SlashResistance: 0
+        SmashResistance: 0
+        FireAffinity: 0
+        IceAffinity: 0
+        LightningAffinity: 0
+        PierceAffinity: 0
+        SlashAffinity: 0
+        SmashAffinity: 0
+        PhysicalAttack: 0
+        MagicalAttack: 0
+        PhysicalDefense: 0
+        MagicalDefense: 0
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: 
+      itemCount: 1
+      monsterRoleIds: 
+    - weight: 15
+      resultText: "{character}\uC758 \uBAB8\uC5D0 \uB3C5\uC774 \uD37C\uC84C\uC2B5\uB2C8\uB2E4.
+        \uC55E\uC73C\uB85C 3\uAC1C \uBC29 \uB3D9\uC548 \uCD5C\uB300 \uCCB4\uB825\uC774
+        \uAC10\uC18C\uD569\uB2C8\uB2E4."
+      effectType: 3
+      targetScope: 1
+      candidateStats: 
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName: "\uC5F4\uB9E4 \uC911\uB3C5 - \uCCB4\uB825"
+      durationRooms: 3
+      temporaryStatModifiers:
+        Strength: 0
+        Dexterity: 0
+        Speed: 0
+        Intelligence: 0
+        Wisdom: 0
+        Health: 0
+        Vitality: 0
+        Endurance: 0
+        Detection: 0
+        Insight: 0
+        AttackSpeed: 0
+        CastSpeed: 0
+        WeaponAttackSpeedMultiplier: 0
+        WeaponCastSpeedMultiplier: 0
+        MaxHp: -10
+        MaxMentality: 0
+        MaxStamina: 0
+        StaminaRecovery: 0
+        MentalityRecovery: 0
+        FireResistance: 0
+        IceResistance: 0
+        LightningResistance: 0
+        PierceResistance: 0
+        SlashResistance: 0
+        SmashResistance: 0
+        FireAffinity: 0
+        IceAffinity: 0
+        LightningAffinity: 0
+        PierceAffinity: 0
+        SlashAffinity: 0
+        SmashAffinity: 0
+        PhysicalAttack: 0
+        MagicalAttack: 0
+        PhysicalDefense: 0
+        MagicalDefense: 0
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: 
+      itemCount: 1
+      monsterRoleIds: 
+    - weight: 15
+      resultText: "{character}\uC758 \uBAB8\uC5D0 \uB3C5\uC774 \uD37C\uC84C\uC2B5\uB2C8\uB2E4.
+        \uC55E\uC73C\uB85C 3\uAC1C \uBC29 \uB3D9\uC548 \uCD5C\uB300 \uC9C0\uAD6C\uB825\uC774
+        \uAC10\uC18C\uD569\uB2C8\uB2E4."
+      effectType: 3
+      targetScope: 1
+      candidateStats: 
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName: "\uC5F4\uB9E4 \uC911\uB3C5 - \uC9C0\uAD6C\uB825"
+      durationRooms: 3
+      temporaryStatModifiers:
+        Strength: 0
+        Dexterity: 0
+        Speed: 0
+        Intelligence: 0
+        Wisdom: 0
+        Health: 0
+        Vitality: 0
+        Endurance: 0
+        Detection: 0
+        Insight: 0
+        AttackSpeed: 0
+        CastSpeed: 0
+        WeaponAttackSpeedMultiplier: 0
+        WeaponCastSpeedMultiplier: 0
+        MaxHp: 0
+        MaxMentality: 0
+        MaxStamina: -10
+        StaminaRecovery: 0
+        MentalityRecovery: 0
+        FireResistance: 0
+        IceResistance: 0
+        LightningResistance: 0
+        PierceResistance: 0
+        SlashResistance: 0
+        SmashResistance: 0
+        FireAffinity: 0
+        IceAffinity: 0
+        LightningAffinity: 0
+        PierceAffinity: 0
+        SlashAffinity: 0
+        SmashAffinity: 0
+        PhysicalAttack: 0
+        MagicalAttack: 0
+        PhysicalDefense: 0
+        MagicalDefense: 0
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: 
+      itemCount: 1
+      monsterRoleIds: 
+    failureOutcomes: []
+  - text: "\uC9C0\uB098\uAC04\uB2E4"
+    requiresCharacter: 0
+    abilityCheck:
+      enabled: 0
+      stat: 0
+      baseSuccessChancePercent: 50
+      chancePerStatPoint: 2
+      tierPenaltyPercent: 5
+      difficultyPenaltyPercent: 10
+      minimumSuccessChancePercent: 5
+      maximumSuccessChancePercent: 95
+    outcomes:
+    - weight: 1
+      resultText: "\uC5F4\uB9E4\uB97C \uAC74\uB4DC\uB9AC\uC9C0 \uC54A\uACE0 \uAE38\uC744
+        \uACC4\uC18D \uAC11\uB2C8\uB2E4."
+      effectType: 0
+      targetScope: 0
+      candidateStats: 
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName: 
+      durationRooms: 1
+      temporaryStatModifiers:
+        Strength: 0
+        Dexterity: 0
+        Speed: 0
+        Intelligence: 0
+        Wisdom: 0
+        Health: 0
+        Vitality: 0
+        Endurance: 0
+        Detection: 0
+        Insight: 0
+        AttackSpeed: 0
+        CastSpeed: 0
+        WeaponAttackSpeedMultiplier: 0
+        WeaponCastSpeedMultiplier: 0
+        MaxHp: 0
+        MaxMentality: 0
+        MaxStamina: 0
+        StaminaRecovery: 0
+        MentalityRecovery: 0
+        FireResistance: 0
+        IceResistance: 0
+        LightningResistance: 0
+        PierceResistance: 0
+        SlashResistance: 0
+        SmashResistance: 0
+        FireAffinity: 0
+        IceAffinity: 0
+        LightningAffinity: 0
+        PierceAffinity: 0
+        SlashAffinity: 0
+        SmashAffinity: 0
+        PhysicalAttack: 0
+        MagicalAttack: 0
+        PhysicalDefense: 0
+        MagicalDefense: 0
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: 
+      itemCount: 1
+      monsterRoleIds: 
+    failureOutcomes: []

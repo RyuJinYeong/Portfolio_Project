@@ -229,9 +229,12 @@ public class TooltipManager : MonoBehaviour
             ? EquipmentRuntimeResolver.Resolve(slot.itemUid, slot.equipmentInstanceId)
             : null;
 
-        string displayName = equipment != null && !string.IsNullOrEmpty(equipment.displayName)
-            ? equipment.displayName
-            : item.itemName;
+        string displayName = slot.IsMonsterEssence() &&
+                             !string.IsNullOrEmpty(slot.essenceMonsterName)
+            ? $"{slot.essenceMonsterName}의 정수"
+            : equipment != null && !string.IsNullOrEmpty(equipment.displayName)
+                ? equipment.displayName
+                : item.itemName;
 
         string typeText = GetItemTypeText(item, equipment);
         string detailText = BuildItemDescription(item, equipment);
@@ -522,8 +525,6 @@ public class TooltipManager : MonoBehaviour
         AppendStat(builder, "치명타 피해", stats.CriticalDamageBonus);
         AppendStat(builder, "상태이상 저항", stats.StatusResistance);
         AppendStat(builder, "지도 탐지 범위", stats.MapDetectionRange);
-        AppendStat(builder, "함정 탐지", stats.TrapDetectionBonus);
-        AppendStat(builder, "이벤트 통찰", stats.EventInsightBonus);
         AppendStat(builder, "처치 시 HP 회복", stats.KillHpRecovery);
         AppendStat(builder, "처치 시 지구력 회복", stats.KillStaminaRecovery);
         AppendStat(builder, "처치 시 정신력 회복", stats.KillMentalityRecovery);

@@ -15,7 +15,7 @@ MonoBehaviour:
   id: 2012
   statusName: "\uBE59\uACB0"
   description: 
-  icon: {fileID: 0}
+  icon: {fileID: 1401011104, guid: 080cb6d98b00c2645b2c41df5f69bc78, type: 3}
   isDebuff: 1
   durationType: 1
   effectType: 4

@@ -45,6 +45,8 @@ public class MonsterRoleSO : ScriptableObject
     public int maxRandomEquipmentCount = 1;
 
     [Header("Defeat Drop")]
+    [Tooltip("소환 몬스터처럼 경험치를 주지 않는 역할에 체크합니다.")]
+    public bool suppressExperience;
     [Range(0, 100)]
     public int traitCaptureChance;
     [Range(0, 100)]

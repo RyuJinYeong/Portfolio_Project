@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "1006_강타"
+  m_Name: "1006_\uAC15\uD0C0"
   m_EditorClassIdentifier: 
   uid: 1006
-  skillName: "강타"
-  description: "무거운 무기로 강하게 내려쳐 큰 피해와 흐트러짐을 준다."
-  icon: {fileID: 0}
+  skillName: "\uAC15\uD0C0"
+  description: "\uBB34\uAC70\uC6B4 \uBB34\uAE30\uB85C \uAC15\uD558\uAC8C \uB0B4\uB824\uCCD0
+    \uD070 \uD53C\uD574\uC640 \uD750\uD2B8\uB7EC\uC9D0\uC744 \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: b31c1092aca02ba42b81d8721aabe2a5, type: 3}
+  composer: {fileID: 11400000, guid: 6359b26460031ab0679410bc52c8d8ad, type: 2}
   activationSpeed: 0.8
   staminaCost: 2
   mentalCost: 0
   type: 0
   style: 0
   discipline: 1
+  firstRewardTier: 1
   damageComponents:
   - damageType: 0
     attribute: 6

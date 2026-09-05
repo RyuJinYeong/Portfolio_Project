@@ -121,6 +121,9 @@ public class InventoryItemSlotUI : MonoBehaviour,
         if (slot == null || item == null)
             return "";
 
+        if (slot.IsMonsterEssence() && !string.IsNullOrEmpty(slot.essenceMonsterName))
+            return $"{slot.essenceMonsterName}의 정수";
+
         if (item is EquipmentDefinitionSO)
         {
             EquipmentRuntimeData runtime = EquipmentRuntimeResolver.Resolve(

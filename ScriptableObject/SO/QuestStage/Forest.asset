@@ -11,11 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 55d1d54aaac64e719f7013fd6f84a322, type: 3}
   m_Name: Forest
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   stageKey: Forest
-  stageName: 숲
-  description: 숲 배경 맵 중 하나를 사용하며 짐승형과 인간형 산적이 등장합니다.
-  mapPrefabs: []
+  stageName: "\uC232"
+  description: "\uC232 \uBC30\uACBD \uB9F5 \uC911 \uD558\uB098\uB97C \uC0AC\uC6A9\uD558\uBA70
+    \uC9D0\uC2B9\uD615\uACFC \uC778\uAC04\uD615 \uC0B0\uC801\uC774 \uB4F1\uC7A5\uD569\uB2C8\uB2E4."
+  mapPrefabs:
+  - {fileID: 0}
   monsterTags:
   - Forest
-  statusEffectIds: []
+  statusEffectIds: 

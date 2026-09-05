@@ -15,6 +15,9 @@ public class SpawnPointManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            if (GetComponent<BattlePresentationDirector>() == null)
+                gameObject.AddComponent<BattlePresentationDirector>();
+
             DontDestroyOnLoad(gameObject);
         }
         else

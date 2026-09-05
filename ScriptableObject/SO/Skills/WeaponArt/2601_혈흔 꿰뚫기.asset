@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2601_혈흔 꿰뚫기"
+  m_Name: "2601_\uD608\uD754 \uAFF0\uB6AB\uAE30"
   m_EditorClassIdentifier: 
   uid: 2601
-  skillName: "혈흔 꿰뚫기"
-  description: "출혈 스택을 소비해 강한 관통 피해를 준다."
-  icon: {fileID: 0}
+  skillName: "\uD608\uD754 \uAFF0\uB6AB\uAE30"
+  description: "\uCD9C\uD608 \uC2A4\uD0DD\uC744 \uC18C\uBE44\uD574 \uAC15\uD55C \uAD00\uD1B5
+    \uD53C\uD574\uB97C \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: 4098d13bb392365459775282c5afcc55, type: 3}
+  composer: {fileID: 11400000, guid: 8604615a71aceeda2cc71c84891a9766, type: 2}
   activationSpeed: 0.8
   staminaCost: 2
   mentalCost: 0
   type: 0
   style: 1
   discipline: 1
+  firstRewardTier: 1
   damageComponents:
   - damageType: 0
     attribute: 4

@@ -40,6 +40,9 @@ public class GameDataRegistry : MonoBehaviour
     [Header("Quest Stages")]
     [SerializeField] private List<QuestStageDefinitionSO> questStages = new();
 
+    [Header("Quest Encounters")]
+    [SerializeField] private List<QuestEncounterDefinitionSO> questEncounters = new();
+
 
     private readonly Dictionary<int, StatusEffectDefinitionSO> statusEffectMap = new();
 
@@ -58,6 +61,7 @@ public class GameDataRegistry : MonoBehaviour
     private readonly Dictionary<int, MonsterBaseSO> monsterBaseMap = new();
     private readonly Dictionary<int, MonsterRoleSO> monsterRoleMap = new();
     private readonly Dictionary<string, QuestStageDefinitionSO> questStageMap = new();
+    private readonly Dictionary<string, QuestEncounterDefinitionSO> questEncounterMap = new();
 
     private readonly Dictionary<int, List<EquipmentDefinitionSO>> equipmentTierMap = new();
 
@@ -99,6 +103,7 @@ public class GameDataRegistry : MonoBehaviour
         monsterBaseMap.Clear();
         monsterRoleMap.Clear();
         questStageMap.Clear();
+        questEncounterMap.Clear();
 
 
         foreach (StatusEffectDefinitionSO status in statusEffects)
@@ -258,6 +263,21 @@ public class GameDataRegistry : MonoBehaviour
             }
 
             questStageMap.Add(questStage.stageKey, questStage);
+        }
+
+
+        foreach (QuestEncounterDefinitionSO encounter in questEncounters)
+        {
+            if (encounter == null || string.IsNullOrEmpty(encounter.encounterId))
+                continue;
+
+            if (questEncounterMap.ContainsKey(encounter.encounterId))
+            {
+                Debug.LogWarning($"중복 QuestEncounter id: {encounter.encounterId}");
+                continue;
+            }
+
+            questEncounterMap.Add(encounter.encounterId, encounter);
         }
 
 
@@ -445,6 +465,36 @@ public class GameDataRegistry : MonoBehaviour
     public List<MercenaryDefinitionSO> GetMercenaryDefinitions()
     {
         return mercenaryDefinitions;
+    }
+
+    #endregion
+
+
+    #region Quest Encounter
+
+    public QuestEncounterDefinitionSO GetQuestEncounter(string encounterId)
+    {
+        if (string.IsNullOrEmpty(encounterId))
+            return null;
+
+        questEncounterMap.TryGetValue(encounterId, out QuestEncounterDefinitionSO encounter);
+        return encounter;
+    }
+
+
+    public List<QuestEncounterDefinitionSO> GetQuestEncounters(
+        string stageKey,
+        QuestRouteNodeType nodeType)
+    {
+        List<QuestEncounterDefinitionSO> result = new List<QuestEncounterDefinitionSO>();
+
+        foreach (QuestEncounterDefinitionSO encounter in questEncounters)
+        {
+            if (encounter != null && encounter.CanAppear(stageKey, nodeType))
+                result.Add(encounter);
+        }
+
+        return result;
     }
 
     #endregion

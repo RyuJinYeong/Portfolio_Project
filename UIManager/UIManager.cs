@@ -22,9 +22,26 @@ public class UIManager : MonoBehaviour
 
     [Header("Town Windows")]
     public TownCharacterManagementPanel characterManagementPanel;
+    public TownCharacterManagementPanel partyManagementPanel;
     public InventoryUIController inventoryUIController;
     public GameObject questPanel;
     public GameObject recruitPanel;
+    public PartyFormationPanel partyFormationPanel;
+    public QuestNodeMapPanel questNodeMapPanel;
+
+    [Header("Global Windows")]
+    public LevelGrowthPanel levelGrowthPanel;
+    [SerializeField] private GameObject battleDefeatDialogPrefab;
+    [SerializeField] private BattleLootPanel battleLootPanelPrefab;
+    [SerializeField] private InventoryItemActionMenuUI inventoryItemActionMenu;
+
+    [Header("Expedition Buttons")]
+    public GameObject expeditionButtonRoot;
+    public GameObject expeditionInventoryButton;
+    public GameObject expeditionPartyManagementButton;
+    public GameObject expeditionMapButton;
+
+    private GameObject activeBattleDefeatDialog;
 
     [Header("Camera Focus")]
     public string storageFocusKey = "Storage";
@@ -55,6 +72,7 @@ public class UIManager : MonoBehaviour
     public Transform counterSkillPanel; // 하단부의 방어자, 방어 대상 스킬 정보 패널    
 
     public RawImage characterPortrait;
+    public Image characterHpImage;
     public TextMeshProUGUI characterName;
 
     public TextMeshProUGUI currentHP;
@@ -77,6 +95,7 @@ public class UIManager : MonoBehaviour
     public GameObject[] hotbarButtons = new GameObject[12]; // 12개의 핫바 버튼을 위한 GameObject 배열
 
     public CharacterTargeting characterTargeting;
+    private CharacterManager displayedCharacter;
 
     private void Awake()
     {
@@ -104,9 +123,25 @@ public class UIManager : MonoBehaviour
         if (characterManagementPanel != null)
             characterManagementPanel.uiManager = this;
 
+        if (partyManagementPanel != null)
+            partyManagementPanel.uiManager = this;
+
         _questPanel = questPanel != null ? questPanel.GetComponent<QuestPanel>() : null;
 
+        if (partyFormationPanel == null)
+            partyFormationPanel = GetComponentInChildren<PartyFormationPanel>(true);
+
+        if (questNodeMapPanel == null)
+            questNodeMapPanel = GetComponentInChildren<QuestNodeMapPanel>(true);
+
+        if (levelGrowthPanel == null)
+            levelGrowthPanel = GetComponentInChildren<LevelGrowthPanel>(true);
+
+        if (inventoryItemActionMenu == null)
+            inventoryItemActionMenu = GetComponentInChildren<InventoryItemActionMenuUI>(true);
+
         WireQuestPanel();
+        WireInventoryButtons();
     }
 
     private void OnEnable()
@@ -147,8 +182,12 @@ public class UIManager : MonoBehaviour
         _questPanel.OnAcceptRequest = def =>
         {
             CloseManagedWindows();
-            ReturnCameraWhenAllWindowsClosed();
-            // 여기서 바로 Accept까지 태우지 말고, 파티 편성으로 위임
+
+            if (partyFormationPanel != null)
+                partyFormationPanel.Open(def);
+            else
+                ReturnCameraWhenAllWindowsClosed();
+
             onQuestAcceptRequest?.Invoke(def);
         };
     }
@@ -182,6 +221,8 @@ public class UIManager : MonoBehaviour
             CloseManagedWindows();
             townWindowSession = false;
         }
+
+        SetExpeditionButtonState(false, !isTown);
     }
 
     #region 마을내 UI 버튼 조작
@@ -242,7 +283,8 @@ public class UIManager : MonoBehaviour
         if (characterManager == null || inventoryUIController == null)
             return;
 
-        BeginTownWindowSession(characterManagementFocusKey);
+        if (IsInTown())
+            BeginTownWindowSession(characterManagementFocusKey);
         inventoryUIController.SetSelectedCharacter(characterManager);
         inventoryUIController.CloseAttachedStorage();
         SetWindowPosition(inventoryUIController.equipmentWindow, Vector2.zero);
@@ -254,7 +296,8 @@ public class UIManager : MonoBehaviour
         if (characterManager == null || inventoryUIController == null)
             return;
 
-        BeginTownWindowSession(characterManagementFocusKey);
+        if (IsInTown())
+            BeginTownWindowSession(characterManagementFocusKey);
         inventoryUIController.SetSelectedCharacter(characterManager);
         inventoryUIController.OpenSkills();
     }
@@ -264,7 +307,11 @@ public class UIManager : MonoBehaviour
         if (characterManagementPanel != null)
             characterManagementPanel.gameObject.SetActive(false);
 
-        ReturnCameraWhenAllWindowsClosed();
+        if (partyManagementPanel != null)
+            partyManagementPanel.gameObject.SetActive(false);
+
+        if (IsInTown())
+            ReturnCameraWhenAllWindowsClosed();
     }
 
     public void ReturnToTownCameraWhenIdle()
@@ -305,9 +352,29 @@ public class UIManager : MonoBehaviour
             return;
         }
 
+        if (partyManagementPanel != null &&
+            partyManagementPanel.gameObject.activeInHierarchy)
+        {
+            partyManagementPanel.gameObject.SetActive(false);
+            return;
+        }
+
         if (recruitPanel != null && recruitPanel.activeInHierarchy)
         {
             recruitPanel.SetActive(false);
+            return;
+        }
+
+        if (partyFormationPanel != null &&
+            partyFormationPanel.gameObject.activeInHierarchy)
+        {
+            partyFormationPanel.Close();
+            return;
+        }
+
+        if (questNodeMapPanel != null &&
+            questNodeMapPanel.gameObject.activeInHierarchy)
+        {
             return;
         }
 
@@ -323,11 +390,350 @@ public class UIManager : MonoBehaviour
         if (characterManagementPanel != null)
             characterManagementPanel.gameObject.SetActive(false);
 
+        if (partyManagementPanel != null)
+            partyManagementPanel.gameObject.SetActive(false);
+
         if (recruitPanel != null)
             recruitPanel.SetActive(false);
 
         if (questPanel != null)
             questPanel.SetActive(false);
+
+        if (partyFormationPanel != null)
+            partyFormationPanel.Close();
+
+        if (questNodeMapPanel != null)
+            questNodeMapPanel.Close();
+    }
+
+    public void ReturnToQuestBoardFromPartyFormation()
+    {
+        if (partyFormationPanel != null)
+            partyFormationPanel.Close();
+
+        if (questPanel != null)
+            questPanel.SetActive(true);
+    }
+
+    public void OpenQuestNodeMap()
+    {
+        if (questNodeMapPanel != null)
+            questNodeMapPanel.Open();
+    }
+
+    public void OpenExpeditionPartyManagement()
+    {
+        inventoryUIController?.CloseAll();
+
+        if (partyManagementPanel != null)
+        {
+            partyManagementPanel.OpenAndBuildExpeditionParty();
+            partyManagementPanel.transform.SetAsLastSibling();
+        }
+    }
+
+    public void OpenExpeditionInventory()
+    {
+        if (inventoryUIController == null)
+            return;
+
+        CharacterManager selectedCharacter = partyManagementPanel != null
+            ? partyManagementPanel.SelectedCharacter
+            : null;
+
+        if (selectedCharacter != null)
+            inventoryUIController.SetSelectedCharacter(selectedCharacter);
+
+        SetWindowPosition(inventoryUIController.expeditionInventoryWindow, Vector2.zero);
+        inventoryUIController.OpenExpeditionInventory();
+
+        if (inventoryUIController.expeditionInventoryWindow != null)
+            inventoryUIController.expeditionInventoryWindow.transform.SetAsLastSibling();
+    }
+
+    public void OpenCompanyStorageFromPartyFormation()
+    {
+        if (inventoryUIController == null)
+            return;
+
+        SetWindowPosition(inventoryUIController.companyStorageWindow, Vector2.zero);
+        inventoryUIController.OpenCompanyStorage();
+
+        if (inventoryUIController.companyStorageWindow != null)
+            inventoryUIController.companyStorageWindow.transform.SetAsLastSibling();
+    }
+
+    public void SetExpeditionMapButtonVisible(bool visible)
+    {
+        if (expeditionMapButton != null)
+            expeditionMapButton.SetActive(visible);
+    }
+
+    public void SetExpeditionButtonState(bool utilityButtonsVisible, bool mapButtonVisible)
+    {
+        if (expeditionButtonRoot != null)
+            expeditionButtonRoot.SetActive(utilityButtonsVisible || mapButtonVisible);
+
+        if (expeditionInventoryButton != null)
+            expeditionInventoryButton.SetActive(utilityButtonsVisible);
+
+        if (expeditionPartyManagementButton != null)
+            expeditionPartyManagementButton.SetActive(utilityButtonsVisible);
+
+        SetExpeditionMapButtonVisible(mapButtonVisible);
+    }
+
+    public void BringExpeditionButtonsToFront()
+    {
+        if (expeditionButtonRoot != null && expeditionButtonRoot.activeInHierarchy)
+            expeditionButtonRoot.transform.SetAsLastSibling();
+    }
+
+    public void OpenQuestEncounter()
+    {
+        if (battleUiRoot != null)
+            battleUiRoot.SetActive(false);
+
+        if (questNodeMapPanel != null)
+            questNodeMapPanel.OpenEncounter();
+    }
+
+    public bool OpenPendingLevelUps(System.Action onCompleted = null)
+    {
+        if (levelGrowthPanel == null || CharacterPoolManager.Instance == null)
+            return false;
+
+        return levelGrowthPanel.Open(
+            CharacterPoolManager.Instance.All(),
+            onCompleted);
+    }
+
+    public bool OpenBattleDefeat(System.Action onContinue)
+    {
+        if (battleDefeatDialogPrefab == null)
+        {
+            Debug.LogError("[UIManager] Battle defeat dialog prefab is not assigned.");
+            return false;
+        }
+
+        if (activeBattleDefeatDialog != null)
+            Destroy(activeBattleDefeatDialog);
+
+        activeBattleDefeatDialog = Instantiate(battleDefeatDialogPrefab, transform);
+        activeBattleDefeatDialog.name = "BattleDefeatDialog";
+        activeBattleDefeatDialog.transform.SetAsLastSibling();
+
+        Animator animator = activeBattleDefeatDialog.GetComponent<Animator>();
+
+        if (animator != null)
+            animator.enabled = false;
+
+        if (activeBattleDefeatDialog.transform is RectTransform rootRect)
+        {
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+            rootRect.localScale = Vector3.one;
+        }
+
+        Transform panel = activeBattleDefeatDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel != null
+            ? panel.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        TextMeshProUGUI messageText = panel != null
+            ? panel.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        Button continueButton = panel != null
+            ? panel.Find("ButtonYes")?.GetComponent<Button>()
+            : null;
+
+        if (panel == null || titleText == null || messageText == null || continueButton == null)
+        {
+            Debug.LogError("[UIManager] Battle defeat dialog hierarchy is invalid.");
+            Destroy(activeBattleDefeatDialog);
+            activeBattleDefeatDialog = null;
+            return false;
+        }
+
+        panel.localScale = Vector3.one;
+        titleText.text = "패배";
+        messageText.text = "원정대가 전멸했습니다.";
+
+        TextMeshProUGUI buttonText = continueButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (buttonText != null)
+            buttonText.text = "계속하기";
+
+        if (turnEndButton != null)
+            turnEndButton.gameObject.SetActive(false);
+        if (counterTurnEndButton != null)
+            counterTurnEndButton.gameObject.SetActive(false);
+
+        characterTargeting?.StopTargeting();
+        ClearHotbarButtons();
+
+        continueButton.onClick.RemoveAllListeners();
+        continueButton.onClick.AddListener(() =>
+        {
+            continueButton.interactable = false;
+            Destroy(activeBattleDefeatDialog);
+            activeBattleDefeatDialog = null;
+            onContinue?.Invoke();
+        });
+
+        return true;
+    }
+
+    public bool OpenBattleLoot(
+        IReadOnlyList<InventorySlotData> loot,
+        System.Action onCompleted)
+    {
+        if (loot == null || !loot.Any(slot => slot != null && slot.itemUid > 0 && slot.count > 0))
+            return false;
+
+        if (battleLootPanelPrefab == null)
+        {
+            Debug.LogError("[UIManager] Battle loot panel prefab is not assigned.");
+            return false;
+        }
+
+        BattleLootPanel panel = Instantiate(battleLootPanelPrefab, transform);
+        panel.name = "BattleLoot";
+
+        if (panel.transform is RectTransform rectTransform)
+            rectTransform.localScale = Vector3.one;
+
+        panel.Open(loot, onCompleted);
+        return true;
+    }
+
+    public bool OpenInventoryItemActionMenu(
+        InventorySlotData slot,
+        bool directTargetSelection,
+        bool allowSell,
+        System.Action<CharacterManager> onUseOrEquip,
+        System.Action onSell,
+        System.Action onDiscard)
+    {
+        if (slot == null || inventoryItemActionMenu == null)
+            return false;
+
+        inventoryItemActionMenu.Open(
+            slot,
+            GetInventoryActionTargets(),
+            directTargetSelection,
+            allowSell && IsInTown(),
+            onUseOrEquip,
+            onSell,
+            onDiscard);
+        return true;
+    }
+
+    public void CloseInventoryItemActionMenu()
+    {
+        inventoryItemActionMenu?.Close();
+    }
+
+    private List<CharacterManager> GetInventoryActionTargets()
+    {
+        IEnumerable<CharacterManager> candidates = CharacterPoolManager.Instance != null
+            ? CharacterPoolManager.Instance.All()
+            : GameManager.Instance != null
+                ? GameManager.Instance.GetAllCharacters()
+                : Enumerable.Empty<CharacterManager>();
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+        HashSet<string> expeditionIds = !IsInTown() && playerData?.activeCharacterIds != null
+            ? new HashSet<string>(playerData.activeCharacterIds)
+            : null;
+
+        return candidates
+            .Where(manager => manager != null &&
+                              manager.character != null &&
+                              manager.character.IsMine &&
+                              manager.character.IsAlive &&
+                              (expeditionIds == null ||
+                               expeditionIds.Contains(manager.character.ID)))
+            .GroupBy(manager => manager.character.ID)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private void WireInventoryButtons()
+    {
+        Transform partyPanel = partyFormationPanel != null
+            ? partyFormationPanel.transform
+            : transform.Find("PartyFormationPanel");
+
+        ReplaceButtonAction(
+            FindButton(partyPanel, "ExpeditionInventory"),
+            OpenExpeditionInventory);
+        ReplaceButtonAction(
+            FindButton(partyPanel, "Crate"),
+            OpenCompanyStorageFromPartyFormation);
+
+        Transform companyStorage = inventoryUIController != null &&
+                                   inventoryUIController.companyStorageWindow != null
+            ? inventoryUIController.companyStorageWindow.transform
+            : transform.Find("CompanyStorageWindow");
+        Transform expeditionShortcut = FindDescendant(
+            companyStorage,
+            "ExpeditionInventoryButtons");
+
+        if (expeditionShortcut == null)
+        {
+            expeditionShortcut = FindDescendant(
+                companyStorage,
+                "ExpeditionInventory");
+        }
+
+        ReplaceButtonAction(
+            FindButton(expeditionShortcut, "ExpandBt"),
+            OpenExpeditionInventory);
+    }
+
+    private static Button FindButton(Transform root, string objectName)
+    {
+        Transform target = FindDescendant(root, objectName);
+
+        if (target == null)
+            return null;
+
+        return target.GetComponent<Button>() ??
+               target.GetComponentInChildren<Button>(true);
+    }
+
+    private static Transform FindDescendant(Transform root, string objectName)
+    {
+        if (root == null)
+            return null;
+
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (child.name == objectName)
+                return child;
+        }
+
+        return null;
+    }
+
+    private static void ReplaceButtonAction(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button == null || action == null)
+            return;
+
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(action);
+    }
+
+    private static bool IsInTown()
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        return playerData == null || playerData.currentStage == "Town";
     }
 
     private void BeginTownWindowSession(string focusKey)
@@ -353,8 +759,18 @@ public class UIManager : MonoBehaviour
             return true;
         }
 
+        if (partyManagementPanel != null &&
+            partyManagementPanel.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
         if ((recruitPanel != null && recruitPanel.activeInHierarchy) ||
-            (questPanel != null && questPanel.activeInHierarchy))
+            (questPanel != null && questPanel.activeInHierarchy) ||
+            (partyFormationPanel != null &&
+             partyFormationPanel.gameObject.activeInHierarchy) ||
+            (questNodeMapPanel != null &&
+             questNodeMapPanel.gameObject.activeInHierarchy))
         {
             return true;
         }
@@ -516,14 +932,44 @@ public class UIManager : MonoBehaviour
 
     public void DisplayCharacterInfo(CharacterManager characterManager)
     {
+        displayedCharacter = characterManager;
         infoPanel.SetActive(true);
-        CharacterData characterData = characterManager.character;
+        RefreshDisplayedCharacterInfo();
+
+        skillBar.SetActive(characterManager.character.IsMine); // 캐릭터가 자신의 것일 경우 스킬바 활성화
+
+        // 핫바 스킬 업데이트
+        UpdateHotbarSkills(characterManager);
+    }
+
+    public void RefreshCharacterInfo(CharacterManager characterManager)
+    {
+        if (characterManager == null || characterManager != displayedCharacter)
+            return;
+
+        RefreshDisplayedCharacterInfo();
+        UpdateSkillTransparency(characterManager);
+    }
+
+    private void RefreshDisplayedCharacterInfo()
+    {
+        if (displayedCharacter == null || displayedCharacter.character == null)
+            return;
+
+        CharacterData characterData = displayedCharacter.character;
 
         characterPortrait.texture = characterData.Portrait;
         characterName.text = characterData.Name;
 
         currentHP.text = $"{characterData.CurrentHp}";
         characterHP.text = $"{characterData.FinalStats.MaxHp}";
+
+        if (characterHpImage != null)
+        {
+            characterHpImage.fillAmount = characterData.FinalStats.MaxHp > 0
+                ? Mathf.Clamp01((float)characterData.CurrentHp / characterData.FinalStats.MaxHp)
+                : 0f;
+        }
 
         currentStamina.text = $"{characterData.CurrentStamina}";
         characterStamina.text = $"{characterData.FinalStats.MaxStamina}";
@@ -535,11 +981,6 @@ public class UIManager : MonoBehaviour
         characterMagicAttack.text = $"{characterData.FinalStats.MagicalAttack}";
         characterPhysicalDefense.text = $"{characterData.FinalStats.PhysicalDefense}";
         characterMagicDefense.text = $"{characterData.FinalStats.MagicalDefense}";
-
-        skillBar.SetActive(characterData.IsMine); // 캐릭터가 자신의 것일 경우 스킬바 활성화
-
-        // 핫바 스킬 업데이트
-        UpdateHotbarSkills(characterManager);
     }
 
     // 핫바 스킬 업데이트 메서드

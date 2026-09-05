@@ -15,7 +15,7 @@ MonoBehaviour:
   id: 1001
   statusName: "\uCD9C\uD608"
   description: "\uB9E4 \uD134 \uC2A4\uD0DD \uBE44\uB840 \uACE0\uC815 \uD53C\uD574"
-  icon: {fileID: 0}
+  icon: {fileID: 374495580, guid: 080cb6d98b00c2645b2c41df5f69bc78, type: 3}
   isDebuff: 1
   durationType: 1
   effectType: 1

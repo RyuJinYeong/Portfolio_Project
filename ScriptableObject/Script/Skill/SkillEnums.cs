@@ -61,13 +61,13 @@ public enum SkillAttribute // 스킬 세부 속성
 
 public enum SkillDiscipline // ui 표현용 스킬 필요 무기 열거형
 {
-    Basic,          // 기본기
-    WeaponArt,      // 무기술
-    Swordsmanship,  // 검술
-    Archery,        // 궁술
-    ShieldArt,      // 방패술
-    MartialArt,     // 체술
-    HeavyWeapon,    // 중량 무기술
-    Magic,          // 마법
-    Monster         // 몬스터 전용
+    Basic = 0,          // 기본기
+    WeaponArt = 1,      // 무기술
+    Swordsmanship = 2,  // 검술
+    Archery = 3,        // 궁술
+    ShieldArt = 4,      // 방패술
+    MartialArt = 5,     // 체술
+    DaggerArt = 6,      // 단검술
+    Magic = 7,          // 마법
+    Monster = 8         // 몬스터 전용
 }

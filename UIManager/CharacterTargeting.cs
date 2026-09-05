@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using SoftKitty.InventoryEngine;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -6,6 +7,9 @@ using static SoftKitty.InventoryEngine.InventoryHolder;
 public class CharacterTargeting : MonoBehaviour
 {
     public LineRenderer lineRenderer;
+    [Range(0f, 1f)] public float dottedLineAlpha = 0.45f;
+    [Min(0.1f)] public float dottedPatternLength = 1.2f;
+
     private Camera mainCamera;
     private CharacterManager selectedCharacter;
     private CharacterManager selectedTarget;
@@ -24,14 +28,34 @@ public class CharacterTargeting : MonoBehaviour
     private Outline currentHoverOutline;
     private Outline selectedCharacterOutline;
 
+    private readonly List<LineRenderer> confirmedLineRenderers = new();
+    private LineRenderer previewLineRenderer;
+    private Material dottedLineMaterial;
+    private Texture2D dottedLineTexture;
+    private Gradient solidLineGradient;
+    private Material[] solidLineMaterials;
+    private LineTextureMode solidLineTextureMode;
+    private Vector2 solidLineTextureScale;
+
     void Start()
     {
         mainCamera = Camera.main;
-        lineRenderer.enabled = false;
+        InitializeLineRenderers();
     }
 
     void Update()
     {
+        if (mainCamera == null || !mainCamera.isActiveAndEnabled)
+        {
+            GameObject mainCameraObject = GameObject.Find("MainCamera");
+            mainCamera = mainCameraObject != null
+                ? mainCameraObject.GetComponent<Camera>()
+                : Camera.main;
+        }
+
+        if (mainCamera == null)
+            return;
+
         HandleHoverOutline();
 
         if (!isTargeting &&
@@ -43,7 +67,9 @@ public class CharacterTargeting : MonoBehaviour
 
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
+                CharacterManager characterManager = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (characterManager != null)
                 {
                     SelectCharacter(characterManager);
                 }
@@ -72,7 +98,9 @@ public class CharacterTargeting : MonoBehaviour
 
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
+                CharacterManager targetCharacter = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (targetCharacter != null)
                 {
                     SelectTarget(targetCharacter);
                 }
@@ -92,7 +120,9 @@ public class CharacterTargeting : MonoBehaviour
 
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
+                CharacterManager targetCharacter = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (targetCharacter != null)
                 {
                     SelectTarget(targetCharacter);
                 }
@@ -112,7 +142,9 @@ public class CharacterTargeting : MonoBehaviour
 
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
+                CharacterManager targetCharacter = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (targetCharacter != null)
                 {
                     SelectDefenseTarget(targetCharacter);
                 }
@@ -151,18 +183,30 @@ public class CharacterTargeting : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit))
         {
-            if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
+            CharacterManager characterManager = hit.transform.GetComponentInParent<CharacterManager>();
+
+            if (characterManager != null)
             {
                 if (selectedCharacter == characterManager)
+                {
+                    if (currentHoverOutline != null)
+                    {
+                        currentHoverOutline.enabled = false;
+                        currentHoverOutline = null;
+                    }
+
                     return;
+                }
+
+                Outline hoveredOutline = characterManager.GetComponentInChildren<Outline>(true);
 
                 if (currentHoverOutline != null &&
-                    currentHoverOutline != characterManager.GetComponent<Outline>())
+                    currentHoverOutline != hoveredOutline)
                 {
                     currentHoverOutline.enabled = false;
                 }
 
-                currentHoverOutline = characterManager.GetComponent<Outline>();
+                currentHoverOutline = hoveredOutline;
 
                 if (currentHoverOutline != null)
                 {
@@ -178,6 +222,11 @@ public class CharacterTargeting : MonoBehaviour
                     currentHoverOutline = null;
                 }
             }
+        }
+        else if (currentHoverOutline != null)
+        {
+            currentHoverOutline.enabled = false;
+            currentHoverOutline = null;
         }
     }
 
@@ -216,13 +265,15 @@ public class CharacterTargeting : MonoBehaviour
             */
         }
 
-        selectedCharacterOutline = selectedCharacter.GetComponent<Outline>();
+        selectedCharacterOutline = selectedCharacter.GetComponentInChildren<Outline>(true);
 
         if (selectedCharacterOutline != null)
         {
             selectedCharacterOutline.OutlineColor = selectedOutlineColor;
             selectedCharacterOutline.enabled = true;
         }
+
+        RefreshConfirmedTargetLines();
 
         if (currentHoverOutline == selectedCharacterOutline)
         {
@@ -235,34 +286,39 @@ public class CharacterTargeting : MonoBehaviour
         if (selectedCharacter == null || skill == null)
             return;
 
+        bool isDefenseTurn = TurnManager.Instance != null &&
+                             TurnManager.Instance.defenseCharacter == selectedCharacter;
+
+        if (!selectedCharacter.isPlayerTurn && !(skill.isCounterSkill && isDefenseTurn))
+            return;
+
         selectedSkill = skill;
+        RefreshConfirmedTargetLines();
+        SetLineRendererVisible(previewLineRenderer, true);
 
         if (selectedSkill.isCounterSkill)
         {
             ChangeCursor("Deff");
             isTargeting = true;
             isDefenseSkillTargeting = true;
-            lineRenderer.enabled = true;
         }
         else if (selectedSkill.isRangedSkill)
         {
             ChangeCursor("Shoot");
             isTargeting = true;
             isDefenseSkillTargeting = false;
-            lineRenderer.enabled = true;
         }
         else
         {
             ChangeCursor("Attack");
             isTargeting = true;
             isDefenseSkillTargeting = false;
-            lineRenderer.enabled = true;
         }
     }
 
     void UpdateBezierCurve()
     {
-        if (selectedCharacter == null || lineRenderer == null || mainCamera == null)
+        if (selectedCharacter == null || previewLineRenderer == null || mainCamera == null)
             return;
 
         Vector3 startPosition = selectedCharacter.transform.position + Vector3.up * 1;
@@ -276,14 +332,7 @@ public class CharacterTargeting : MonoBehaviour
         Vector3 controlPoint = (startPosition + mousePosition) / 2;
         controlPoint.y += 2.0f;
 
-        lineRenderer.positionCount = curveResolution;
-
-        for (int i = 0; i < curveResolution; i++)
-        {
-            float t = i / (float)(curveResolution - 1);
-            Vector3 curvePoint = CalculateBezierPoint(t, startPosition, controlPoint, mousePosition);
-            lineRenderer.SetPosition(i, curvePoint);
-        }
+        DrawBezierCurve(previewLineRenderer, startPosition, controlPoint, mousePosition, true);
     }
 
     public void SelectTarget(CharacterManager target)
@@ -293,25 +342,14 @@ public class CharacterTargeting : MonoBehaviour
 
         selectedTarget = target;
         isTargeting = false;
-
-        Vector3 startPosition = selectedCharacter.transform.position + Vector3.up * 1;
-        Vector3 targetPosition = target.transform.position + Vector3.up * 1;
-        Vector3 controlPoint = (startPosition + targetPosition) / 2;
-        controlPoint.y += 2.0f;
-
-        lineRenderer.positionCount = curveResolution;
-
-        for (int i = 0; i < curveResolution; i++)
-        {
-            float t = i / (float)(curveResolution - 1);
-            Vector3 curvePoint = CalculateBezierPoint(t, startPosition, controlPoint, targetPosition);
-            lineRenderer.SetPosition(i, curvePoint);
-        }
+        SetLineRendererVisible(previewLineRenderer, false);
 
         if (selectedSkill.isCounterSkill)
             selectedCharacter.SelectCounterSkill(selectedSkill, target);
         else
             selectedCharacter.SelectSkill(selectedSkill, target);
+
+        RefreshConfirmedTargetLines();
 
         ChangeCursor("Basic");
     }
@@ -321,8 +359,10 @@ public class CharacterTargeting : MonoBehaviour
         if (defenseCharacter == null)
             return;
 
+        InitializeLineRenderers();
+        ClearConfirmedTargetLines();
         isDefenseCharacterTargeting = true;
-        lineRenderer.enabled = true;
+        SetLineRendererVisible(previewLineRenderer, true);
 
         selectedCharacter = defenseCharacter;
         ChangeCursor("Deff");
@@ -359,10 +399,216 @@ public class CharacterTargeting : MonoBehaviour
         isDefenseSkillTargeting = false;
         isDefenseCharacterTargeting = false;
 
-        if (lineRenderer != null)
-            lineRenderer.enabled = false;
+        SetLineRendererVisible(previewLineRenderer, false);
+        ClearConfirmedTargetLines();
 
         ChangeCursor("Basic");
+    }
+
+    public void RefreshConfirmedTargetLines()
+    {
+        InitializeLineRenderers();
+
+        Dictionary<CharacterManager, bool> targetStyles = new();
+
+        if (selectedCharacter != null && selectedCharacter.combatHandler != null)
+        {
+            AddQueuedTargets(selectedCharacter.combatHandler.GetSkillQueue(), targetStyles);
+            AddQueuedTargets(selectedCharacter.combatHandler.GetCounterSkillQueue(), targetStyles);
+        }
+
+        int lineIndex = 0;
+
+        foreach (KeyValuePair<CharacterManager, bool> targetStyle in targetStyles)
+        {
+            if (targetStyle.Key == null)
+                continue;
+
+            LineRenderer targetLine = GetConfirmedLineRenderer(lineIndex++);
+            Vector3 startPosition = selectedCharacter.transform.position + Vector3.up;
+            Vector3 targetPosition = targetStyle.Key.transform.position + Vector3.up;
+            Vector3 controlPoint = (startPosition + targetPosition) / 2f;
+            controlPoint.y += 2f;
+
+            SetLineRendererVisible(targetLine, true);
+            DrawBezierCurve(
+                targetLine,
+                startPosition,
+                controlPoint,
+                targetPosition,
+                !targetStyle.Value);
+        }
+
+        for (int i = lineIndex; i < confirmedLineRenderers.Count; i++)
+            SetLineRendererVisible(confirmedLineRenderers[i], false);
+    }
+
+    private void AddQueuedTargets(
+        List<SkillQueueData> queue,
+        Dictionary<CharacterManager, bool> targetStyles)
+    {
+        if (queue == null)
+            return;
+
+        foreach (SkillQueueData queuedSkill in queue)
+        {
+            if (queuedSkill == null || queuedSkill.skill == null || queuedSkill.target == null)
+                continue;
+
+            bool containsMeleeSkill = !queuedSkill.skill.isRangedSkill;
+
+            if (targetStyles.TryGetValue(queuedSkill.target, out bool existingContainsMelee))
+                targetStyles[queuedSkill.target] = existingContainsMelee || containsMeleeSkill;
+            else
+                targetStyles.Add(queuedSkill.target, containsMeleeSkill);
+        }
+    }
+
+    private void InitializeLineRenderers()
+    {
+        if (lineRenderer == null || previewLineRenderer != null)
+            return;
+
+        solidLineGradient = CopyGradient(lineRenderer.colorGradient, 1f);
+        solidLineMaterials = lineRenderer.sharedMaterials;
+        solidLineTextureMode = lineRenderer.textureMode;
+        solidLineTextureScale = lineRenderer.textureScale;
+        lineRenderer.enabled = false;
+        confirmedLineRenderers.Add(lineRenderer);
+
+        dottedLineTexture = new Texture2D(16, 1, TextureFormat.RGBA32, false, true)
+        {
+            name = "TargetingDottedLineTexture",
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear
+        };
+
+        Color[] pixels = new Color[16];
+        for (int i = 0; i < pixels.Length; i++)
+            pixels[i] = i < 9 ? Color.white : Color.clear;
+
+        dottedLineTexture.SetPixels(pixels);
+        dottedLineTexture.Apply();
+
+        if (solidLineMaterials.Length > 0 && solidLineMaterials[0] != null)
+        {
+            dottedLineMaterial = new Material(solidLineMaterials[0])
+            {
+                name = "TargetingDottedLineMaterial",
+                mainTexture = dottedLineTexture
+            };
+        }
+
+        previewLineRenderer = CreateLineRenderer("TargetingPreviewLine");
+        SetLineRendererVisible(previewLineRenderer, false);
+    }
+
+    private LineRenderer GetConfirmedLineRenderer(int index)
+    {
+        while (confirmedLineRenderers.Count <= index)
+            confirmedLineRenderers.Add(CreateLineRenderer($"ConfirmedTargetLine_{confirmedLineRenderers.Count}"));
+
+        return confirmedLineRenderers[index];
+    }
+
+    private LineRenderer CreateLineRenderer(string objectName)
+    {
+        GameObject lineObject = new GameObject(objectName);
+        lineObject.layer = lineRenderer.gameObject.layer;
+        lineObject.transform.SetParent(lineRenderer.transform.parent, false);
+
+        LineRenderer createdLine = lineObject.AddComponent<LineRenderer>();
+        createdLine.sharedMaterials = solidLineMaterials;
+        createdLine.widthMultiplier = lineRenderer.widthMultiplier;
+        createdLine.widthCurve = lineRenderer.widthCurve;
+        createdLine.colorGradient = solidLineGradient;
+        createdLine.numCornerVertices = lineRenderer.numCornerVertices;
+        createdLine.numCapVertices = lineRenderer.numCapVertices;
+        createdLine.alignment = lineRenderer.alignment;
+        createdLine.useWorldSpace = lineRenderer.useWorldSpace;
+        createdLine.loop = false;
+        createdLine.sortingLayerID = lineRenderer.sortingLayerID;
+        createdLine.sortingOrder = lineRenderer.sortingOrder;
+        createdLine.enabled = false;
+        return createdLine;
+    }
+
+    private void DrawBezierCurve(
+        LineRenderer targetLine,
+        Vector3 startPosition,
+        Vector3 controlPoint,
+        Vector3 endPosition,
+        bool dotted)
+    {
+        if (targetLine == null)
+            return;
+
+        if (dotted && dottedLineMaterial != null)
+            targetLine.sharedMaterial = dottedLineMaterial;
+        else
+            targetLine.sharedMaterials = solidLineMaterials;
+
+        targetLine.colorGradient = CopyGradient(
+            solidLineGradient,
+            dotted ? dottedLineAlpha : 1f);
+        targetLine.textureMode = dotted
+            ? LineTextureMode.Stretch
+            : solidLineTextureMode;
+        targetLine.textureScale = dotted
+            ? new Vector2(
+                Mathf.Max(1f, Vector3.Distance(startPosition, endPosition) / dottedPatternLength),
+                1f)
+            : solidLineTextureScale;
+        targetLine.positionCount = curveResolution;
+
+        for (int i = 0; i < curveResolution; i++)
+        {
+            float t = i / (float)(curveResolution - 1);
+            targetLine.SetPosition(
+                i,
+                CalculateBezierPoint(t, startPosition, controlPoint, endPosition));
+        }
+    }
+
+    private void ClearConfirmedTargetLines()
+    {
+        foreach (LineRenderer confirmedLine in confirmedLineRenderers)
+            SetLineRendererVisible(confirmedLine, false);
+    }
+
+    private static void SetLineRendererVisible(LineRenderer targetLine, bool visible)
+    {
+        if (targetLine == null)
+            return;
+
+        targetLine.enabled = visible;
+
+        if (!visible)
+            targetLine.positionCount = 0;
+    }
+
+    private static Gradient CopyGradient(Gradient source, float alphaMultiplier)
+    {
+        Gradient gradient = new Gradient();
+
+        if (source == null)
+            return gradient;
+
+        GradientAlphaKey[] alphaKeys = source.alphaKeys;
+        for (int i = 0; i < alphaKeys.Length; i++)
+            alphaKeys[i].alpha *= alphaMultiplier;
+
+        gradient.SetKeys(source.colorKeys, alphaKeys);
+        return gradient;
+    }
+
+    private void OnDestroy()
+    {
+        if (dottedLineMaterial != null)
+            Destroy(dottedLineMaterial);
+
+        if (dottedLineTexture != null)
+            Destroy(dottedLineTexture);
     }
 
     Vector3 CalculateBezierPoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)

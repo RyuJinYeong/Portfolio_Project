@@ -16,6 +16,7 @@ MonoBehaviour:
   skillName: "상처 벌리기"
   description: "열상 스택을 이용해 추가 참격 피해를 준다."
   icon: {fileID: 0}
+  composer: {fileID: 11400000, guid: 1fb50eb9e69954e167e28fc7f7c06479, type: 2}
   activationSpeed: 1.1
   staminaCost: 1
   mentalCost: 0

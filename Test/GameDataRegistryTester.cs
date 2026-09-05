@@ -1,38 +1,80 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class GameDataRegistryTester : MonoBehaviour
 {
-    public int testSkillUid = 3000;
-    public int testEquipmentUid = 1004;
-    public int testTraitId = 1000;
-    public TraitGrade testTraitGrade = TraitGrade.C;
+    [Header("Test Party Origins")]
+    [SerializeField] private List<OriginDefinitionSO> partyOrigins = new();
 
-    void Start()
+    [Header("Test Dungeon Data")]
+    [SerializeField] private QuestStageDefinitionSO dungeonStage;
+    [SerializeField] private List<MonsterRoleSO> dungeonMonsterRoles = new();
+
+    public IReadOnlyList<OriginDefinitionSO> PartyOrigins => partyOrigins;
+    public QuestStageDefinitionSO DungeonStage => dungeonStage;
+
+    public bool RegisterTestData()
     {
-        var registry = GameDataRegistry.Instance;
+        GameDataRegistry registry = GameDataRegistry.Instance;
 
-        Debug.Log(registry.GetSkill(testSkillUid) != null
-            ? $"Skill OK: {registry.GetSkill(testSkillUid).skillName}"
-            : $"Skill Missing: {testSkillUid}");
+        if (registry == null)
+        {
+            Debug.LogError("[TestScene] GameDataRegistry가 없습니다.");
+            return false;
+        }
 
-        Debug.Log(registry.GetEquipment(testEquipmentUid) != null
-            ? $"Equipment OK: {registry.GetEquipment(testEquipmentUid).itemName}"
-            : $"Equipment Missing: {testEquipmentUid}");
+        foreach (OriginDefinitionSO origin in partyOrigins)
+        {
+            if (origin == null)
+                continue;
 
-        Debug.Log(registry.GetTrait(testTraitId) != null
-            ? $"Trait OK: {registry.GetTrait(testTraitId).traitName}"
-            : $"Trait Missing: {testTraitId}");
+            registry.origins.RemoveAll(value => value != null && value.id == origin.id);
+            registry.origins.Add(origin);
+        }
 
-        var traitsByGrade = registry.GetTraitsByGrade(testTraitGrade);
-        Debug.Log($"Trait Grade {testTraitGrade} Count: {traitsByGrade.Count}");
+        registry.Build();
 
-        var randomTrait = registry.GetRandomTraitByGrade(testTraitGrade);
-        Debug.Log(randomTrait != null
-            ? $"Random Trait OK: {randomTrait.traitName} [{randomTrait.defaultAcquireGrade}]"
-            : $"Random Trait Missing: {testTraitGrade}");
+        return ValidateRegisteredData(registry);
+    }
 
-        Debug.Log(registry.GetOrigin(1000) != null
-            ? $"Origin OK: {registry.GetOrigin(1000).originName}"
-            : $"Origin Missing");
+    public List<MonsterRoleSO> GetMonsterRoles(CharacterType characterType)
+    {
+        List<MonsterRoleSO> result = new();
+
+        foreach (MonsterRoleSO role in dungeonMonsterRoles)
+        {
+            if (role != null && role.characterType == characterType)
+                result.Add(role);
+        }
+
+        return result;
+    }
+
+    private bool ValidateRegisteredData(GameDataRegistry registry)
+    {
+        bool valid = partyOrigins.Count == 4 && dungeonStage != null;
+
+        foreach (OriginDefinitionSO origin in partyOrigins)
+        {
+            if (origin == null || registry.GetOrigin(origin.id) == null)
+                valid = false;
+        }
+
+        if (dungeonStage == null || registry.GetQuestStage(dungeonStage.stageKey) == null)
+            valid = false;
+
+        foreach (MonsterRoleSO role in dungeonMonsterRoles)
+        {
+            if (role == null || registry.GetMonsterRole(role.id) == null)
+                valid = false;
+        }
+
+        if (GetMonsterRoles(CharacterType.Normal).Count == 0)
+            valid = false;
+
+        if (!valid)
+            Debug.LogError("[TestScene] 4개 출신지 또는 던전 전투 데이터 등록이 불완전합니다.");
+
+        return valid;
     }
 }

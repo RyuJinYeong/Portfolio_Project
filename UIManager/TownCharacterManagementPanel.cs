@@ -67,6 +67,7 @@ public class TownCharacterManagementPanel : MonoBehaviour
     private DetailSection selectedDetailSection = DetailSection.Stats;
     private Action<CharacterData> externalSelectionChanged;
     private bool showingExternalCharacters;
+    private bool showingExpeditionParty;
 
     private struct RectTransformLayout
     {
@@ -105,6 +106,7 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
     public void OpenAndBuild()
     {
+        showingExpeditionParty = false;
         gameObject.SetActive(true);
 
         PlayerData playerData = PlayerManager.Instance != null
@@ -126,6 +128,14 @@ public class TownCharacterManagementPanel : MonoBehaviour
         }
 
         RebuildFromPool();
+    }
+
+    public void OpenAndBuildExpeditionParty()
+    {
+        showingExpeditionParty = true;
+        gameObject.SetActive(true);
+        transform.SetAsLastSibling();
+        RebuildExpeditionParty();
     }
 
     public void RebuildFromPool()
@@ -152,7 +162,9 @@ public class TownCharacterManagementPanel : MonoBehaviour
         {
             CharacterManager characterManager = CharacterPoolManager.Instance.Get(id);
 
-            if (characterManager == null)
+            if (characterManager == null ||
+                characterManager.character == null ||
+                !characterManager.character.IsAlive)
                 continue;
 
             if (firstCharacter == null)
@@ -263,7 +275,10 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
     public void OpenStorage()
     {
-        uiManager?.OpenCompanyStorage();
+        if (showingExpeditionParty)
+            uiManager?.OpenExpeditionInventory();
+        else
+            uiManager?.OpenCompanyStorage();
     }
 
     public void ClosePanel()
@@ -337,7 +352,7 @@ public class TownCharacterManagementPanel : MonoBehaviour
             panel.btnInventory.onClick.AddListener(() =>
             {
                 inventoryUIController?.SetSelectedCharacter(characterManager);
-                uiManager?.OpenCompanyStorage();
+                OpenStorage();
             });
         }
 
@@ -368,6 +383,56 @@ public class TownCharacterManagementPanel : MonoBehaviour
         return panel != null && panelData.TryGetValue(panel, out CharacterData character)
             ? character
             : null;
+    }
+
+    private void RebuildExpeditionParty()
+    {
+        Clear();
+        showingExpeditionParty = true;
+
+        ActiveQuestRuntime activeQuest = QuestManager.Instance != null
+            ? QuestManager.Instance.active
+            : null;
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+        IReadOnlyList<string> partyIds = activeQuest != null &&
+                                         activeQuest.partyCharacterIds != null &&
+                                         activeQuest.partyCharacterIds.Count > 0
+            ? activeQuest.partyCharacterIds
+            : playerData?.activeCharacterIds;
+
+        if (partyIds == null || content == null || cardPrefab == null)
+        {
+            RefreshSelectedCharacter();
+            return;
+        }
+
+        CharacterManager firstCharacter = null;
+
+        foreach (string characterId in partyIds)
+        {
+            CharacterManager characterManager = GameManager.Instance != null
+                ? GameManager.Instance.GetAllCharacters().Find(manager =>
+                    manager != null && manager.character != null &&
+                    manager.character.ID == characterId &&
+                    manager.character.IsMine)
+                : null;
+
+            if (characterManager == null && CharacterPoolManager.Instance != null)
+                characterManager = CharacterPoolManager.Instance.Get(characterId);
+
+            if (characterManager == null || characterManager.character == null ||
+                !characterManager.character.IsAlive)
+            {
+                continue;
+            }
+
+            firstCharacter ??= characterManager;
+            CreateCharacterCard(characterManager.character, characterManager);
+        }
+
+        SelectCharacter(firstCharacter);
     }
 
     private void RefreshSelectedCharacter()

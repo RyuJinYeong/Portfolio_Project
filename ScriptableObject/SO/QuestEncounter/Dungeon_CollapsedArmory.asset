@@ -1,0 +1,138 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6478899aabbccddeeff01, type: 3}
+  m_Name: Dungeon_CollapsedArmory
+  m_EditorClassIdentifier:
+  encounterId: dungeon_collapsed_armory
+  nodeType: 4
+  weight: 2
+  availableInAllStages: 0
+  stageKeys:
+  - Dungeon
+  title: 무너진 무기고
+  description: 무너진 벽 너머로 녹슨 무기걸이와 뒤집힌 갑옷함이 보입니다. 잔해 사이에는 아직 온전한 물건이 남아 있을지도 모릅니다.
+  encounterMapPrefab: {fileID: 0}
+  encounterPropsPrefab: {fileID: 0}
+  insight:
+    enabled: 1
+    baseChancePercent: 5
+    chancePerDetection: 0.9
+    chancePerInsight: 0.4
+    tierPenaltyPercent: 3
+    difficultyPenaltyPercent: 5
+    maxChancePercent: 35
+    revealedText: 잔해 안쪽에는 비교적 최근에 움직인 흔적이 있습니다. 좋은 장비가 남아 있을 수도 있지만 불안정한 천장과 매복 흔적도 보입니다.
+  choices:
+  - text: 잔해를 뒤진다
+    requiresCharacter: 1
+    abilityCheck:
+      enabled: 1
+      stat: 9
+      baseSuccessChancePercent: 45
+      chancePerStatPoint: 2.2
+      tierPenaltyPercent: 5
+      difficultyPenaltyPercent: 8
+      minimumSuccessChancePercent: 5
+      maximumSuccessChancePercent: 95
+    outcomes:
+    - weight: 70
+      resultText: '{character}이 잔해 속에서 사용할 수 있는 {item}을 찾아냈습니다.'
+      effectType: 4
+      targetScope: 0
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 2
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    - weight: 30
+      resultText: 잔해를 정리했지만 온전한 물건은 남아 있지 않았습니다.
+      effectType: 0
+      targetScope: 0
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    failureOutcomes:
+    - weight: 60
+      resultText: 잔해가 무너지며 {character}이 다쳤습니다. 앞으로 2개 방 동안 최대 체력이 감소합니다.
+      effectType: 3
+      targetScope: 1
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName: 낙석 부상
+      durationRooms: 2
+      temporaryStatModifiers:
+        MaxHp: -10
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    - weight: 40
+      resultText: 잔해 뒤에 숨어 있던 적들이 움직임을 눈치채고 달려듭니다.
+      effectType: 5
+      targetScope: 0
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds:
+      - 11000
+      - 11001
+  - text: 무기고를 지나친다
+    requiresCharacter: 0
+    abilityCheck:
+      enabled: 0
+      stat: 0
+      baseSuccessChancePercent: 50
+      chancePerStatPoint: 2
+      tierPenaltyPercent: 5
+      difficultyPenaltyPercent: 10
+      minimumSuccessChancePercent: 5
+      maximumSuccessChancePercent: 95
+    outcomes:
+    - weight: 1
+      resultText: 무너진 천장을 경계하며 무기고를 지나칩니다.
+      effectType: 0
+      targetScope: 0
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    failureOutcomes: []

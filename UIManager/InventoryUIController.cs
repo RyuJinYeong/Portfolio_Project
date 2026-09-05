@@ -51,6 +51,7 @@ public class InventoryUIController : MonoBehaviour
         {
             companyStorageWindow.inventoryType = SharedInventoryType.CompanyStorage;
             companyStorageWindow.Open(SelectedCharacter);
+            PositionOpenInventoryPair(companyStorageWindow);
         }
     }
 
@@ -64,6 +65,7 @@ public class InventoryUIController : MonoBehaviour
         {
             storage.inventoryType = SharedInventoryType.ExpeditionStorage;
             storage.Open(SelectedCharacter);
+            PositionOpenInventoryPair(storage);
         }
     }
 
@@ -125,8 +127,67 @@ public class InventoryUIController : MonoBehaviour
 
     public void OnStorageWindowClosed(SharedInventoryWindowUI storage)
     {
+        SharedInventoryWindowUI remainingStorage = storage == companyStorageWindow
+            ? expeditionInventoryWindow
+            : companyStorageWindow;
+
         if (equipmentWindow != null && equipmentWindow.gameObject.activeInHierarchy)
-            SetWindowPosition(equipmentWindow, Vector2.zero);
+        {
+            if (remainingStorage != null && remainingStorage.gameObject.activeInHierarchy)
+                PositionEquipmentAndStorage(remainingStorage);
+            else
+                SetWindowPosition(equipmentWindow, Vector2.zero);
+
+            return;
+        }
+
+        if (remainingStorage != null && remainingStorage.gameObject.activeInHierarchy)
+            SetWindowPosition(remainingStorage, Vector2.zero);
+    }
+
+    private void PositionOpenInventoryPair(SharedInventoryWindowUI openedStorage)
+    {
+        bool equipmentOpen = equipmentWindow != null &&
+                             equipmentWindow.gameObject.activeInHierarchy;
+        bool companyStorageOpen = companyStorageWindow != null &&
+                                  companyStorageWindow.gameObject.activeInHierarchy;
+        bool expeditionStorageOpen = expeditionInventoryWindow != null &&
+                                     expeditionInventoryWindow.gameObject.activeInHierarchy;
+        int openWindowCount = (equipmentOpen ? 1 : 0) +
+                              (companyStorageOpen ? 1 : 0) +
+                              (expeditionStorageOpen ? 1 : 0);
+
+        if (openWindowCount != 2)
+            return;
+
+        if (equipmentOpen)
+        {
+            PositionEquipmentAndStorage(openedStorage);
+            return;
+        }
+
+        if (companyStorageOpen && expeditionStorageOpen)
+            PositionStorageWindows();
+    }
+
+    private void PositionStorageWindows()
+    {
+        RectTransform companyRect = companyStorageWindow.transform as RectTransform;
+        RectTransform expeditionRect = expeditionInventoryWindow.transform as RectTransform;
+
+        if (companyRect == null || expeditionRect == null)
+            return;
+
+        const float gap = 10f;
+        float companyWidth = companyRect.rect.width;
+        float expeditionWidth = expeditionRect.rect.width;
+
+        SetWindowPosition(
+            companyStorageWindow,
+            new Vector2(-(expeditionWidth + gap) * 0.5f, 0f));
+        SetWindowPosition(
+            expeditionInventoryWindow,
+            new Vector2((companyWidth + gap) * 0.5f, 0f));
     }
 
     public SharedInventoryWindowUI GetAccessibleStorageWindow()

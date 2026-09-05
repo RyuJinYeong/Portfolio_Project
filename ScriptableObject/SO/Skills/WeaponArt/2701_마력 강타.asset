@@ -16,6 +16,7 @@ MonoBehaviour:
   skillName: "마력 강타"
   description: "무거운 타격에 마력을 실어 물리와 마법 피해를 함께 준다."
   icon: {fileID: 0}
+  composer: {fileID: 11400000, guid: 5bdbbf18dc1bc13cf66c218457d701d5, type: 2}
   activationSpeed: 0.8
   staminaCost: 1
   mentalCost: 1

@@ -10,7 +10,7 @@ public class StatusEffectDefinitionSO : ScriptableObject
     [TextArea]
     public string description;
 
-    public Texture2D icon;
+    public Sprite icon;
 
     public bool isDebuff = true;
 

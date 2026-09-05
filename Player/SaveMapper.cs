@@ -18,6 +18,8 @@ public static class SaveMapper
 
             accountStorage = CloneInventorySlots(src.accountStorage),
             expeditionStorage = CloneInventorySlots(src.expeditionStorage),
+            lostExpeditionInventories = CloneLostExpeditionInventories(
+                src.lostExpeditionInventories),
 
             generatedEquipments = src.generatedEquipments != null
                 ? new List<GeneratedEquipmentData>(src.generatedEquipments)
@@ -25,6 +27,14 @@ public static class SaveMapper
 
             characterIds = src.characterIds != null
                 ? new List<string>(src.characterIds)
+                : new List<string>(),
+
+            missingCharacterIds = src.missingCharacterIds != null
+                ? new List<string>(src.missingCharacterIds)
+                : new List<string>(),
+
+            revivalRequiredCharacterIds = src.revivalRequiredCharacterIds != null
+                ? new List<string>(src.revivalRequiredCharacterIds)
                 : new List<string>(),
 
             activeCharacterIds = src.activeCharacterIds != null
@@ -56,6 +66,8 @@ public static class SaveMapper
 
             accountStorage = CloneInventorySlots(dto.accountStorage),
             expeditionStorage = CloneInventorySlots(dto.expeditionStorage),
+            lostExpeditionInventories = CloneLostExpeditionInventories(
+                dto.lostExpeditionInventories),
 
             generatedEquipments = dto.generatedEquipments != null
                 ? new List<GeneratedEquipmentData>(dto.generatedEquipments)
@@ -63,6 +75,14 @@ public static class SaveMapper
 
             characterIds = dto.characterIds != null
                 ? new List<string>(dto.characterIds)
+                : new List<string>(),
+
+            missingCharacterIds = dto.missingCharacterIds != null
+                ? new List<string>(dto.missingCharacterIds)
+                : new List<string>(),
+
+            revivalRequiredCharacterIds = dto.revivalRequiredCharacterIds != null
+                ? new List<string>(dto.revivalRequiredCharacterIds)
                 : new List<string>(),
 
             activeCharacterIds = dto.activeCharacterIds != null
@@ -157,7 +177,60 @@ public static class SaveMapper
             {
                 itemUid = slot.itemUid,
                 count = slot.count,
-                equipmentInstanceId = slot.equipmentInstanceId
+                equipmentInstanceId = slot.equipmentInstanceId,
+                essenceQuestId = slot.essenceQuestId,
+                essenceMonsterRoleId = slot.essenceMonsterRoleId,
+                essenceMonsterName = slot.essenceMonsterName,
+                essenceTraits = CloneEssenceTraits(slot.essenceTraits)
+            });
+        }
+
+        return result;
+    }
+
+    private static List<LostExpeditionInventoryData> CloneLostExpeditionInventories(
+        List<LostExpeditionInventoryData> source)
+    {
+        List<LostExpeditionInventoryData> result = new();
+
+        if (source == null)
+            return result;
+
+        foreach (LostExpeditionInventoryData inventory in source)
+        {
+            if (inventory == null || string.IsNullOrEmpty(inventory.sourceQuestId))
+                continue;
+
+            result.Add(new LostExpeditionInventoryData
+            {
+                sourceQuestId = inventory.sourceQuestId,
+                characterIds = inventory.characterIds != null
+                    ? new List<string>(inventory.characterIds)
+                    : new List<string>(),
+                items = CloneInventorySlots(inventory.items)
+            });
+        }
+
+        return result;
+    }
+
+    private static List<MonsterEssenceTraitData> CloneEssenceTraits(
+        List<MonsterEssenceTraitData> source)
+    {
+        List<MonsterEssenceTraitData> result = new List<MonsterEssenceTraitData>();
+
+        if (source == null)
+            return result;
+
+        foreach (MonsterEssenceTraitData trait in source)
+        {
+            if (trait == null || trait.traitId <= 0)
+                continue;
+
+            result.Add(new MonsterEssenceTraitData
+            {
+                traitId = trait.traitId,
+                point = trait.point
             });
         }
 
@@ -176,6 +249,14 @@ public static class SaveMapper
                 ? new List<QuestBoardEntry>(qm.board)
                 : new List<QuestBoardEntry>(),
 
+            preferredIssuers = qm.preferredIssuers != null
+                ? new List<QuestIssuer>(qm.preferredIssuers)
+                : new List<QuestIssuer>(),
+
+            preferredQuestTiers = qm.preferredQuestTiers != null
+                ? new List<int>(qm.preferredQuestTiers)
+                : new List<int>(),
+
             active = qm.active == null
                 ? null
                 : new ActiveQuestRuntime
@@ -186,6 +267,9 @@ public static class SaveMapper
                     partyCharacterIds = new List<string>(qm.active.partyCharacterIds ?? new List<string>()),
                     stageKey = qm.active.stageKey,
                     stageNodeIndex = qm.active.stageNodeIndex,
+                    currentRouteNodeId = qm.active.currentRouteNodeId,
+                    routeNodes = CloneRouteNodes(qm.active.routeNodes),
+                    encounterEffects = CloneEncounterEffects(qm.active.encounterEffects),
                     retreated = qm.active.retreated
                 },
 
@@ -208,15 +292,20 @@ public static class SaveMapper
         if (dto == null)
         {
             qm.board = new List<QuestBoardEntry>();
+            qm.SetBoardPreferences(null, null);
             qm.active = null;
             qm.completed = new List<CompletedQuestEntry>();
-            qm.GenerateBoardIfEmpty(8);
+            qm.GenerateBoardIfEmpty();
             return;
         }
 
         qm.board = dto.board != null
             ? new List<QuestBoardEntry>(dto.board)
             : new List<QuestBoardEntry>();
+
+        qm.SetBoardPreferences(
+            dto.preferredIssuers,
+            dto.preferredQuestTiers);
 
         qm.active = dto.active == null
             ? null
@@ -228,6 +317,9 @@ public static class SaveMapper
                 partyCharacterIds = new List<string>(dto.active.partyCharacterIds ?? new List<string>()),
                 stageKey = dto.active.stageKey,
                 stageNodeIndex = dto.active.stageNodeIndex,
+                currentRouteNodeId = dto.active.currentRouteNodeId,
+                routeNodes = CloneRouteNodes(dto.active.routeNodes),
+                encounterEffects = CloneEncounterEffects(dto.active.encounterEffects),
                 retreated = dto.active.retreated
             };
 
@@ -235,7 +327,72 @@ public static class SaveMapper
             ? new List<CompletedQuestEntry>(dto.completed)
             : new List<CompletedQuestEntry>();
 
-        qm.GenerateBoardIfEmpty(8);
+        qm.GenerateBoardIfEmpty();
+    }
+
+    private static List<QuestRouteNode> CloneRouteNodes(List<QuestRouteNode> source)
+    {
+        List<QuestRouteNode> result = new List<QuestRouteNode>();
+
+        if (source == null)
+            return result;
+
+        foreach (QuestRouteNode node in source)
+        {
+            if (node == null)
+                continue;
+
+            result.Add(new QuestRouteNode
+            {
+                id = node.id,
+                depth = node.depth,
+                column = node.column,
+                type = node.type,
+                mapPrefabIndex = node.mapPrefabIndex,
+                nextNodeIds = node.nextNodeIds != null
+                    ? new List<int>(node.nextNodeIds)
+                    : new List<int>(),
+                cleared = node.cleared,
+                encounterId = node.encounterId,
+                encounterResolved = node.encounterResolved,
+                encounterMonsterRoleIds = node.encounterMonsterRoleIds != null
+                    ? new List<int>(node.encounterMonsterRoleIds)
+                    : new List<int>(),
+                encounterInsightRolled = node.encounterInsightRolled,
+                encounterInsightSucceeded = node.encounterInsightSucceeded
+            });
+        }
+
+        return result;
+    }
+
+
+    private static List<QuestEncounterRuntimeEffect> CloneEncounterEffects(
+        List<QuestEncounterRuntimeEffect> source)
+    {
+        List<QuestEncounterRuntimeEffect> result = new List<QuestEncounterRuntimeEffect>();
+
+        if (source == null)
+            return result;
+
+        foreach (QuestEncounterRuntimeEffect effect in source)
+        {
+            if (effect == null)
+                continue;
+
+            result.Add(new QuestEncounterRuntimeEffect
+            {
+                characterId = effect.characterId,
+                effectName = effect.effectName,
+                remainingRooms = effect.remainingRooms,
+                sourceNodeId = effect.sourceNodeId,
+                statModifiers = effect.statModifiers != null
+                    ? effect.statModifiers.Copy()
+                    : new CharacterStats()
+            });
+        }
+
+        return result;
     }
 
     // ---------- Character ----------
@@ -269,6 +426,7 @@ public static class SaveMapper
 
             level = c.Level,
             exp = c.Exp,
+            pendingLevelUps = c.PendingLevelUps,
             currentHp = c.CurrentHp,
             currentStamina = c.CurrentStamina,
             currentMentality = c.CurrentMentality,
@@ -386,6 +544,7 @@ public static class SaveMapper
 
             Level = dto.level,
             Exp = dto.exp,
+            PendingLevelUps = dto.pendingLevelUps,
             CurrentHp = dto.currentHp,
             CurrentStamina = dto.currentStamina,
             CurrentMentality = dto.currentMentality

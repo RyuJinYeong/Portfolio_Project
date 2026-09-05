@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2501_동결"
+  m_Name: "2501_\uB3D9\uACB0"
   m_EditorClassIdentifier: 
   uid: 2501
-  skillName: "동결"
-  description: "한기 스택을 소비해 빙결을 유발한다."
-  icon: {fileID: 0}
+  skillName: "\uB3D9\uACB0"
+  description: "\uD55C\uAE30 \uC2A4\uD0DD\uC744 \uC18C\uBE44\uD574 \uBE59\uACB0\uC744
+    \uC720\uBC1C\uD55C\uB2E4."
+  icon: {fileID: 2800000, guid: 20aba75e29ac1534880657ca65d71681, type: 3}
+  composer: {fileID: 11400000, guid: ffef5605c210627c299858d15e17fbc2, type: 2}
   activationSpeed: 0.7
   staminaCost: 0
   mentalCost: 2
   type: 1
   style: 2
   discipline: 7
+  firstRewardTier: 1
   damageComponents:
   - damageType: 1
     attribute: 1

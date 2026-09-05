@@ -61,6 +61,7 @@ public static class MonsterGenerator
             Math.Max(questTierMinimumLevel, questLevel + role.levelBonus));
         character.IsAlive = true;
         character.IsMine = false;
+        character.GrantsExperience = !role.suppressExperience;
 
         ApplyTraits(character, role.baseMonster.baseTraitIds);
         ApplyTraits(character, role.traitIds);

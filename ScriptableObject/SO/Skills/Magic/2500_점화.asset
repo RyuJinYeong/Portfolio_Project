@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2500_점화"
+  m_Name: "2500_\uC810\uD654"
   m_EditorClassIdentifier: 
   uid: 2500
-  skillName: "점화"
-  description: "화상 스택을 소비해 즉시 추가 화염 피해를 준다."
-  icon: {fileID: 0}
-  activationSpeed: 1.0
+  skillName: "\uC810\uD654"
+  description: "\uD654\uC0C1 \uC2A4\uD0DD\uC744 \uC18C\uBE44\uD574 \uC989\uC2DC \uCD94\uAC00
+    \uD654\uC5FC \uD53C\uD574\uB97C \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: bf42194757fbab949b845a3838f1d8ec, type: 3}
+  composer: {fileID: 11400000, guid: fb98ff8d455920fa21674c6050789e70, type: 2}
+  activationSpeed: 1
   staminaCost: 0
   mentalCost: 1
   type: 1
   style: 0
   discipline: 7
+  firstRewardTier: 1
   damageComponents:
   - damageType: 1
     attribute: 0

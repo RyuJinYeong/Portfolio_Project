@@ -16,6 +16,7 @@ MonoBehaviour:
   skillName: "업어치기"
   description: "한손이 빈 상태에서 상대를 업어 넘겨 낮은 피해와 큰 흐트러짐을 준다."
   icon: {fileID: 0}
+  composer: {fileID: 11400000, guid: fb41df4e8bc18b2ac3c8565ca0ec8e15, type: 2}
   activationSpeed: 0.8
   staminaCost: 2
   mentalCost: 0

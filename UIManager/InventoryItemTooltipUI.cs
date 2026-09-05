@@ -103,9 +103,7 @@ public class InventoryItemTooltipUI : MonoBehaviour
 
         if (nameText != null)
         {
-            nameText.text = equipment != null && !string.IsNullOrEmpty(equipment.displayName)
-                ? equipment.displayName
-                : item.itemName;
+            nameText.text = GetDisplayName(slot, item, equipment);
             nameText.color = equipment != null
                 ? EquipmentRarityUtility.GetColor(equipment.rarity)
                 : Color.white;
@@ -169,6 +167,22 @@ public class InventoryItemTooltipUI : MonoBehaviour
             UpdateEquipmentPosition(controller);
         else
             UpdatePosition(screenPosition);
+    }
+
+    private static string GetDisplayName(
+        InventorySlotData slot,
+        ItemDefinitionSO item,
+        EquipmentRuntimeData equipment)
+    {
+        if (slot != null && slot.IsMonsterEssence() &&
+            !string.IsNullOrEmpty(slot.essenceMonsterName))
+        {
+            return $"{slot.essenceMonsterName}의 정수";
+        }
+
+        return equipment != null && !string.IsNullOrEmpty(equipment.displayName)
+            ? equipment.displayName
+            : item.itemName;
     }
 
     public void Hide()
@@ -463,8 +477,6 @@ public class InventoryItemTooltipUI : MonoBehaviour
         AppendValue(builder, "치명타 피해", candidate.CriticalDamageBonus, current.CriticalDamageBonus, compare);
         AppendValue(builder, "상태이상 저항", candidate.StatusResistance, current.StatusResistance, compare);
         AppendValue(builder, "지도 탐지 범위", candidate.MapDetectionRange, current.MapDetectionRange, compare);
-        AppendValue(builder, "함정 탐지", candidate.TrapDetectionBonus, current.TrapDetectionBonus, compare);
-        AppendValue(builder, "이벤트 통찰", candidate.EventInsightBonus, current.EventInsightBonus, compare);
         AppendValue(builder, "처치 시 체력 회복", candidate.KillHpRecovery, current.KillHpRecovery, compare);
         AppendValue(builder, "처치 시 지구력 회복", candidate.KillStaminaRecovery, current.KillStaminaRecovery, compare);
         AppendValue(builder, "처치 시 정신력 회복", candidate.KillMentalityRecovery, current.KillMentalityRecovery, compare);

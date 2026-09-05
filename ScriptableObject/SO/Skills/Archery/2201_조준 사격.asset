@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2201_조준 사격"
+  m_Name: "2201_\uC870\uC900 \uC0AC\uACA9"
   m_EditorClassIdentifier: 
   uid: 2201
-  skillName: "조준 사격"
-  description: "신중하게 조준해 강한 원거리 관통 피해를 준다."
-  icon: {fileID: 0}
+  skillName: "\uC870\uC900 \uC0AC\uACA9"
+  description: "\uC2E0\uC911\uD558\uAC8C \uC870\uC900\uD574 \uAC15\uD55C \uC6D0\uAC70\uB9AC
+    \uAD00\uD1B5 \uD53C\uD574\uB97C \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: a9f1d85488d1b954481bb75ea33c1ffc, type: 3}
+  composer: {fileID: 11400000, guid: e6941d41ba25ece0467a2c395f8d05b1, type: 2}
   activationSpeed: 0.8
   staminaCost: 2
   mentalCost: 0
   type: 0
   style: 1
   discipline: 3
+  firstRewardTier: 1
   damageComponents:
   - damageType: 0
     attribute: 4

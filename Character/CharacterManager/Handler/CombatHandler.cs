@@ -19,6 +19,9 @@ public class CombatHandler : MonoBehaviour
 
     private bool cancelNextSkill;
 
+    public CharacterManager LastResolvedTarget { get; private set; }
+    public bool LastSkillWasCancelled { get; private set; }
+
     public void Awake()
     {
         characterManager = GetComponent<CharacterManager>();
@@ -69,6 +72,12 @@ public class CombatHandler : MonoBehaviour
         if (skill == null || target == null)
             return;
 
+        if (!characterManager.isPlayerTurn)
+        {
+            Debug.Log("본인 턴이 아니므로 스킬을 등록할 수 없습니다.");
+            return;
+        }
+
         if (skill.isCounterSkill)
         {
             Debug.Log("대응 스킬은 공격 스킬 큐에 등록할 수 없습니다.");
@@ -99,6 +108,7 @@ public class CombatHandler : MonoBehaviour
 
         RefreshSkillQueueUI(target);
         characterManager.UpdateCharacterUI();
+        target.UpdateCharacterUI();
         UIManager.Instance.UpdateSkillTransparency(characterManager);
 
         UpdateSynergies();
@@ -117,6 +127,7 @@ public class CombatHandler : MonoBehaviour
         skillQueue.RemoveAt(index);
 
         RefreshSkillQueueUI(target);
+        target?.UpdateCharacterUI();
 
         bool hasMeleeSkill = skillQueue.Any(s => !s.skill.isRangedSkill);
 
@@ -126,10 +137,9 @@ public class CombatHandler : MonoBehaviour
             characterManager.meleeTarget = null;
 
             Debug.Log("경합 상태 해제");
-
-            if (UIManager.Instance.characterTargeting.lineRenderer != null)
-                UIManager.Instance.characterTargeting.lineRenderer.enabled = false;
         }
+
+        UIManager.Instance.characterTargeting.RefreshConfirmedTargetLines();
 
         characterManager.UpdateCharacterUI();
         UIManager.Instance.UpdateSkillTransparency(characterManager);
@@ -158,6 +168,7 @@ public class CombatHandler : MonoBehaviour
 
         RefreshCounterSkillQueueUI(target);
         characterManager.UpdateCharacterUI();
+        target.UpdateCharacterUI();
         UIManager.Instance.UpdateSkillTransparency(characterManager);
     }
 
@@ -172,9 +183,11 @@ public class CombatHandler : MonoBehaviour
 
         counterSkillQueue.RemoveAt(index);
 
-        RefreshCounterSkillQueueUI(characterManager);
+        RefreshCounterSkillQueueUI(entry.target);
         characterManager.UpdateCharacterUI();
+        entry.target?.UpdateCharacterUI();
         UIManager.Instance.UpdateSkillTransparency(characterManager);
+        UIManager.Instance.characterTargeting.RefreshConfirmedTargetLines();
     }
 
     public void SetOrResetCounterSkill(int idx, SkillDefinitionSO newSkill)
@@ -211,6 +224,7 @@ public class CombatHandler : MonoBehaviour
             false,
             idx + 1);
 
+        RefreshCounterSkillQueueUI(characterManager);
         characterManager.UpdateCharacterUI();
         UIManager.Instance.UpdateSkillTransparency(characterManager);
 
@@ -263,6 +277,7 @@ public class CombatHandler : MonoBehaviour
 
         characterManager.character.CurrentStamina += Mathf.FloorToInt(stamina * rate);
         characterManager.character.CurrentMentality += Mathf.FloorToInt(mental * rate);
+        characterManager.UpdateCharacterUI();
     }
 
     public bool HandleEnemyDefeated()
@@ -289,6 +304,11 @@ public class CombatHandler : MonoBehaviour
     private void CancelRemainingSkills()
     {
         CharacterManager lastTarget = null;
+        List<CharacterManager> affectedTargets = skillQueue
+            .Where(item => item != null && item.target != null)
+            .Select(item => item.target)
+            .Distinct()
+            .ToList();
 
         foreach (var item in skillQueue)
         {
@@ -298,12 +318,17 @@ public class CombatHandler : MonoBehaviour
 
         skillQueue.Clear();
 
+        foreach (CharacterManager target in affectedTargets)
+        {
+            RefreshSkillQueueUI(target);
+            target.UpdateCharacterUI();
+        }
+
         if (lastTarget != null)
         {
-            RefreshSkillQueueUI(lastTarget);
-
             lastTarget.combatHandler.counterSkillQueue.Clear();
             lastTarget.combatHandler.RefreshCounterSkillQueueUI(lastTarget);
+            lastTarget.UpdateCharacterUI();
         }
 
         characterManager.UpdateCharacterUI();
@@ -314,7 +339,10 @@ public class CombatHandler : MonoBehaviour
     public void ExecuteSkillQueue(System.Action onTurnEnd)
     {
         if (turnTimerCoroutine != null)
+        {
             StopCoroutine(turnTimerCoroutine);
+            turnTimerCoroutine = null;
+        }
 
         if (skillQueue.Count > 0)
         {
@@ -341,12 +369,19 @@ public class CombatHandler : MonoBehaviour
 
                 skillQueue.RemoveAt(0);
                 RefreshSkillQueueUI(item.target);
+                characterManager.UpdateCharacterUI();
+                item.target?.UpdateCharacterUI();
 
                 yield return new WaitForSeconds(1.0f);
                 continue;
             }
 
-            UseSkill(item);
+            BattlePresentationDirector presentationDirector = BattlePresentationDirector.Instance;
+
+            if (presentationDirector != null)
+                yield return presentationDirector.PlaySkill(item, () => UseSkill(item));
+            else
+                UseSkill(item);
 
             if (item.target != null)
             {
@@ -361,7 +396,7 @@ public class CombatHandler : MonoBehaviour
             {
                 if (HandleEnemyDefeated())
                 {
-                    StartTurn(onTurnEnd);
+                    onTurnEnd?.Invoke();
                     yield break;
                 }
             }
@@ -405,12 +440,16 @@ public class CombatHandler : MonoBehaviour
 
     public void UseSkill(SkillQueueData queuedSkill)
     {
+        LastResolvedTarget = null;
+        LastSkillWasCancelled = false;
+
         if (queuedSkill == null || queuedSkill.skill == null || queuedSkill.target == null)
             return;
 
         SkillDefinitionSO attackSkill = queuedSkill.skill;
         CharacterManager originalTarget = queuedSkill.target;
         CharacterManager actualTarget = originalTarget;
+        LastResolvedTarget = originalTarget;
 
         skillQueue.RemoveAt(0);
 
@@ -436,6 +475,8 @@ public class CombatHandler : MonoBehaviour
                     appliedCounter = defenseCounter;
                     if (defenseCounter.cancelCurrentSkill)
                     {
+                        LastResolvedTarget = null;
+                        LastSkillWasCancelled = true;
                         Debug.Log($"{defenseCharacter.character.Name}의 파훼 대성공. {attackSkill.skillName} 무효화");
                         EndSynergyEffects();
                         return;
@@ -446,6 +487,7 @@ public class CombatHandler : MonoBehaviour
 
                     if (attackSkill.HasAttackEffect(AttackEffectType.Breakthrough))
                     {
+                        LastResolvedTarget = defenseCharacter;
                         ResolveBreakthroughProtection(
                             attackSkill,
                             originalTarget,
@@ -485,6 +527,8 @@ public class CombatHandler : MonoBehaviour
 
                 if (targetCounter.cancelCurrentSkill)
                 {
+                    LastResolvedTarget = null;
+                    LastSkillWasCancelled = true;
                     Debug.Log($"{actualTarget.character.Name}의 파훼 대성공. {attackSkill.skillName} 무효화");
                     EndSynergyEffects();
                     return;
@@ -502,6 +546,7 @@ public class CombatHandler : MonoBehaviour
         float attackGreatSuccessDamageMultiplier =
             GetAttackGreatSuccessDamageMultiplier(appliedCounter);
 
+        LastResolvedTarget = actualTarget;
         ApplyAttackDamage(attackSkill, actualTarget, counterDamageMultiplier, attackGreatSuccessDamageMultiplier);
 
         if (appliedCounter != null &&
@@ -586,7 +631,11 @@ public class CombatHandler : MonoBehaviour
         SkillDefinitionSO counterSkill = counterData.skill;
 
         if (counterSkill == null)
+        {
+            counterUser.combatHandler.RefreshCounterSkillQueueUI(counterUser);
+            counterUser.UpdateCharacterUI();
             return null;
+        }
 
         bool isProtectingOther = counterUser != protectedTarget;
 
@@ -603,7 +652,8 @@ public class CombatHandler : MonoBehaviour
         {
             Debug.Log($"{counterUser.character.Name}의 대응이 불균형으로 취소됨");
 
-            RefreshCounterSkillQueueUI(counterUser);
+            counterUser.combatHandler.RefreshCounterSkillQueueUI(counterUser);
+            counterUser.UpdateCharacterUI();
             return resolveData;
         }
 
@@ -611,7 +661,8 @@ public class CombatHandler : MonoBehaviour
         {
             Debug.Log($"{counterUser.character.Name}의 {counterSkill.skillName} 대응 불가");
 
-            RefreshCounterSkillQueueUI(counterUser);
+            counterUser.combatHandler.RefreshCounterSkillQueueUI(counterUser);
+            counterUser.UpdateCharacterUI();
             return resolveData;
         }
 
@@ -757,7 +808,8 @@ public class CombatHandler : MonoBehaviour
                 break;
         }
 
-        RefreshCounterSkillQueueUI(counterUser);
+        counterUser.combatHandler.RefreshCounterSkillQueueUI(counterUser);
+        counterUser.UpdateCharacterUI();
 
         return resolveData;
     }
@@ -851,6 +903,7 @@ public class CombatHandler : MonoBehaviour
 
         originalTarget.combatHandler.counterSkillQueue.Clear();
         originalTarget.combatHandler.RefreshCounterSkillQueueUI(originalTarget);
+        originalTarget.UpdateCharacterUI();
 
         originalTarget.combatHandler.isDefenseTarget = false;
         originalTarget.isInMeleeCombat = false;
@@ -1262,6 +1315,7 @@ public class CombatHandler : MonoBehaviour
 
         protector.combatHandler.counterSkillQueue.Clear();
         protector.combatHandler.RefreshCounterSkillQueueUI(protector);
+        protector.UpdateCharacterUI();
 
         originalTarget.combatHandler.isDefenseTarget = false;
         protector.combatHandler.isDefenseCharacter = false;
@@ -1404,6 +1458,7 @@ public class CombatHandler : MonoBehaviour
 
             target.combatHandler.counterSkillQueue.Add(data);
             target.combatHandler.RefreshCounterSkillQueueUI(target);
+            target.UpdateCharacterUI();
 
             Debug.Log($"{target.character.Name} - {defaultCounterSkill.skillName} 자동 대응 스킬 등록");
         }

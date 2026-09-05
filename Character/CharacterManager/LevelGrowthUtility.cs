@@ -25,9 +25,26 @@ public static class LevelGrowthUtility
         StatRequirementType.Intelligence,
         StatRequirementType.Wisdom,
         StatRequirementType.Health,
-        StatRequirementType.Vitality,
-        StatRequirementType.Endurance
+        StatRequirementType.Vitality
     };
+
+    public static void GetGrowthRange(
+        CharacterData character,
+        out int minAmount,
+        out int maxAmount)
+    {
+        minAmount = 1;
+        maxAmount = 3;
+
+        if (character != null && character.FinalSpecialStats != null)
+        {
+            minAmount += character.FinalSpecialStats.MinLevelUpStatGainBonus;
+            maxAmount += character.FinalSpecialStats.MaxLevelUpStatGainBonus;
+        }
+
+        minAmount = Math.Max(0, minAmount);
+        maxAmount = Math.Max(minAmount, maxAmount);
+    }
 
     public static List<LevelUpStatChoice> CreateChoices(
         int minAmount,
@@ -64,14 +81,7 @@ public static class LevelGrowthUtility
         if (character == null || character.OriginBaseStats == null)
             return;
 
-        int minAmount = 1;
-        int maxAmount = 3;
-
-        if (character.FinalSpecialStats != null)
-        {
-            minAmount += character.FinalSpecialStats.MinLevelUpStatGainBonus;
-            maxAmount += character.FinalSpecialStats.MaxLevelUpStatGainBonus;
-        }
+        GetGrowthRange(character, out int minAmount, out int maxAmount);
 
         for (int level = 2; level <= Math.Max(1, targetLevel); level++)
         {
@@ -87,6 +97,30 @@ public static class LevelGrowthUtility
         }
 
         character.BaseStats = character.OriginBaseStats.Copy();
+    }
+
+    public static bool ApplyPendingChoice(
+        CharacterManager manager,
+        LevelUpStatChoice choice)
+    {
+        CharacterData character = manager != null ? manager.character : null;
+
+        if (character == null || character.OriginBaseStats == null ||
+            character.PendingLevelUps <= 0 || choice == null ||
+            Array.IndexOf(DefaultStats, choice.stat) < 0)
+        {
+            return false;
+        }
+
+        AddStat(character.OriginBaseStats, choice.stat, choice.amount);
+        character.OriginBaseStats.ClampNonNegative();
+        character.PendingLevelUps--;
+
+        character.RemoveAllTraits(manager);
+        character.ApplyAllTraits(manager);
+        character.UpdateFinalStats();
+
+        return true;
     }
 
     private static LevelUpStatChoice PickAutomaticChoice(
@@ -132,7 +166,7 @@ public static class LevelGrowthUtility
         return 1;
     }
 
-    private static void AddStat(CharacterStats stats, StatRequirementType stat, int amount)
+    public static void AddStat(CharacterStats stats, StatRequirementType stat, int amount)
     {
         switch (stat)
         {

@@ -8,6 +8,14 @@ public class PositionEntry
     public bool isFront;
 }
 
+[Serializable]
+public class LostExpeditionInventoryData
+{
+    public string sourceQuestId;
+    public List<string> characterIds = new();
+    public List<InventorySlotData> items = new();
+}
+
 public class PlayerData
 {
     // 플레이어의 닉네임 - 용병단 이름
@@ -24,11 +32,20 @@ public class PlayerData
     // 현재 원정대/파티 단위 창고
     public List<InventorySlotData> expeditionStorage = new();
 
+    // 전멸한 원정대가 현장에 남긴 창고. 구출 의뢰 성공 시 구조대 창고로 회수된다.
+    public List<LostExpeditionInventoryData> lostExpeditionInventories = new();
+
     // 생성 장비 인스턴스 저장소
     public List<GeneratedEquipmentData> generatedEquipments = new();
 
     // 보유한 캐릭터 ID 목록
     public List<string> characterIds = new List<string>();
+
+    // 원정대 전멸 후 마을 로스터에서 제외된 실종 캐릭터 ID 목록
+    public List<string> missingCharacterIds = new List<string>();
+
+    // 구출되었지만 아직 부활하지 않아 출전할 수 없는 캐릭터 ID 목록
+    public List<string> revivalRequiredCharacterIds = new List<string>();
 
     // 현재 계정에 제시된 고용 가능 용병 목록
     public List<CharacterData> recruitmentCandidates = new List<CharacterData>();

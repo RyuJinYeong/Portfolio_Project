@@ -13,11 +13,12 @@ public enum QuestStatus
 
 public enum QuestIssuer
 {
-    HunterGuild,
-    WarriorGuild,
-    SwordDojo,
-    MageTower,
-    TownCouncil
+    HunterGuild = 0,
+    WarriorGuild = 1,
+    SwordDojo = 2,
+    MageTower = 3,
+    TownCouncil = 4,
+    ThievesGuild = 5
 }
 
 public enum QuestDifficulty
@@ -28,9 +29,44 @@ public enum QuestDifficulty
 }
 
 
+public enum QuestRewardKind
+{
+    None,
+    Equipment,
+    Skill
+}
+
+
+public enum QuestEquipmentRewardFilter
+{
+    None,
+    Any,
+    WeaponType,
+    ArmorCategory,
+    EquipmentType
+}
+
+
 [Serializable]
 public class QuestReward
 {
+    // 퀘스트 완료 시 실제 보상을 결정하는 시드
+    public int randomSeed;
+
+    public QuestRewardKind kind;
+    public int tier;
+
+    public EquipmentRarity maxEquipmentRarity = EquipmentRarity.Common;
+    public QuestEquipmentRewardFilter equipmentFilter;
+    public WeaponType weaponType;
+    public ArmorCategory armorCategory;
+    public EquipmentType equipmentType;
+
+    public SkillDiscipline skillDiscipline;
+
+    // 완료 시 한 번만 실제 보상을 결정했는지 여부
+    public bool rolled;
+
     // EquipmentDefinitionSO UID
     public List<int> equipmentUids = new();
     public List<EquipmentRarity> equipmentRarities = new();
@@ -51,9 +87,55 @@ public class MonsterSpawn
 
 
 [Serializable]
+public enum QuestRouteNodeType
+{
+    Start = 0,
+    Battle = 1,
+    Boss = 2,
+    Elite = 3,
+    RandomEncounter = 4,
+    Rest = 5
+}
+
+
+[Serializable]
+public class QuestRouteNode
+{
+    public int id;
+    public int depth;
+    public int column;
+    public QuestRouteNodeType type;
+    public int mapPrefabIndex = -1;
+    public List<int> nextNodeIds = new();
+    public bool cleared;
+    public string encounterId;
+    public bool encounterResolved;
+    public List<int> encounterMonsterRoleIds = new();
+    public bool encounterInsightRolled;
+    public bool encounterInsightSucceeded;
+}
+
+
+[Serializable]
+public class QuestEncounterRuntimeEffect
+{
+    public string characterId;
+    public string effectName;
+    public int remainingRooms;
+    public int sourceNodeId;
+    public CharacterStats statModifiers = new();
+}
+
+
+[Serializable]
 public class QuestDef
 {
     public string id;
+
+    // 원정대 전멸 후 한 번만 발행되는 구출 의뢰 정보
+    public bool isRescueQuest;
+    public string sourceQuestId;
+    public List<string> rescueCharacterIds = new();
 
     // 생성 시 사용한 랜덤 시드
     public int seed;
@@ -64,6 +146,10 @@ public class QuestDef
     public QuestDifficulty difficulty;
 
     public string stageKey;
+
+    // QuestStageDefinitionSO.mapPrefabs에서 선택된 맵 인덱스
+    public int mapPrefabIndex = -1;
+
     public QuestIssuer issuer;
 
     // MonsterRoleSO.id
@@ -109,6 +195,14 @@ public class ActiveQuestRuntime
 
     public int stageNodeIndex;
 
+    public int currentRouteNodeId;
+
+    public List<QuestRouteNode> routeNodes =
+        new();
+
+    public List<QuestEncounterRuntimeEffect> encounterEffects =
+        new();
+
     public bool retreated;
 }
 
@@ -124,6 +218,20 @@ public class CompletedQuestEntry
 
 public class QuestManager : MonoBehaviour
 {
+    public const int BoardQuestCount = 12;
+    public const int BoardPageSize = 6;
+    public const int MaxPreferredIssuerCount = 2;
+    public const int PreferredIssuerWeight = 3;
+
+    private static readonly QuestIssuer[] GeneratedIssuers =
+    {
+        QuestIssuer.WarriorGuild,
+        QuestIssuer.SwordDojo,
+        QuestIssuer.HunterGuild,
+        QuestIssuer.MageTower,
+        QuestIssuer.TownCouncil
+    };
+
     public static QuestManager Instance
     {
         get;
@@ -164,6 +272,12 @@ public class QuestManager : MonoBehaviour
     public List<QuestBoardEntry> board =
         new();
 
+    public List<QuestIssuer> preferredIssuers =
+        new();
+
+    public List<int> preferredQuestTiers =
+        new();
+
     public ActiveQuestRuntime active;
 
     public List<CompletedQuestEntry> completed =
@@ -171,6 +285,7 @@ public class QuestManager : MonoBehaviour
 
 
     public event Action OnBoardChanged;
+    public event Action OnPreferencesChanged;
     public event Action OnActiveChanged;
     public event Action OnCompletedChanged;
 
@@ -193,12 +308,26 @@ public class QuestManager : MonoBehaviour
     #region Board
 
     public void GenerateBoardIfEmpty(
-        int targetCount = 8)
+        int targetCount = BoardQuestCount)
     {
         if (board == null)
         {
             board =
                 new List<QuestBoardEntry>();
+        }
+
+
+        foreach (QuestBoardEntry entry in board)
+        {
+            if (entry == null || entry.def == null)
+                continue;
+
+            entry.def.maxPartySize = 4;
+
+            if (entry.def.issuer == QuestIssuer.ThievesGuild)
+            {
+                entry.def.issuer = QuestIssuer.HunterGuild;
+            }
         }
 
         if (board.Count >= targetCount)
@@ -208,7 +337,7 @@ public class QuestManager : MonoBehaviour
         while (board.Count < targetCount)
         {
             QuestDef quest =
-                GenerateOneQuest();
+                GenerateOneQuest(board.Count);
 
             if (quest == null)
                 break;
@@ -232,7 +361,7 @@ public class QuestManager : MonoBehaviour
 
     public void RefreshBoard(
         bool preserveReserved = true,
-        int targetCount = 8)
+        int targetCount = BoardQuestCount)
     {
         if (board == null)
         {
@@ -245,18 +374,29 @@ public class QuestManager : MonoBehaviour
             new List<QuestBoardEntry>();
 
 
+        foreach (QuestBoardEntry entry in board)
+        {
+            if (entry == null || entry.def == null)
+                continue;
+
+            if (entry.def.isRescueQuest)
+                keep.Add(entry);
+        }
+
+
         if (preserveReserved)
         {
             foreach (QuestBoardEntry entry in board)
             {
-                if (entry == null)
-                    continue;
-
-                if (entry.status ==
-                    QuestStatus.Reserved)
+                if (entry == null ||
+                    entry.def == null ||
+                    entry.def.isRescueQuest)
                 {
-                    keep.Add(entry);
+                    continue;
                 }
+
+                if (entry.status == QuestStatus.Reserved)
+                    keep.Add(entry);
             }
         }
 
@@ -268,7 +408,7 @@ public class QuestManager : MonoBehaviour
         while (board.Count < targetCount)
         {
             QuestDef quest =
-                GenerateOneQuest();
+                GenerateOneQuest(board.Count);
 
             if (quest == null)
                 break;
@@ -289,6 +429,94 @@ public class QuestManager : MonoBehaviour
         OnBoardChanged?.Invoke();
     }
 
+
+    public void SetBoardPreferences(
+        List<QuestIssuer> issuers,
+        List<int> questTiers)
+    {
+        if (preferredIssuers == null)
+            preferredIssuers = new List<QuestIssuer>();
+
+        if (preferredQuestTiers == null)
+            preferredQuestTiers = new List<int>();
+
+        preferredIssuers.Clear();
+
+
+        if (issuers != null)
+        {
+            foreach (QuestIssuer issuer in issuers)
+            {
+                if (preferredIssuers.Count >= MaxPreferredIssuerCount)
+                    break;
+
+                if (!IsGeneratedIssuer(issuer) ||
+                    preferredIssuers.Contains(issuer))
+                {
+                    continue;
+                }
+
+                preferredIssuers.Add(issuer);
+            }
+        }
+
+
+        preferredQuestTiers.Clear();
+
+
+        if (questTiers != null)
+        {
+            foreach (int tier in questTiers)
+            {
+                if (tier < minQuestTier ||
+                    tier > maxQuestTier ||
+                    preferredQuestTiers.Contains(tier))
+                {
+                    continue;
+                }
+
+                preferredQuestTiers.Add(tier);
+            }
+        }
+
+
+        OnPreferencesChanged?.Invoke();
+    }
+
+
+    public int GetMaximumAvailableQuestTier()
+    {
+        int unlockedLevel =
+            Mathf.Max(
+                maxUnlockedLevel,
+                1);
+
+
+        int unlockedTier =
+            Mathf.Max(
+                (unlockedLevel - 1) / 10 + 1,
+                1);
+
+
+        return Mathf.Clamp(
+            maxQuestTier,
+            minQuestTier,
+            unlockedTier);
+    }
+
+
+    private bool IsGeneratedIssuer(QuestIssuer issuer)
+    {
+        foreach (QuestIssuer generatedIssuer in GeneratedIssuers)
+        {
+            if (generatedIssuer == issuer)
+                return true;
+        }
+
+
+        return false;
+    }
+
     #endregion
 
 
@@ -300,12 +528,107 @@ public class QuestManager : MonoBehaviour
     }
 
 
+    public bool AbandonActive()
+    {
+        if (active == null)
+            return false;
+
+
+        ExpireActiveQuestEssences();
+
+        active = null;
+
+
+        OnActiveChanged?.Invoke();
+        return true;
+    }
+
+
+    public bool IssueRescueQuest(
+        QuestDef failedQuest,
+        List<string> missingCharacterIds)
+    {
+        if (failedQuest == null ||
+            failedQuest.isRescueQuest ||
+            missingCharacterIds == null ||
+            missingCharacterIds.Count == 0)
+        {
+            return false;
+        }
+
+        if (board == null)
+            board = new List<QuestBoardEntry>();
+
+        foreach (QuestBoardEntry entry in board)
+        {
+            if (entry?.def == null || !entry.def.isRescueQuest)
+                continue;
+
+            if (entry.def.sourceQuestId == failedQuest.id)
+                return false;
+        }
+
+        QuestDef rescueQuest = CloneAsRescueQuest(
+            failedQuest,
+            missingCharacterIds);
+
+        board.Insert(
+            0,
+            new QuestBoardEntry
+            {
+                def = rescueQuest,
+                reserved = false,
+                status = QuestStatus.Board
+            });
+
+        while (board.Count > BoardQuestCount)
+        {
+            int removeIndex = -1;
+
+            for (int i = board.Count - 1; i > 0; i--)
+            {
+                QuestBoardEntry entry = board[i];
+
+                if (entry != null &&
+                    entry.def != null &&
+                    !entry.def.isRescueQuest &&
+                    entry.status != QuestStatus.Reserved)
+                {
+                    removeIndex = i;
+                    break;
+                }
+            }
+
+            if (removeIndex < 0)
+            {
+                for (int i = board.Count - 1; i > 0; i--)
+                {
+                    if (board[i]?.def != null &&
+                        !board[i].def.isRescueQuest)
+                    {
+                        removeIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            if (removeIndex < 0)
+                break;
+
+            board.RemoveAt(removeIndex);
+        }
+
+        OnBoardChanged?.Invoke();
+        return true;
+    }
+
+
     public bool Accept(
         string questId,
         string leaderId,
         List<string> partyIds)
     {
-        if (!CanAccept())
+        if (!CanAccept() || partyIds == null || partyIds.Count == 0 || partyIds.Count > 4)
             return false;
 
 
@@ -351,9 +674,15 @@ public class QuestManager : MonoBehaviour
                 stageNodeIndex =
                     0,
 
+                currentRouteNodeId =
+                    0,
+
                 retreated =
                     false
             };
+
+
+        BuildRoute(active);
 
 
         board.Remove(entry);
@@ -364,6 +693,490 @@ public class QuestManager : MonoBehaviour
 
 
         return true;
+    }
+
+
+    public QuestRouteNode GetCurrentRouteNode()
+    {
+        if (active == null || active.routeNodes == null)
+            return null;
+
+        return active.routeNodes.Find(node => node != null && node.id == active.currentRouteNodeId);
+    }
+
+
+    public void EnsureActiveRoute()
+    {
+        if (active == null || active.def == null)
+            return;
+
+        if (active.routeNodes == null || active.routeNodes.Count == 0)
+            BuildRoute(active);
+    }
+
+
+    public bool CanSelectRouteNode(int nodeId)
+    {
+        if (active == null || active.status != QuestStatus.Active || active.routeNodes == null)
+            return false;
+
+        QuestRouteNode current = GetCurrentRouteNode();
+
+        if (current == null || !current.cleared || current.nextNodeIds == null)
+            return false;
+
+        return current.nextNodeIds.Contains(nodeId);
+    }
+
+
+    public bool SelectRouteNode(int nodeId)
+    {
+        if (!CanSelectRouteNode(nodeId))
+            return false;
+
+        QuestRouteNode selected = active.routeNodes.Find(node => node != null && node.id == nodeId);
+
+        if (selected == null)
+            return false;
+
+        active.currentRouteNodeId = selected.id;
+        active.stageNodeIndex = selected.depth;
+        OnActiveChanged?.Invoke();
+        return true;
+    }
+
+
+    public QuestEncounterDefinitionSO GetOrAssignCurrentEncounter()
+    {
+        QuestRouteNode current = GetCurrentRouteNode();
+
+        if (active == null || active.def == null || current == null ||
+            (current.type != QuestRouteNodeType.RandomEncounter &&
+             current.type != QuestRouteNodeType.Rest) ||
+            GameDataRegistry.Instance == null)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrEmpty(current.encounterId))
+            return GameDataRegistry.Instance.GetQuestEncounter(current.encounterId);
+
+        List<QuestEncounterDefinitionSO> candidates =
+            GameDataRegistry.Instance.GetQuestEncounters(active.stageKey, current.type);
+
+        int totalWeight = 0;
+
+        foreach (QuestEncounterDefinitionSO candidate in candidates)
+        {
+            if (candidate != null && candidate.weight > 0)
+                totalWeight += candidate.weight;
+        }
+
+        if (totalWeight <= 0)
+            return null;
+
+        int seed = active.def.seed ^ (current.id * 397) ^ ((int)current.type * 7919);
+        System.Random random = new System.Random(seed);
+        int roll = random.Next(0, totalWeight);
+        int currentWeight = 0;
+
+        foreach (QuestEncounterDefinitionSO candidate in candidates)
+        {
+            if (candidate == null || candidate.weight <= 0)
+                continue;
+
+            currentWeight += candidate.weight;
+
+            if (roll < currentWeight)
+            {
+                current.encounterId = candidate.encounterId;
+                OnActiveChanged?.Invoke();
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+
+    public bool ResolveCurrentEncounterInsight(QuestEncounterDefinitionSO encounter)
+    {
+        QuestRouteNode current = GetCurrentRouteNode();
+
+        if (active == null || active.def == null || current == null ||
+            encounter == null || encounter.insight == null ||
+            !encounter.insight.enabled)
+        {
+            return false;
+        }
+
+        if (current.encounterInsightRolled)
+            return current.encounterInsightSucceeded;
+
+        current.encounterInsightRolled = true;
+        int bestDetection = 0;
+        int bestInsight = 0;
+
+        if (GameManager.Instance != null)
+        {
+            foreach (CharacterManager manager in GameManager.Instance.GetAllCharacters())
+            {
+                if (manager == null || manager.character == null ||
+                    !manager.character.IsMine || manager.character.FinalStats == null)
+                {
+                    continue;
+                }
+
+                if (current.type == QuestRouteNodeType.RandomEncounter &&
+                    ProgressionRules.IsOverpoweredForQuest(manager.character, active.def))
+                {
+                    continue;
+                }
+
+                bestDetection = Mathf.Max(bestDetection, manager.character.FinalStats.Detection);
+                bestInsight = Mathf.Max(bestInsight, manager.character.FinalStats.Insight);
+            }
+        }
+
+        int tier = Mathf.Max(1, active.def.tier);
+        int difficultyStep = (int)active.def.difficulty;
+        float chance = encounter.insight.baseChancePercent +
+                       bestDetection * encounter.insight.chancePerDetection +
+                       bestInsight * encounter.insight.chancePerInsight -
+                       (tier - 1) * encounter.insight.tierPenaltyPercent -
+                       difficultyStep * encounter.insight.difficultyPenaltyPercent;
+        chance = Mathf.Clamp(chance, 0f, encounter.insight.maxChancePercent);
+        current.encounterInsightSucceeded = UnityEngine.Random.Range(0f, 100f) < chance;
+        OnActiveChanged?.Invoke();
+        return current.encounterInsightSucceeded;
+    }
+
+
+    public void AddEncounterEffect(QuestEncounterRuntimeEffect effect)
+    {
+        if (active == null || effect == null || string.IsNullOrEmpty(effect.characterId))
+            return;
+
+        if (active.encounterEffects == null)
+            active.encounterEffects = new List<QuestEncounterRuntimeEffect>();
+
+        effect.remainingRooms = Mathf.Max(1, effect.remainingRooms);
+        active.encounterEffects.Add(effect);
+        OnActiveChanged?.Invoke();
+    }
+
+
+    public CharacterStats GetEncounterStatModifiers(string characterId)
+    {
+        CharacterStats result = new CharacterStats();
+
+        if (active == null || active.encounterEffects == null || string.IsNullOrEmpty(characterId))
+            return result;
+
+        foreach (QuestEncounterRuntimeEffect effect in active.encounterEffects)
+        {
+            if (effect == null || effect.characterId != characterId ||
+                effect.remainingRooms <= 0 || effect.statModifiers == null)
+            {
+                continue;
+            }
+
+            result += effect.statModifiers;
+        }
+
+        return result;
+    }
+
+
+    public bool ResolveCurrentEncounterNode()
+    {
+        QuestRouteNode current = GetCurrentRouteNode();
+
+        if (current == null ||
+            (current.type != QuestRouteNodeType.RandomEncounter &&
+             current.type != QuestRouteNodeType.Rest))
+        {
+            return false;
+        }
+
+        current.encounterResolved = true;
+        return CompleteCurrentRouteNode();
+    }
+
+
+    public void BeginCurrentEncounterBattle(List<int> monsterRoleIds)
+    {
+        QuestRouteNode current = GetCurrentRouteNode();
+
+        if (current == null || current.type != QuestRouteNodeType.RandomEncounter)
+            return;
+
+        current.encounterResolved = true;
+        current.encounterMonsterRoleIds = monsterRoleIds != null
+            ? new List<int>(monsterRoleIds)
+            : new List<int>();
+        OnActiveChanged?.Invoke();
+    }
+
+
+    public bool CompleteCurrentRouteNode()
+    {
+        QuestRouteNode current = GetCurrentRouteNode();
+
+        if (active == null || current == null || current.type == QuestRouteNodeType.Start)
+            return false;
+
+        AdvanceEncounterEffects(current.id);
+        current.cleared = true;
+        OnActiveChanged?.Invoke();
+
+        if (current.type == QuestRouteNodeType.Boss ||
+            current.nextNodeIds == null ||
+            current.nextNodeIds.Count == 0)
+        {
+            CompleteActive();
+            return false;
+        }
+
+        return true;
+    }
+
+
+    private void AdvanceEncounterEffects(int completedNodeId)
+    {
+        if (active == null || active.encounterEffects == null)
+            return;
+
+        for (int i = active.encounterEffects.Count - 1; i >= 0; i--)
+        {
+            QuestEncounterRuntimeEffect effect = active.encounterEffects[i];
+
+            if (effect == null)
+            {
+                active.encounterEffects.RemoveAt(i);
+                continue;
+            }
+
+            if (effect.sourceNodeId == completedNodeId)
+            {
+                effect.sourceNodeId = -1;
+                continue;
+            }
+
+            effect.remainingRooms--;
+
+            if (effect.remainingRooms > 0)
+                continue;
+
+            active.encounterEffects.RemoveAt(i);
+
+            CharacterManager manager = GameManager.Instance != null
+                ? GameManager.Instance.GetAllCharacters().Find(characterManager =>
+                    characterManager != null &&
+                    characterManager.character != null &&
+                    characterManager.character.ID == effect.characterId)
+                : null;
+
+            if (manager != null)
+            {
+                manager.character.UpdateFinalStats();
+                manager.UpdateCharacterUI();
+            }
+        }
+    }
+
+
+    private void BuildRoute(ActiveQuestRuntime runtime)
+    {
+        if (runtime == null || runtime.def == null)
+            return;
+
+        runtime.routeNodes = new List<QuestRouteNode>();
+
+        System.Random random = new System.Random(runtime.def.seed ^ 0x51A7E);
+        QuestStageDefinitionSO stage = GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetQuestStage(runtime.def.stageKey)
+            : null;
+        int mapCount = stage != null && stage.mapPrefabs != null
+            ? stage.mapPrefabs.Count
+            : 0;
+        int baseEncounterDepth = runtime.def.difficulty switch
+        {
+            QuestDifficulty.Easy => random.Next(5, 7),
+            QuestDifficulty.Normal => random.Next(6, 8),
+            QuestDifficulty.Hard => random.Next(7, 9),
+            _ => random.Next(5, 7)
+        };
+        int encounterDepth = baseEncounterDepth +
+                             Mathf.Max(0, Mathf.Clamp(runtime.def.recommendedPartySize, 1, 4) - 1);
+        int guaranteedRestCount = Mathf.Max(1, encounterDepth / 5);
+        HashSet<int> guaranteedRestDepths = new HashSet<int>();
+
+        for (int i = 1; i <= guaranteedRestCount; i++)
+        {
+            int restDepth = Mathf.RoundToInt(i * (encounterDepth + 1f) / (guaranteedRestCount + 1f));
+            guaranteedRestDepths.Add(Mathf.Clamp(restDepth, 3, encounterDepth));
+        }
+
+        int nextId = 0;
+
+        QuestRouteNode start = new QuestRouteNode
+        {
+            id = nextId++,
+            depth = 0,
+            column = 0,
+            type = QuestRouteNodeType.Start,
+            mapPrefabIndex = -1,
+            cleared = true
+        };
+
+        runtime.routeNodes.Add(start);
+        List<QuestRouteNode> previousLayer = new List<QuestRouteNode> { start };
+        bool previousLayerHasElite = false;
+
+        for (int depth = 1; depth <= encounterDepth; depth++)
+        {
+            int nodeCount = random.Next(2, 4);
+            List<QuestRouteNode> layer = new List<QuestRouteNode>();
+            bool guaranteedRest = guaranteedRestDepths.Contains(depth);
+            bool layerHasElite = false;
+
+            for (int column = 0; column < nodeCount; column++)
+            {
+                QuestRouteNodeType nodeType = guaranteedRest
+                    ? QuestRouteNodeType.Rest
+                    : PickRouteNodeType(random, depth > 2, !previousLayerHasElite);
+
+                QuestRouteNode node = new QuestRouteNode
+                {
+                    id = nextId++,
+                    depth = depth,
+                    column = column,
+                    type = nodeType,
+                    mapPrefabIndex = PickRouteMapIndex(runtime.def, mapCount, random)
+                };
+
+                layerHasElite |= nodeType == QuestRouteNodeType.Elite;
+                runtime.routeNodes.Add(node);
+                layer.Add(node);
+            }
+
+            ConnectRouteLayers(previousLayer, layer, random);
+            previousLayer = layer;
+            previousLayerHasElite = layerHasElite;
+        }
+
+        QuestRouteNode boss = new QuestRouteNode
+        {
+            id = nextId,
+            depth = encounterDepth + 1,
+            column = 0,
+            type = QuestRouteNodeType.Boss,
+            mapPrefabIndex = PickRouteMapIndex(runtime.def, mapCount, random)
+        };
+
+        runtime.routeNodes.Add(boss);
+        ConnectRouteLayers(previousLayer, new List<QuestRouteNode> { boss }, random);
+        runtime.currentRouteNodeId = start.id;
+        runtime.stageNodeIndex = 0;
+    }
+
+
+    private static QuestRouteNodeType PickRouteNodeType(
+        System.Random random,
+        bool allowRest,
+        bool allowElite)
+    {
+        QuestRouteNodeType type;
+
+        do
+        {
+            int roll = random.Next(0, 100);
+
+            if (roll < 15)
+                type = QuestRouteNodeType.Rest;
+            else if (roll < 30)
+                type = QuestRouteNodeType.RandomEncounter;
+            else if (roll < 50)
+                type = QuestRouteNodeType.Elite;
+            else
+                type = QuestRouteNodeType.Battle;
+        }
+        while ((!allowRest && type == QuestRouteNodeType.Rest) ||
+               (!allowElite && type == QuestRouteNodeType.Elite));
+
+        return type;
+    }
+
+
+    private static int PickRouteMapIndex(QuestDef quest, int mapCount, System.Random random)
+    {
+        if (mapCount <= 0)
+            return quest.mapPrefabIndex;
+
+        return random.Next(0, mapCount);
+    }
+
+
+    private static void ConnectRouteLayers(
+        List<QuestRouteNode> previousLayer,
+        List<QuestRouteNode> nextLayer,
+        System.Random random)
+    {
+        if (previousLayer == null || previousLayer.Count == 0 ||
+            nextLayer == null || nextLayer.Count == 0)
+        {
+            return;
+        }
+
+        if (previousLayer.Count == 1 && previousLayer[0].type == QuestRouteNodeType.Start)
+        {
+            foreach (QuestRouteNode next in nextLayer)
+                AddRouteConnection(previousLayer[0], next.id);
+
+            return;
+        }
+
+        for (int i = 0; i < previousLayer.Count; i++)
+        {
+            QuestRouteNode previous = previousLayer[i];
+            int primaryIndex = previousLayer.Count == 1
+                ? random.Next(0, nextLayer.Count)
+                : Mathf.RoundToInt(i * (nextLayer.Count - 1f) / Mathf.Max(1, previousLayer.Count - 1));
+
+            AddRouteConnection(previous, nextLayer[primaryIndex].id);
+
+            if (nextLayer.Count > 1 && random.NextDouble() < 0.5)
+            {
+                int secondaryIndex = Mathf.Clamp(
+                    primaryIndex + (random.Next(0, 2) == 0 ? -1 : 1),
+                    0,
+                    nextLayer.Count - 1);
+                AddRouteConnection(previous, nextLayer[secondaryIndex].id);
+            }
+        }
+
+        foreach (QuestRouteNode next in nextLayer)
+        {
+            bool hasIncoming = previousLayer.Exists(previous =>
+                previous.nextNodeIds != null && previous.nextNodeIds.Contains(next.id));
+
+            if (hasIncoming)
+                continue;
+
+            QuestRouteNode closest = previousLayer[Mathf.Clamp(next.column, 0, previousLayer.Count - 1)];
+            AddRouteConnection(closest, next.id);
+        }
+    }
+
+
+    private static void AddRouteConnection(QuestRouteNode node, int nextNodeId)
+    {
+        if (node.nextNodeIds == null)
+            node.nextNodeIds = new List<int>();
+
+        if (!node.nextNodeIds.Contains(nextNodeId))
+            node.nextNodeIds.Add(nextNodeId);
     }
 
 
@@ -414,6 +1227,26 @@ public class QuestManager : MonoBehaviour
             return;
 
 
+        ResolveReward(active.def);
+
+        if (active.def != null && active.def.isRescueQuest)
+        {
+            ResolveRescuedCharacters(active.def);
+
+            PlayerData playerData = PlayerManager.Instance != null
+                ? PlayerManager.Instance.GetCurrentPlayerData()
+                : null;
+            int recoveredItemCount = SharedInventoryUtility.RecoverDefeatedExpedition(
+                playerData,
+                active.def.sourceQuestId);
+
+            if (recoveredItemCount > 0)
+                Debug.Log($"실종 원정대의 물품 {recoveredItemCount}개를 구조대 창고로 회수했습니다.");
+        }
+
+
+        ExpireActiveQuestEssences();
+
         completed.Add(
             new CompletedQuestEntry
             {
@@ -434,12 +1267,168 @@ public class QuestManager : MonoBehaviour
         OnCompletedChanged?.Invoke();
     }
 
+
+    private void ExpireActiveQuestEssences()
+    {
+        if (active?.def == null)
+            return;
+
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        if (playerData == null)
+            return;
+
+        List<InventorySlotData> storage = SharedInventoryUtility.GetStorage(
+            playerData,
+            SharedInventoryType.ExpeditionStorage);
+        int expiredCount = SharedInventoryUtility.ExpireMonsterEssences(
+            storage,
+            active.def.id);
+
+        if (expiredCount > 0)
+            Debug.Log($"사용하지 않은 정수 {expiredCount}개가 빛을 잃었습니다.");
+    }
+
+
+    private QuestDef CloneAsRescueQuest(
+        QuestDef source,
+        List<string> characterIds)
+    {
+        List<MonsterSpawn> enemyPool = new List<MonsterSpawn>();
+
+        if (source.enemyPool != null)
+        {
+            foreach (MonsterSpawn spawn in source.enemyPool)
+            {
+                if (spawn == null)
+                    continue;
+
+                enemyPool.Add(new MonsterSpawn
+                {
+                    monsterUid = spawn.monsterUid,
+                    count = spawn.count
+                });
+            }
+        }
+
+        QuestReward sourceReward = source.reward;
+        QuestReward reward = sourceReward != null
+            ? new QuestReward
+            {
+                randomSeed = sourceReward.randomSeed,
+                kind = sourceReward.kind,
+                tier = sourceReward.tier,
+                maxEquipmentRarity = sourceReward.maxEquipmentRarity,
+                equipmentFilter = sourceReward.equipmentFilter,
+                weaponType = sourceReward.weaponType,
+                armorCategory = sourceReward.armorCategory,
+                equipmentType = sourceReward.equipmentType,
+                skillDiscipline = sourceReward.skillDiscipline,
+                rolled = sourceReward.rolled,
+                equipmentUids = sourceReward.equipmentUids != null
+                    ? new List<int>(sourceReward.equipmentUids)
+                    : new List<int>(),
+                equipmentRarities = sourceReward.equipmentRarities != null
+                    ? new List<EquipmentRarity>(sourceReward.equipmentRarities)
+                    : new List<EquipmentRarity>(),
+                skillUids = sourceReward.skillUids != null
+                    ? new List<int>(sourceReward.skillUids)
+                    : new List<int>()
+            }
+            : new QuestReward();
+
+        List<string> rescueIds = new List<string>();
+
+        foreach (string characterId in characterIds)
+        {
+            if (!string.IsNullOrEmpty(characterId) &&
+                !rescueIds.Contains(characterId))
+            {
+                rescueIds.Add(characterId);
+            }
+        }
+
+        return new QuestDef
+        {
+            id = $"RESCUE_{source.id}_{Guid.NewGuid():N}",
+            isRescueQuest = true,
+            sourceQuestId = source.id,
+            rescueCharacterIds = rescueIds,
+            seed = source.seed,
+            tier = source.tier,
+            difficulty = source.difficulty,
+            stageKey = source.stageKey,
+            mapPrefabIndex = source.mapPrefabIndex,
+            issuer = source.issuer,
+            bossUid = source.bossUid,
+            title = source.title,
+            recommendedLevel = source.recommendedLevel,
+            recommendedPartySize = source.recommendedPartySize,
+            maxPartySize = 4,
+            enemyPool = enemyPool,
+            reward = reward
+        };
+    }
+
+
+    private void ResolveRescuedCharacters(QuestDef rescueQuest)
+    {
+        PlayerManager playerManager = PlayerManager.Instance;
+        PlayerData playerData = playerManager != null
+            ? playerManager.GetCurrentPlayerData()
+            : null;
+
+        if (playerData == null || rescueQuest.rescueCharacterIds == null)
+            return;
+
+        if (playerData.characterIds == null)
+            playerData.characterIds = new List<string>();
+
+        if (playerData.missingCharacterIds == null)
+            playerData.missingCharacterIds = new List<string>();
+
+        if (playerData.revivalRequiredCharacterIds == null)
+            playerData.revivalRequiredCharacterIds = new List<string>();
+
+        foreach (string characterId in rescueQuest.rescueCharacterIds)
+        {
+            if (string.IsNullOrEmpty(characterId))
+                continue;
+
+            playerData.missingCharacterIds.RemoveAll(id => id == characterId);
+
+            if (!playerData.characterIds.Contains(characterId))
+                playerData.characterIds.Add(characterId);
+
+            if (!playerData.revivalRequiredCharacterIds.Contains(characterId))
+                playerData.revivalRequiredCharacterIds.Add(characterId);
+
+            playerData.activeCharacterIds?.RemoveAll(id => id == characterId);
+
+            if (CharacterPoolManager.Instance != null &&
+                CharacterPoolManager.Instance.Get(characterId) == null)
+            {
+                string rescuedId = characterId;
+
+                playerManager.LoadCharacter(
+                    rescuedId,
+                    character =>
+                    {
+                        if (character != null)
+                            CharacterPoolManager.Instance?.AddCharacterToPool(character);
+                    });
+            }
+        }
+    }
+
     #endregion
 
 
     #region Quest Generation
 
-    private QuestDef GenerateOneQuest()
+    private QuestDef GenerateOneQuest(int boardIndex)
     {
         if (GameDataRegistry.Instance == null)
         {
@@ -485,14 +1474,28 @@ public class QuestManager : MonoBehaviour
                 unlockedTier);
 
 
-        int questTier =
-            rand.Next(
+        int preferredTier =
+            GetPreferredQuestTierForBoardIndex(
+                boardIndex,
+                minimumTier,
+                maximumTier);
+
+
+        int questTier = preferredTier > 0
+            ? preferredTier
+            : rand.Next(
                 minimumTier,
                 maximumTier + 1);
 
 
         QuestStageDefinitionSO stage =
             PickStage(rand);
+
+
+        int mapPrefabIndex =
+            PickMapPrefabIndex(
+                stage,
+                rand);
 
 
         QuestIssuer issuer =
@@ -524,12 +1527,7 @@ public class QuestManager : MonoBehaviour
             rand.Next(1, 5);
 
 
-        int maxPartySize =
-            Mathf.Clamp(
-                recommendedPartySize +
-                rand.Next(0, 2),
-                2,
-                6);
+        int maxPartySize = 4;
 
 
         MonsterRoleSO boss =
@@ -568,6 +1566,7 @@ public class QuestManager : MonoBehaviour
             GenerateReward(
                 questTier,
                 difficulty,
+                issuer,
                 rand);
 
 
@@ -601,6 +1600,9 @@ public class QuestManager : MonoBehaviour
                 stage != null
                     ? stage.stageKey
                     : "",
+
+            mapPrefabIndex =
+                mapPrefabIndex,
 
             issuer =
                 issuer,
@@ -666,6 +1668,42 @@ public class QuestManager : MonoBehaviour
     }
 
 
+    private int PickMapPrefabIndex(
+        QuestStageDefinitionSO stage,
+        System.Random rand)
+    {
+        if (stage == null ||
+            stage.mapPrefabs == null ||
+            stage.mapPrefabs.Count == 0)
+        {
+            return -1;
+        }
+
+
+        List<int> availableMapIndexes =
+            new List<int>();
+
+
+        for (int i = 0;
+             i < stage.mapPrefabs.Count;
+             i++)
+        {
+            if (stage.mapPrefabs[i] != null)
+                availableMapIndexes.Add(i);
+        }
+
+
+        if (availableMapIndexes.Count == 0)
+            return -1;
+
+
+        return availableMapIndexes[
+            rand.Next(
+                0,
+                availableMapIndexes.Count)];
+    }
+
+
     private QuestDifficulty GetQuestDifficulty(int level)
     {
         int levelInTier =
@@ -684,15 +1722,76 @@ public class QuestManager : MonoBehaviour
     private QuestIssuer PickIssuer(
         System.Random rand)
     {
-        QuestIssuer[] issuers =
-            (QuestIssuer[])Enum.GetValues(
-                typeof(QuestIssuer));
+        int totalWeight = 0;
 
 
-        return issuers[
-            rand.Next(
-                0,
-                issuers.Length)];
+        foreach (QuestIssuer issuer in GeneratedIssuers)
+        {
+            totalWeight +=
+                preferredIssuers != null &&
+                preferredIssuers.Contains(issuer)
+                    ? PreferredIssuerWeight
+                    : 1;
+        }
+
+
+        int roll = rand.Next(0, totalWeight);
+
+
+        foreach (QuestIssuer issuer in GeneratedIssuers)
+        {
+            int weight =
+                preferredIssuers != null &&
+                preferredIssuers.Contains(issuer)
+                    ? PreferredIssuerWeight
+                    : 1;
+
+
+            if (roll < weight)
+                return issuer;
+
+
+            roll -= weight;
+        }
+
+
+        return GeneratedIssuers[0];
+    }
+
+
+    private int GetPreferredQuestTierForBoardIndex(
+        int boardIndex,
+        int minimumTier,
+        int maximumTier)
+    {
+        List<int> selectedTiers =
+            new List<int>();
+
+
+        if (preferredQuestTiers != null)
+        {
+            foreach (int tier in preferredQuestTiers)
+            {
+                if (tier >= minimumTier &&
+                    tier <= maximumTier &&
+                    !selectedTiers.Contains(tier))
+                {
+                    selectedTiers.Add(tier);
+                }
+            }
+        }
+
+
+        if (selectedTiers.Count == 0)
+            return 0;
+
+
+        selectedTiers.Sort();
+
+
+        return selectedTiers[
+            Mathf.Abs(boardIndex) %
+            selectedTiers.Count];
     }
 
 
@@ -913,16 +2012,28 @@ public class QuestManager : MonoBehaviour
     private QuestReward GenerateReward(
         int questTier,
         QuestDifficulty difficulty,
+        QuestIssuer issuer,
         System.Random rand)
     {
         QuestReward reward =
-            new QuestReward();
+            new QuestReward
+            {
+                randomSeed = rand.Next(1, int.MaxValue),
+                tier = questTier,
+                maxEquipmentRarity = GetMaximumEquipmentRewardRarity(difficulty)
+            };
 
 
         List<EquipmentDefinitionSO> equipments =
             GameDataRegistry.Instance
                 .GetEquipmentsByTier(
-                    questTier);
+                    questTier)
+                .FindAll(equipment =>
+                    equipment != null &&
+                    equipment.canDrop &&
+                    IsEquipmentAllowedForIssuer(
+                        equipment,
+                        issuer));
 
 
         List<SkillDefinitionSO> skills =
@@ -931,7 +2042,10 @@ public class QuestManager : MonoBehaviour
                 .FindAll(skill =>
                     IsRewardSkillAvailable(
                         skill,
-                        questTier));
+                        questTier) &&
+                    IsSkillAllowedForIssuer(
+                        skill,
+                        issuer));
 
 
         bool hasEquipment =
@@ -979,13 +2093,12 @@ public class QuestManager : MonoBehaviour
                         equipments.Count)];
 
 
-            reward.equipmentUids.Add(
-                equipment.uid);
+            reward.kind = QuestRewardKind.Equipment;
 
-            reward.equipmentRarities.Add(
-                RollEquipmentRewardRarity(
-                    difficulty,
-                    rand));
+
+            SetEquipmentRewardFilter(
+                reward,
+                equipment);
         }
         else
         {
@@ -993,13 +2106,14 @@ public class QuestManager : MonoBehaviour
                 PickSkillReward(
                     questTier,
                     difficulty,
+                    issuer,
                     rand);
 
 
             if (skill != null)
             {
-                reward.skillUids.Add(
-                    skill.uid);
+                reward.kind = QuestRewardKind.Skill;
+                reward.skillDiscipline = skill.discipline;
             }
         }
 
@@ -1011,6 +2125,7 @@ public class QuestManager : MonoBehaviour
     private SkillDefinitionSO PickSkillReward(
         int questTier,
         QuestDifficulty difficulty,
+        QuestIssuer issuer,
         System.Random rand)
     {
         List<SkillDefinitionSO> candidates =
@@ -1019,7 +2134,28 @@ public class QuestManager : MonoBehaviour
                 .FindAll(skill =>
                     IsRewardSkillAvailable(
                         skill,
-                        questTier));
+                        questTier) &&
+                    IsSkillAllowedForIssuer(
+                        skill,
+                        issuer));
+
+
+        return PickSkillReward(
+            candidates,
+            questTier,
+            difficulty,
+            rand);
+    }
+
+
+    private SkillDefinitionSO PickSkillReward(
+        List<SkillDefinitionSO> candidates,
+        int questTier,
+        QuestDifficulty difficulty,
+        System.Random rand)
+    {
+        if (candidates == null)
+            return null;
 
 
         if (candidates.Count == 0)
@@ -1120,6 +2256,295 @@ public class QuestManager : MonoBehaviour
         return skill != null &&
                skill.CanAppearInRewardPool(questTier) &&
                skill.GetTotalResourceCost() <= Mathf.Max(1, maxRewardSkillCost);
+    }
+
+
+    private bool IsEquipmentAllowedForIssuer(
+        EquipmentDefinitionSO equipment,
+        QuestIssuer issuer)
+    {
+        WeaponDefinitionSO weapon =
+            equipment as WeaponDefinitionSO;
+
+
+        ArmorDefinitionSO armor =
+            equipment as ArmorDefinitionSO;
+
+
+        switch (issuer)
+        {
+            case QuestIssuer.HunterGuild:
+                return
+                    (weapon != null &&
+                     (weapon.weaponType == WeaponType.Bow ||
+                      weapon.weaponType == WeaponType.Dagger)) ||
+                    (armor != null &&
+                     armor.armorCategory == ArmorCategory.LightArmor);
+
+            case QuestIssuer.WarriorGuild:
+                return
+                    (weapon != null &&
+                     weapon.weaponType != WeaponType.Bow &&
+                     (weapon.weaponTags == null ||
+                      !weapon.weaponTags.Contains(WeaponTag.MagicWeapon))) ||
+                    (armor != null &&
+                     (armor.armorCategory == ArmorCategory.LightArmor ||
+                      armor.armorCategory == ArmorCategory.HeavyArmor));
+
+            case QuestIssuer.SwordDojo:
+                return
+                    (weapon != null &&
+                     (weapon.weaponType == WeaponType.LongSword ||
+                      weapon.weaponType == WeaponType.Two_HandedSword ||
+                      weapon.weaponType == WeaponType.Greatsword ||
+                      weapon.weaponType == WeaponType.Shield)) ||
+                    (armor != null &&
+                     armor.armorCategory == ArmorCategory.HeavyArmor);
+
+            case QuestIssuer.MageTower:
+                return
+                    (weapon != null &&
+                     ((weapon.weaponTags != null &&
+                       weapon.weaponTags.Contains(WeaponTag.MagicWeapon)) ||
+                      weapon.weaponType == WeaponType.Staff ||
+                      weapon.weaponType == WeaponType.Book ||
+                      weapon.weaponType == WeaponType.Orb)) ||
+                    (armor != null &&
+                     armor.armorCategory == ArmorCategory.ClothArmor);
+
+            case QuestIssuer.TownCouncil:
+                return equipment.equipType == EquipmentType.Ring ||
+                       equipment.equipType == EquipmentType.Necklace;
+
+            case QuestIssuer.ThievesGuild:
+                return
+                    (weapon != null &&
+                     weapon.weaponType == WeaponType.Dagger) ||
+                    (armor != null &&
+                     armor.armorCategory == ArmorCategory.LightArmor);
+
+            default:
+                return true;
+        }
+    }
+
+
+    private bool IsSkillAllowedForIssuer(
+        SkillDefinitionSO skill,
+        QuestIssuer issuer)
+    {
+        if (skill == null)
+            return false;
+
+
+        switch (issuer)
+        {
+            case QuestIssuer.HunterGuild:
+                return skill.discipline == SkillDiscipline.Archery ||
+                       skill.discipline == SkillDiscipline.DaggerArt;
+
+            case QuestIssuer.WarriorGuild:
+                return skill.discipline == SkillDiscipline.WeaponArt ||
+                       skill.discipline == SkillDiscipline.MartialArt;
+
+            case QuestIssuer.SwordDojo:
+                return skill.discipline == SkillDiscipline.Swordsmanship ||
+                       skill.discipline == SkillDiscipline.ShieldArt;
+
+            case QuestIssuer.MageTower:
+                return skill.discipline == SkillDiscipline.Magic;
+
+            case QuestIssuer.ThievesGuild:
+                return skill.discipline == SkillDiscipline.DaggerArt;
+
+            case QuestIssuer.TownCouncil:
+                return skill.discipline != SkillDiscipline.Basic &&
+                       skill.discipline != SkillDiscipline.Monster;
+
+            default:
+                return skill.discipline != SkillDiscipline.Monster;
+        }
+    }
+
+
+    private void SetEquipmentRewardFilter(
+        QuestReward reward,
+        EquipmentDefinitionSO equipment)
+    {
+        if (equipment is WeaponDefinitionSO weapon)
+        {
+            reward.equipmentFilter =
+                QuestEquipmentRewardFilter.WeaponType;
+
+            reward.weaponType =
+                weapon.weaponType;
+
+            return;
+        }
+
+
+        if (equipment is ArmorDefinitionSO armor)
+        {
+            reward.equipmentFilter =
+                QuestEquipmentRewardFilter.ArmorCategory;
+
+            reward.armorCategory =
+                armor.armorCategory;
+
+            return;
+        }
+
+
+        reward.equipmentFilter =
+            QuestEquipmentRewardFilter.EquipmentType;
+
+        reward.equipmentType =
+            equipment.equipType;
+    }
+
+
+    private bool MatchesEquipmentRewardFilter(
+        EquipmentDefinitionSO equipment,
+        QuestReward reward)
+    {
+        if (equipment == null || reward == null)
+            return false;
+
+
+        switch (reward.equipmentFilter)
+        {
+            case QuestEquipmentRewardFilter.Any:
+                return true;
+
+            case QuestEquipmentRewardFilter.WeaponType:
+                return equipment is WeaponDefinitionSO weapon &&
+                       weapon.weaponType == reward.weaponType;
+
+            case QuestEquipmentRewardFilter.ArmorCategory:
+                return equipment is ArmorDefinitionSO armor &&
+                       armor.armorCategory == reward.armorCategory;
+
+            case QuestEquipmentRewardFilter.EquipmentType:
+                return equipment.equipType == reward.equipmentType;
+
+            default:
+                return false;
+        }
+    }
+
+
+    public QuestReward ResolveReward(QuestDef quest)
+    {
+        if (quest == null || quest.reward == null)
+            return null;
+
+
+        QuestReward reward = quest.reward;
+
+
+        if (reward.rolled)
+            return reward;
+
+
+        bool hasLegacyResolvedReward =
+            (reward.equipmentUids != null &&
+             reward.equipmentUids.Count > 0) ||
+            (reward.skillUids != null &&
+             reward.skillUids.Count > 0);
+
+
+        if (hasLegacyResolvedReward)
+        {
+            reward.rolled = true;
+            return reward;
+        }
+
+
+        int randomSeed = reward.randomSeed != 0
+            ? reward.randomSeed
+            : quest.seed;
+
+
+        System.Random rand =
+            new System.Random(randomSeed);
+
+
+        if (reward.kind == QuestRewardKind.Equipment)
+        {
+            List<EquipmentDefinitionSO> candidates =
+                GameDataRegistry.Instance
+                    .GetEquipmentsByTier(reward.tier)
+                    .FindAll(equipment =>
+                        equipment != null &&
+                        equipment.canDrop &&
+                        IsEquipmentAllowedForIssuer(
+                            equipment,
+                            quest.issuer) &&
+                        MatchesEquipmentRewardFilter(
+                            equipment,
+                            reward));
+
+
+            if (candidates.Count > 0)
+            {
+                EquipmentDefinitionSO equipment =
+                    candidates[rand.Next(0, candidates.Count)];
+
+
+                reward.equipmentUids.Add(equipment.uid);
+
+
+                EquipmentRarity rarity =
+                    RollEquipmentRewardRarity(
+                        quest.difficulty,
+                        rand);
+
+
+                reward.equipmentRarities.Add(
+                    rarity <= reward.maxEquipmentRarity
+                        ? rarity
+                        : reward.maxEquipmentRarity);
+            }
+        }
+        else if (reward.kind == QuestRewardKind.Skill)
+        {
+            List<SkillDefinitionSO> candidates =
+                GameDataRegistry.Instance
+                    .GetRewardSkills()
+                    .FindAll(skill =>
+                        IsRewardSkillAvailable(
+                            skill,
+                            reward.tier) &&
+                        IsSkillAllowedForIssuer(
+                            skill,
+                            quest.issuer) &&
+                        skill.discipline == reward.skillDiscipline);
+
+
+            SkillDefinitionSO skill =
+                PickSkillReward(
+                    candidates,
+                    reward.tier,
+                    quest.difficulty,
+                    rand);
+
+
+            if (skill != null)
+                reward.skillUids.Add(skill.uid);
+        }
+
+
+        reward.rolled = true;
+        return reward;
+    }
+
+
+    private EquipmentRarity GetMaximumEquipmentRewardRarity(
+        QuestDifficulty difficulty)
+    {
+        return difficulty == QuestDifficulty.Easy
+            ? EquipmentRarity.Rare
+            : EquipmentRarity.Epic;
     }
 
 

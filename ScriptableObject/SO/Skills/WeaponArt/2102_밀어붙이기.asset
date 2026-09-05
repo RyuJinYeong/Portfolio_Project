@@ -16,6 +16,7 @@ MonoBehaviour:
   skillName: "밀어붙이기"
   description: "강한 힘으로 보호선을 돌파해 본래 목표까지 공격한다."
   icon: {fileID: 0}
+  composer: {fileID: 11400000, guid: 436035f80fb29baab5114c021b1b987e, type: 2}
   activationSpeed: 0.8
   staminaCost: 2
   mentalCost: 0

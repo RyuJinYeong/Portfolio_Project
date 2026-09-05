@@ -163,8 +163,6 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         AppendValue(text, "대성공 피해", stats.CriticalDamageBonus, "%");
         AppendValue(text, "상태이상 저항", stats.StatusResistance, "%");
         AppendValue(text, "맵 탐지 범위", stats.MapDetectionRange);
-        AppendValue(text, "함정 탐지", stats.TrapDetectionBonus);
-        AppendValue(text, "이벤트 통찰", stats.EventInsightBonus);
         AppendValue(text, "처치 시 HP 회복", stats.KillHpRecovery);
         AppendValue(text, "처치 시 지구력 회복", stats.KillStaminaRecovery);
         AppendValue(text, "처치 시 정신력 회복", stats.KillMentalityRecovery);

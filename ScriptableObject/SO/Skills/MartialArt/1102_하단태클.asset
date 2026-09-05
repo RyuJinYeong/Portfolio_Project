@@ -16,6 +16,7 @@ MonoBehaviour:
   skillName: "하단태클"
   description: "한손이 빈 상태에서 하체로 파고들어 낮은 피해와 흐트러짐을 준다."
   icon: {fileID: 0}
+  composer: {fileID: 11400000, guid: 87c40ad1bf5d4c35c92f4bceea0b3b92, type: 2}
   activationSpeed: 1.2
   staminaCost: 1
   mentalCost: 0

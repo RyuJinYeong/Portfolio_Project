@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2402_전격"
+  m_Name: "2402_\uC804\uACA9"
   m_EditorClassIdentifier: 
   uid: 2402
-  skillName: "전격"
-  description: "번개를 방출해 번개 피해와 저릿함을 준다."
-  icon: {fileID: 0}
+  skillName: "\uC804\uACA9"
+  description: "\uBC88\uAC1C\uB97C \uBC29\uCD9C\uD574 \uBC88\uAC1C \uD53C\uD574\uC640
+    \uC800\uB9BF\uD568\uC744 \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: e25b8f32c3a00f74db0e6c0fa844dc8c, type: 3}
+  composer: {fileID: 11400000, guid: 660fb6519bb37285f889319fcd68ae64, type: 2}
   activationSpeed: 1.1
   staminaCost: 0
   mentalCost: 1
   type: 1
   style: 1
   discipline: 7
+  firstRewardTier: 1
   damageComponents:
   - damageType: 1
     attribute: 2

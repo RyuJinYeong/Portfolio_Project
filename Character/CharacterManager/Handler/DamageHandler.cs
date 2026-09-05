@@ -22,7 +22,7 @@ public class DamageHandler
             // 캐릭터 사망 처리 로직 추가
         }
 
-        return reducedDamage; // 최종 데미지 반환
+        return remainingDamage; // 방어도 적용 후 실제 체력 피해 반환
     }
 
     // 방어도 적용 메서드

@@ -16,13 +16,15 @@ MonoBehaviour:
   skillName: "\uD654\uC5FC\uAD6C"
   description: "\uD070 \uD654\uC5FC\uAD6C\uB97C \uBC1C\uC0AC\uD574 \uB192\uC740 \uD654\uC5FC
     \uD53C\uD574\uC640 \uD654\uC0C1\uC744 \uC900\uB2E4."
-  icon: {fileID: 2800000, guid: 6f759d8e930272f45a1c02676ad56683, type: 3}
+  icon: {fileID: 2800000, guid: 72cb0c66bee941547998aea126ec0d21, type: 3}
+  composer: {fileID: 11400000, guid: 51400b04db78ffd0091c8e6d3fb05356, type: 2}
   activationSpeed: 0.8
   staminaCost: 0
   mentalCost: 2
   type: 1
   style: 0
   discipline: 7
+  firstRewardTier: 1
   damageComponents:
   - damageType: 1
     attribute: 0

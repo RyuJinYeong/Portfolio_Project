@@ -15,7 +15,7 @@ MonoBehaviour:
   id: 2021
   statusName: "\uC800\uB9BF\uD568"
   description: "\uC2A4\uD0DD\uB2F9 \uB9C8\uBC95 \uB300\uC751 \uC131\uACF5\uB960 \uAC10\uC18C"
-  icon: {fileID: 0}
+  icon: {fileID: 2062015785, guid: 080cb6d98b00c2645b2c41df5f69bc78, type: 3}
   isDebuff: 1
   durationType: 1
   effectType: 5

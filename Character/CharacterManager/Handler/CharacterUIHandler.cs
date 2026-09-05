@@ -103,6 +103,7 @@ public class CharacterUIHandler : MonoBehaviour
                     button.onClick.RemoveAllListeners();
                     button.onClick.AddListener(() =>
                     {
+                        TooltipManager.Instance?.HideTooltip();
                         caster.combatHandler.RemoveSkillFromQueue(capturedIndex);
                     });
                 }
@@ -147,6 +148,8 @@ public class CharacterUIHandler : MonoBehaviour
                     button.onClick.RemoveAllListeners();
                     button.onClick.AddListener(() =>
                     {
+                        TooltipManager.Instance?.HideTooltip();
+
                         if (caster.character.DefaultCounterSkill > 0 &&
                             capturedSkill.uid == caster.character.DefaultCounterSkill)
                         {
@@ -338,7 +341,7 @@ public class CharacterUIHandler : MonoBehaviour
         Slider slider = hpBar.GetComponent<Slider>();
 
         if (slider != null)
-            slider.value = hpPercentage;
+            slider.SetValueWithoutNotify(Mathf.Clamp01(hpPercentage));
     }
 
     private void UpdateStaminaBar()
@@ -357,7 +360,7 @@ public class CharacterUIHandler : MonoBehaviour
         Slider slider = staminaBar.GetComponent<Slider>();
 
         if (slider != null)
-            slider.value = staminaPercentage;
+            slider.SetValueWithoutNotify(Mathf.Clamp01(staminaPercentage));
     }
 
     private void UpdateMentalityBar()
@@ -376,7 +379,7 @@ public class CharacterUIHandler : MonoBehaviour
         Slider slider = mentalityBar.GetComponent<Slider>();
 
         if (slider != null)
-            slider.value = mentalityPercentage;
+            slider.SetValueWithoutNotify(Mathf.Clamp01(mentalityPercentage));
     }
 
     public void UpdateStatusEffects()

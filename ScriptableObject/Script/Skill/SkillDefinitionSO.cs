@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Jorjouto.AnimComposerSystem;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "GameData/Skill")]
@@ -11,6 +12,9 @@ public class SkillDefinitionSO : ScriptableObject
     public string description;
 
     public Texture2D icon;
+
+    [Header("Presentation")]
+    public ScriptableObject_AnimComposer composer;
 
     [Header("Skill Value")]
     public float activationSpeed = 1f;

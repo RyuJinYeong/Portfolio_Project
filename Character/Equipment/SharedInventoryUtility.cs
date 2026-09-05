@@ -11,6 +11,9 @@ public enum SharedInventoryType
 public static class SharedInventoryUtility
 {
     public const int InitialCompanyStorageCapacity = 100;
+    public const int ExpeditionStorageCapacity = 20;
+    public const int MonsterEssenceItemUid = 20001;
+    public const int FadedEssenceItemUid = 20002;
 
     public static event Action InventoryChanged;
     public static event Action<CharacterManager> EquipmentChanged;
@@ -43,7 +46,7 @@ public static class SharedInventoryUtility
     {
         return inventoryType == SharedInventoryType.CompanyStorage
             ? InitialCompanyStorageCapacity
-            : int.MaxValue;
+            : ExpeditionStorageCapacity;
     }
 
     public static bool AddItem(
@@ -57,6 +60,351 @@ public static class SharedInventoryUtility
 
         InventoryChanged?.Invoke();
         return true;
+    }
+
+    public static bool AddMonsterEssence(
+        List<InventorySlotData> storage,
+        string questId,
+        CharacterData monster)
+    {
+        InventorySlotData essence = CreateMonsterEssence(questId, monster);
+
+        return essence != null && AddInventorySlot(storage, essence);
+    }
+
+    public static InventorySlotData CreateMonsterEssence(
+        string questId,
+        CharacterData monster)
+    {
+        if (string.IsNullOrEmpty(questId) ||
+            monster == null ||
+            GameDataRegistry.Instance == null ||
+            GameDataRegistry.Instance.GetItem(MonsterEssenceItemUid) == null)
+        {
+            return null;
+        }
+
+        List<MonsterEssenceTraitData> traits = new List<MonsterEssenceTraitData>();
+
+        foreach (TraitRuntimeData runtime in monster.GetAllTraitRuntimes())
+        {
+            if (runtime == null || runtime.traitId <= 0)
+                continue;
+
+            MonsterEssenceTraitData existing = traits.Find(
+                trait => trait.traitId == runtime.traitId);
+
+            if (existing == null)
+            {
+                traits.Add(new MonsterEssenceTraitData
+                {
+                    traitId = runtime.traitId,
+                    point = Mathf.Max(1, runtime.point)
+                });
+            }
+            else
+            {
+                existing.point = Mathf.Max(existing.point, runtime.point);
+            }
+        }
+
+        return new InventorySlotData
+        {
+            itemUid = MonsterEssenceItemUid,
+            count = 1,
+            essenceQuestId = questId,
+            essenceMonsterRoleId = monster.monsterRoleId,
+            essenceMonsterName = monster.Name,
+            essenceTraits = traits
+        };
+    }
+
+    public static bool AddInventorySlot(
+        List<InventorySlotData> storage,
+        InventorySlotData source)
+    {
+        if (storage == null || source == null || source.itemUid <= 0 || source.count <= 0)
+            return false;
+
+        if (!source.IsMonsterEssence())
+            return AddItem(storage, source.itemUid, source.count, source.equipmentInstanceId);
+
+        if (GameDataRegistry.Instance == null ||
+            GameDataRegistry.Instance.GetItem(source.itemUid) is not ItemDefinitionSO item ||
+            !HasCapacityFor(storage, item, source.count, null))
+        {
+            return false;
+        }
+
+        List<MonsterEssenceTraitData> traits = new List<MonsterEssenceTraitData>();
+
+        if (source.essenceTraits != null)
+        {
+            foreach (MonsterEssenceTraitData trait in source.essenceTraits)
+            {
+                if (trait == null)
+                    continue;
+
+                traits.Add(new MonsterEssenceTraitData
+                {
+                    traitId = trait.traitId,
+                    point = trait.point
+                });
+            }
+        }
+
+        storage.Add(new InventorySlotData
+        {
+            itemUid = source.itemUid,
+            count = source.count,
+            essenceQuestId = source.essenceQuestId,
+            essenceMonsterRoleId = source.essenceMonsterRoleId,
+            essenceMonsterName = source.essenceMonsterName,
+            essenceTraits = traits
+        });
+
+        InventoryChanged?.Invoke();
+        return true;
+    }
+
+    public static void ArchiveDefeatedExpedition(
+        PlayerData playerData,
+        string sourceQuestId,
+        List<string> characterIds)
+    {
+        if (playerData == null || string.IsNullOrEmpty(sourceQuestId))
+            return;
+
+        if (playerData.lostExpeditionInventories == null)
+            playerData.lostExpeditionInventories = new List<LostExpeditionInventoryData>();
+
+        LostExpeditionInventoryData lost = playerData.lostExpeditionInventories.Find(
+            inventory => inventory != null && inventory.sourceQuestId == sourceQuestId);
+
+        if (lost == null)
+        {
+            lost = new LostExpeditionInventoryData
+            {
+                sourceQuestId = sourceQuestId
+            };
+            playerData.lostExpeditionInventories.Add(lost);
+        }
+
+        lost.characterIds = characterIds != null
+            ? new List<string>(characterIds)
+            : new List<string>();
+        lost.items = CloneInventorySlots(playerData.expeditionStorage);
+
+        if (playerData.expeditionStorage == null)
+            playerData.expeditionStorage = new List<InventorySlotData>();
+        else
+            playerData.expeditionStorage.Clear();
+
+        InventoryChanged?.Invoke();
+    }
+
+    public static int RecoverDefeatedExpedition(
+        PlayerData playerData,
+        string sourceQuestId)
+    {
+        if (playerData == null ||
+            string.IsNullOrEmpty(sourceQuestId) ||
+            playerData.lostExpeditionInventories == null)
+        {
+            return 0;
+        }
+
+        LostExpeditionInventoryData lost = playerData.lostExpeditionInventories.Find(
+            inventory => inventory != null && inventory.sourceQuestId == sourceQuestId);
+
+        if (lost == null)
+            return 0;
+
+        if (playerData.expeditionStorage == null)
+            playerData.expeditionStorage = new List<InventorySlotData>();
+
+        int recoveredCount = 0;
+        List<InventorySlotData> remaining = new();
+
+        foreach (InventorySlotData slot in lost.items ?? new List<InventorySlotData>())
+        {
+            if (AddInventorySlot(playerData.expeditionStorage, slot))
+                recoveredCount += Mathf.Max(1, slot.count);
+            else
+                remaining.Add(CloneInventorySlot(slot));
+        }
+
+        if (remaining.Count == 0)
+            playerData.lostExpeditionInventories.Remove(lost);
+        else
+            lost.items = remaining;
+
+        return recoveredCount;
+    }
+
+    public static int TransferExpeditionToCompany(PlayerData playerData)
+    {
+        if (playerData?.expeditionStorage == null)
+            return 0;
+
+        if (playerData.accountStorage == null)
+            playerData.accountStorage = new List<InventorySlotData>();
+
+        int movedCount = 0;
+        InventorySlotData[] slots = playerData.expeditionStorage.ToArray();
+
+        foreach (InventorySlotData slot in slots)
+        {
+            if (slot == null || !AddInventorySlot(playerData.accountStorage, slot))
+                continue;
+
+            movedCount += Mathf.Max(1, slot.count);
+            RemoveItemInternal(
+                playerData.expeditionStorage,
+                slot,
+                Mathf.Max(1, slot.count));
+        }
+
+        if (movedCount > 0)
+            InventoryChanged?.Invoke();
+
+        return movedCount;
+    }
+
+    public static bool DiscardInventorySlot(
+        List<InventorySlotData> storage,
+        InventorySlotData slot)
+    {
+        ItemDefinitionSO item = slot != null && GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetItem(slot.itemUid)
+            : null;
+
+        if (storage == null || slot == null || item == null || !item.deletable)
+            return false;
+
+        int count = slot.IsGeneratedEquipment() ? 1 : Mathf.Max(1, slot.count);
+        string equipmentInstanceId = slot.equipmentInstanceId;
+
+        if (!RemoveItemInternal(storage, slot, count))
+            return false;
+
+        if (!string.IsNullOrEmpty(equipmentInstanceId))
+            EquipmentInstanceRepository.RemoveFromPlayer(equipmentInstanceId);
+
+        InventoryChanged?.Invoke();
+        return true;
+    }
+
+    public static bool SellInventorySlot(
+        PlayerData playerData,
+        List<InventorySlotData> storage,
+        InventorySlotData slot)
+    {
+        ItemDefinitionSO item = slot != null && GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetItem(slot.itemUid)
+            : null;
+
+        if (playerData == null || storage == null || slot == null ||
+            item == null || !item.tradeable)
+        {
+            return false;
+        }
+
+        int count = slot.IsGeneratedEquipment() ? 1 : Mathf.Max(1, slot.count);
+        string equipmentInstanceId = slot.equipmentInstanceId;
+
+        if (!RemoveItemInternal(storage, slot, count))
+            return false;
+
+        playerData.gold += Mathf.Max(0, item.price) * count;
+
+        if (!string.IsNullOrEmpty(equipmentInstanceId))
+            EquipmentInstanceRepository.RemoveFromPlayer(equipmentInstanceId);
+
+        InventoryChanged?.Invoke();
+        return true;
+    }
+
+    public static InventorySlotData CloneInventorySlot(InventorySlotData source)
+    {
+        if (source == null)
+            return null;
+
+        List<MonsterEssenceTraitData> traits = new();
+
+        foreach (MonsterEssenceTraitData trait in
+                 source.essenceTraits ?? new List<MonsterEssenceTraitData>())
+        {
+            if (trait == null)
+                continue;
+
+            traits.Add(new MonsterEssenceTraitData
+            {
+                traitId = trait.traitId,
+                point = trait.point
+            });
+        }
+
+        return new InventorySlotData
+        {
+            itemUid = source.itemUid,
+            count = source.count,
+            equipmentInstanceId = source.equipmentInstanceId,
+            essenceQuestId = source.essenceQuestId,
+            essenceMonsterRoleId = source.essenceMonsterRoleId,
+            essenceMonsterName = source.essenceMonsterName,
+            essenceTraits = traits
+        };
+    }
+
+    private static List<InventorySlotData> CloneInventorySlots(
+        List<InventorySlotData> source)
+    {
+        List<InventorySlotData> result = new();
+
+        foreach (InventorySlotData slot in source ?? new List<InventorySlotData>())
+        {
+            InventorySlotData clone = CloneInventorySlot(slot);
+
+            if (clone != null && clone.itemUid > 0 && clone.count > 0)
+                result.Add(clone);
+        }
+
+        return result;
+    }
+
+    public static int ExpireMonsterEssences(
+        List<InventorySlotData> storage,
+        string questId)
+    {
+        if (storage == null ||
+            string.IsNullOrEmpty(questId) ||
+            GameDataRegistry.Instance == null ||
+            GameDataRegistry.Instance.GetItem(FadedEssenceItemUid) == null)
+        {
+            return 0;
+        }
+
+        int changedCount = 0;
+
+        foreach (InventorySlotData slot in storage)
+        {
+            if (slot == null || slot.essenceQuestId != questId)
+                continue;
+
+            slot.itemUid = FadedEssenceItemUid;
+            slot.equipmentInstanceId = null;
+            slot.essenceQuestId = null;
+            slot.essenceMonsterRoleId = 0;
+            slot.essenceMonsterName = null;
+            slot.essenceTraits?.Clear();
+            changedCount += Mathf.Max(1, slot.count);
+        }
+
+        if (changedCount > 0)
+            InventoryChanged?.Invoke();
+
+        return changedCount;
     }
 
     public static bool RemoveItem(
@@ -79,6 +427,9 @@ public static class SharedInventoryUtility
         int count = 1)
     {
         if (playerData == null || sourceType == destinationType || sourceSlot == null)
+            return false;
+
+        if (sourceSlot.IsMonsterEssence())
             return false;
 
         List<InventorySlotData> source = GetStorage(playerData, sourceType);
@@ -285,14 +636,113 @@ public static class SharedInventoryUtility
 
                 break;
             }
+
+
+            case ConsumableType.MonsterEssence:
+                applied = UseMonsterEssence(manager, storage, sourceSlot, consumable);
+                break;
         }
 
         if (!applied || !RemoveItemInternal(storage, sourceSlot, 1))
             return false;
 
+        manager.UpdateCharacterUI();
         InventoryChanged?.Invoke();
         CharacterChanged?.Invoke(manager);
         return true;
+    }
+
+    private static bool UseMonsterEssence(
+        CharacterManager manager,
+        List<InventorySlotData> storage,
+        InventorySlotData sourceSlot,
+        ConsumableDefinitionSO consumable)
+    {
+        ActiveQuestRuntime active = QuestManager.Instance != null
+            ? QuestManager.Instance.active
+            : null;
+
+        if (!sourceSlot.IsMonsterEssence() ||
+            active?.def == null ||
+            active.def.id != sourceSlot.essenceQuestId ||
+            sourceSlot.essenceTraits == null)
+        {
+            return false;
+        }
+
+        CharacterData character = manager.character;
+        List<MonsterEssenceTraitData> candidates = new List<MonsterEssenceTraitData>();
+        List<int> weights = new List<int>();
+        int totalWeight = 0;
+
+        foreach (MonsterEssenceTraitData essenceTrait in sourceSlot.essenceTraits)
+        {
+            TraitDefinitionSO trait = essenceTrait != null && GameDataRegistry.Instance != null
+                ? GameDataRegistry.Instance.GetTrait(essenceTrait.traitId)
+                : null;
+
+            if (trait == null)
+                continue;
+
+            TraitRuntimeData owned = character.Traits?.Find(
+                runtime => runtime != null && runtime.traitId == trait.id);
+
+            if (owned != null &&
+                (!trait.canGradeUp || owned.point >= TraitGradeUtility.MaxPoint))
+            {
+                continue;
+            }
+
+            TraitGrade grade = TraitGradeUtility.GetGrade(
+                Mathf.Max(1, essenceTrait.point));
+            int weight = Mathf.Max(0, consumable.GetMonsterEssenceTraitWeight(grade));
+
+            if (weight <= 0)
+                continue;
+
+            candidates.Add(essenceTrait);
+            weights.Add(weight);
+            totalWeight += weight;
+        }
+
+        if (candidates.Count == 0 || totalWeight <= 0)
+            return false;
+
+        int roll = UnityEngine.Random.Range(0, totalWeight);
+        int selectedIndex = 0;
+
+        for (int i = 0; i < weights.Count; i++)
+        {
+            if (roll < weights[i])
+            {
+                selectedIndex = i;
+                break;
+            }
+
+            roll -= weights[i];
+        }
+
+        MonsterEssenceTraitData selected = candidates[selectedIndex];
+        List<InventorySlotData> equippedBefore =
+            GetAllEquippedSlots(character.EquipmentSlots);
+        int before = GetTraitPoint(character, selected.traitId);
+
+        TraitManager.AddTrait(
+            manager,
+            selected.traitId,
+            TraitGradeUtility.GetGrade(Mathf.Max(1, selected.point)));
+
+        bool applied = GetTraitPoint(character, selected.traitId) > before;
+
+        if (applied)
+        {
+            ReturnRemovedEquipments(
+                storage,
+                equippedBefore,
+                GetAllEquippedSlots(character.EquipmentSlots));
+        }
+
+        return applied;
     }
 
     public static void SaveChanges(CharacterManager manager = null)
@@ -638,7 +1088,16 @@ public static class SharedInventoryUtility
             ? PlayerManager.Instance.GetCurrentPlayerData()
             : null;
 
-        if (playerData == null || !ReferenceEquals(storage, playerData.accountStorage))
+        if (playerData == null)
+            return true;
+
+        int capacity;
+
+        if (ReferenceEquals(storage, playerData.accountStorage))
+            capacity = InitialCompanyStorageCapacity;
+        else if (ReferenceEquals(storage, playerData.expeditionStorage))
+            capacity = ExpeditionStorageCapacity;
+        else
             return true;
 
         int occupiedSlots = 0;
@@ -681,7 +1140,7 @@ public static class SharedInventoryUtility
             requiredSlots = Mathf.CeilToInt(Mathf.Max(0, remaining) / (float)maxStack);
         }
 
-        return occupiedSlots + requiredSlots <= InitialCompanyStorageCapacity;
+        return occupiedSlots + requiredSlots <= capacity;
     }
 
     private static bool RemoveItemInternal(

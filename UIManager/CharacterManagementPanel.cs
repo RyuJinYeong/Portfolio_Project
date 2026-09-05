@@ -46,7 +46,7 @@ public class CharacterManagementPanel : MonoBehaviour
         foreach (var id in pd.characterIds)
         {
             var cm = CharacterPoolManager.Instance.Get(id);
-            if (!cm) continue;
+            if (!cm || cm.character == null || !cm.character.IsAlive) continue;
 
             var go = Instantiate(cardPrefab, content);
             var panel = go.GetComponent<CharacterInfoPanel>();

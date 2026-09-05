@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2003_관통시"
+  m_Name: "2003_\uAD00\uD1B5\uC2DC"
   m_EditorClassIdentifier: 
   uid: 2003
-  skillName: "관통시"
-  description: "사격을 발전시켜 더 강한 원거리 관통 피해를 준다."
-  icon: {fileID: 0}
+  skillName: "\uAD00\uD1B5\uC2DC"
+  description: "\uC0AC\uACA9\uC744 \uBC1C\uC804\uC2DC\uCF1C \uB354 \uAC15\uD55C \uC6D0\uAC70\uB9AC
+    \uAD00\uD1B5 \uD53C\uD574\uB97C \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: 4e5f5aba2f7315a47b8c3d9a185cbb86, type: 3}
+  composer: {fileID: 11400000, guid: ccf6be623e4d38f48dc14388e4f19449, type: 2}
   activationSpeed: 1.2
   staminaCost: 1
   mentalCost: 0
   type: 0
   style: 1
   discipline: 3
+  firstRewardTier: 1
   damageComponents:
   - damageType: 0
     attribute: 4

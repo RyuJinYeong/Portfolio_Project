@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6478899aabbccddeeff01, type: 3}
+  m_Name: Common_SafeRest
+  m_EditorClassIdentifier:
+  encounterId: common_safe_rest
+  nodeType: 5
+  weight: 1
+  availableInAllStages: 1
+  stageKeys: []
+  title: 안전 구역
+  description: 주변의 위협을 잠시 피할 수 있는 장소입니다. 파티를 쉬게 하거나 바로 다음 방으로 이동할 수 있습니다.
+  choices:
+  - text: 휴식한다
+    requiresCharacter: 0
+    outcomes:
+    - weight: 1
+      resultText: 파티가 휴식을 마치고 체력과 지구력, 정신력을 회복했습니다.
+      effectType: 2
+      targetScope: 2
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      monsterRoleIds: []
+  - text: 지나간다
+    requiresCharacter: 0
+    outcomes:
+    - weight: 1
+      resultText: 휴식하지 않고 다음 목적지로 이동합니다.
+      effectType: 0
+      targetScope: 0
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      monsterRoleIds: []

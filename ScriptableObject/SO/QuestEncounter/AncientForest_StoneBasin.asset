@@ -1,0 +1,136 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1b2c3d4e5f6478899aabbccddeeff01, type: 3}
+  m_Name: AncientForest_StoneBasin
+  m_EditorClassIdentifier:
+  encounterId: ancient_forest_stone_basin
+  nodeType: 4
+  weight: 1
+  availableInAllStages: 0
+  stageKeys:
+  - AncientForest
+  title: 뿌리에 잠긴 석조 수반
+  description: 거대한 나무뿌리 사이에 오래된 돌 수반이 반쯤 묻혀 있습니다. 수반 안에는 비가 오지 않았는데도 맑은 물이 고여 있습니다.
+  encounterMapPrefab: {fileID: 0}
+  encounterPropsPrefab: {fileID: 0}
+  insight:
+    enabled: 1
+    baseChancePercent: 3
+    chancePerDetection: 0.4
+    chancePerInsight: 1
+    tierPenaltyPercent: 4
+    difficultyPenaltyPercent: 6
+    maxChancePercent: 30
+    revealedText: 수반의 가장자리에는 정신과 생명력을 상징하는 오래된 문양이 새겨져 있습니다. 물에 손을 대면 강한 기운이 느껴집니다.
+  choices:
+  - text: 물에 손을 담근다
+    requiresCharacter: 1
+    abilityCheck:
+      enabled: 0
+      stat: 0
+      baseSuccessChancePercent: 50
+      chancePerStatPoint: 2
+      tierPenaltyPercent: 5
+      difficultyPenaltyPercent: 10
+      minimumSuccessChancePercent: 5
+      maximumSuccessChancePercent: 95
+    outcomes:
+    - weight: 50
+      resultText: 수반의 기운이 {character}의 몸을 감쌉니다. 체력과 전투 자원이 회복되었습니다.
+      effectType: 2
+      targetScope: 1
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    - weight: 20
+      resultText: 오래된 기운이 {character}에게 스며들어 {stat} 능력치가 {amount} 증가했습니다.
+      effectType: 1
+      targetScope: 1
+      candidateStats: []
+      minAmount: 1
+      maxAmount: 1
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    - weight: 20
+      resultText: 차가운 기운이 {character}의 몸에 달라붙습니다. 앞으로 3개 방 동안 최대 체력이 감소합니다.
+      effectType: 3
+      targetScope: 1
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName: 수반의 냉기
+      durationRooms: 3
+      temporaryStatModifiers:
+        MaxHp: -10
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    - weight: 10
+      resultText: 물결이 잠시 흔들렸지만 아무런 변화도 일어나지 않았습니다.
+      effectType: 0
+      targetScope: 0
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    failureOutcomes: []
+  - text: 건드리지 않는다
+    requiresCharacter: 0
+    abilityCheck:
+      enabled: 0
+      stat: 0
+      baseSuccessChancePercent: 50
+      chancePerStatPoint: 2
+      tierPenaltyPercent: 5
+      difficultyPenaltyPercent: 10
+      minimumSuccessChancePercent: 5
+      maximumSuccessChancePercent: 95
+    outcomes:
+    - weight: 1
+      resultText: 정체를 알 수 없는 수반을 그대로 두고 이동합니다.
+      effectType: 0
+      targetScope: 0
+      candidateStats: []
+      minAmount: 0
+      maxAmount: 0
+      temporaryEffectName:
+      durationRooms: 1
+      temporaryStatModifiers: {}
+      equipmentTier: 1
+      maxEquipmentRarity: 0
+      itemUids: []
+      itemCount: 1
+      monsterRoleIds: []
+    failureOutcomes: []

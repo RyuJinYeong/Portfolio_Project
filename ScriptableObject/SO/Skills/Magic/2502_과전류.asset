@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2502_과전류"
+  m_Name: "2502_\uACFC\uC804\uB958"
   m_EditorClassIdentifier: 
   uid: 2502
-  skillName: "과전류"
-  description: "저릿함 스택을 소비해 감전을 유발한다."
-  icon: {fileID: 0}
+  skillName: "\uACFC\uC804\uB958"
+  description: "\uC800\uB9BF\uD568 \uC2A4\uD0DD\uC744 \uC18C\uBE44\uD574 \uAC10\uC804\uC744
+    \uC720\uBC1C\uD55C\uB2E4."
+  icon: {fileID: 2800000, guid: bf28480335cbddd4ebafd6d25ceb1551, type: 3}
+  composer: {fileID: 11400000, guid: 5293b0749d71eb327300187ef2bd8c5f, type: 2}
   activationSpeed: 0.8
   staminaCost: 0
   mentalCost: 2
   type: 1
   style: 1
   discipline: 7
+  firstRewardTier: 1
   damageComponents:
   - damageType: 1
     attribute: 2

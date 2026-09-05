@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [Serializable]
 public class PlayerSaveDTO
 {
-    public int v = 4;
+    public int v = 6;
 
     public string playerName;
     public int level;
@@ -14,10 +14,13 @@ public class PlayerSaveDTO
 
     public List<InventorySlotData> accountStorage = new();
     public List<InventorySlotData> expeditionStorage = new();
+    public List<LostExpeditionInventoryData> lostExpeditionInventories = new();
 
     public List<GeneratedEquipmentData> generatedEquipments = new();
 
     public List<string> characterIds = new();
+    public List<string> missingCharacterIds = new();
+    public List<string> revivalRequiredCharacterIds = new();
     public List<string> activeCharacterIds = new();
     public List<CharacterSaveDTO> recruitmentCandidates = new();
     public bool recruitmentCandidatesInitialized;
@@ -56,6 +59,7 @@ public class CharacterSaveDTO
 
     public int level;
     public int exp;
+    public int pendingLevelUps;
     public int currentHp;
     public int currentStamina;
     public int currentMentality;
@@ -109,6 +113,8 @@ public class TraitSaveDTO
 public class QuestStateDTO
 {
     public List<QuestBoardEntry> board = new();
+    public List<QuestIssuer> preferredIssuers = new();
+    public List<int> preferredQuestTiers = new();
     public ActiveQuestRuntime active;
     public List<CompletedQuestEntry> completed = new();
 }

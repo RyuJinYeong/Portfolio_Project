@@ -16,6 +16,7 @@ MonoBehaviour:
   skillName: "균형 무너뜨리기"
   description: "한손이 빈 상태에서 흐트러짐을 소비해 불균형으로 발전시키는 체술 연계기다."
   icon: {fileID: 0}
+  composer: {fileID: 11400000, guid: 50ac442b51076636524e154ed4ede1e7, type: 2}
   activationSpeed: 1.0
   staminaCost: 1
   mentalCost: 0

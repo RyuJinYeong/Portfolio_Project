@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e7f65099438f924ba3ad055c9537636, type: 3}
+  m_Name: "11104_\uC2A4\uCF08\uB808\uD1A4_\uBA54\uC774\uC9C0"
+  m_EditorClassIdentifier: 
+  id: 11104
+  roleName: "\uBA54\uC774\uC9C0"
+  baseMonster: {fileID: 11400000, guid: 4f1d1e5a7c5a4b4cb70380ec9b18a101, type: 2}
+  modelPrefabOverride: {fileID: 5605319319537555642, guid: 9b9b8197aab63b942808d0609eb003ee, type: 3}
+  characterType: 1
+  personality: 2
+  roleStatBonus:
+    Strength: 0
+    Dexterity: 0
+    Speed: 0
+    Intelligence: 5
+    Wisdom: 3
+    Health: 1
+    Vitality: 2
+    Endurance: 0
+    Detection: 0
+    Insight: 0
+    AttackSpeed: 0
+    CastSpeed: 0
+    WeaponAttackSpeedMultiplier: 0
+    WeaponCastSpeedMultiplier: 0
+    MaxHp: 0
+    MaxMentality: 0
+    MaxStamina: 0
+    StaminaRecovery: 0
+    MentalityRecovery: 0
+    FireResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
+    PierceResistance: 0
+    SlashResistance: 0
+    SmashResistance: 0
+    FireAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
+    PierceAffinity: 0
+    SlashAffinity: 0
+    SmashAffinity: 0
+    PhysicalAttack: 0
+    MagicalAttack: 0
+    PhysicalDefense: 0
+    MagicalDefense: 0
+  roleSpecialStatBonus:
+    CriticalChance: 0
+    CriticalDamageBonus: 0
+    StatusResistance: 0
+    MapDetectionRange: 0
+    TrapDetectionBonus: 0
+    EventInsightBonus: 0
+    KillHpRecovery: 0
+    KillStaminaRecovery: 0
+    KillMentalityRecovery: 0
+    MinLevelUpStatGainBonus: 0
+    MaxLevelUpStatGainBonus: 0
+  levelUpStatWeights:
+  - stat: 2
+    weight: 5
+  - stat: 3
+    weight: 40
+  - stat: 4
+    weight: 30
+  - stat: 5
+    weight: 5
+  - stat: 6
+    weight: 15
+  - stat: 7
+    weight: 5
+  skillUids: ec030000600900006109000062090000
+  defaultCounterSkillUids: b80b0000b90b0000bc0b0000
+  traitIds: 
+  traitsByTier:
+  - tier: 1
+    fixedTraitPool: ed030000f0030000f2030000f3030000f40300008b130000
+    fixedTraitCount: 3
+    additionalTraitChance: 35
+    additionalTraitChanceDecrease: 15
+    maxTraitCount: 5
+    traitGradeBonus: 0
+  equipments:
+  - equipmentUid: 5004
+    rarityRollMode: 0
+    fixedRarity: 1
+    rarityWeights: []
+    equipOnSpawn: 1
+  randomEquipmentPool: []
+  minRandomEquipmentCount: 0
+  maxRandomEquipmentCount: 0
+  suppressExperience: 0
+  traitCaptureChance: 20
+  equippedItemDropChance: 20
+  levelBonus: 1

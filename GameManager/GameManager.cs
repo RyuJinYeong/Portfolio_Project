@@ -13,6 +13,7 @@ public class GameManager : MonoBehaviour
     public GameObject characterPrefab_M;
     public GameObject characterPrefab_F;
     public GameObject enemyPrefab;
+    public RuntimeAnimatorController humanoidCombatController;
 
     // 필드의 모든 캐릭터를 관리하는 리스트
     public List<CharacterManager> allCharacters = new List<CharacterManager>();
@@ -87,6 +88,18 @@ public class GameManager : MonoBehaviour
         StartCoroutine(CoSwitchStage(stageType));
     }
 
+    public void EnterQuestRouteNode(QuestRouteNode node)
+    {
+        ActiveQuestRuntime activeQuest = QuestManager.Instance != null
+            ? QuestManager.Instance.active
+            : null;
+
+        if (node == null || activeQuest == null || activeQuest.def == null)
+            return;
+
+        SwitchStage(activeQuest.stageKey);
+    }
+
     IEnumerator CoSwitchStage(string stageType)
     {
         var pd = PlayerManager.Instance.GetCurrentPlayerData();
@@ -95,11 +108,16 @@ public class GameManager : MonoBehaviour
 
         pd.currentStage = stageType;
 
-        StageManager.Instance.SetActiveStage(stageType);
+        ClearSpawnedUnits();
+        ApplyStage(stageType);
 
         if (stageType == "Town")
         {
-            ClearSpawnedUnits();
+            yield return null;
+
+            SharedInventoryUtility.TransferExpeditionToCompany(pd);
+            PlayerManager.Instance?.SavePlayerDataToPlayFab();
+
             yield break;
         }
 
@@ -109,7 +127,7 @@ public class GameManager : MonoBehaviour
             PlayerManager.Instance.SavePlayerDataToPlayFab();
         }
 
-        SpawnSortie(pd);
+        SpawnSortie(pd, HandleCurrentRouteNodeReady);
     }
 
     void ClearSpawnedUnits()
@@ -119,11 +137,12 @@ public class GameManager : MonoBehaviour
         allCharacters.Clear();
     }
 
-    void SpawnSortie(PlayerData pd)
+    void SpawnSortie(PlayerData pd, Action onCompleted = null)
     {
         if (pd.activeCharacterIds == null || pd.activeCharacterIds.Count == 0)
         {
             Debug.LogWarning("No active characters for stage.");
+            onCompleted?.Invoke();
             return;
         }
 
@@ -145,6 +164,7 @@ public class GameManager : MonoBehaviour
 
         int fIdx = 0;
         int bIdx = 0;
+        int pending = pd.activeCharacterIds.Count;
 
         foreach (string cid in pd.activeCharacterIds)
         {
@@ -152,23 +172,33 @@ public class GameManager : MonoBehaviour
 
             PlayerManager.Instance.LoadCharacter(characterId, ch =>
             {
-                if (ch == null)
-                    return;
-
-                bool isFront = pd.TryGetPosition(characterId, out bool f) && f;
-
-                int spawnIndex = isFront
-                    ? fIdx++
-                    : front + bIdx++;
-
-                if (spawnIndex < 0 || spawnIndex >= allySpawns.Length)
+                try
                 {
-                    Debug.LogError($"Spawn index out of range. characterId: {characterId}, index: {spawnIndex}, spawnCount: {allySpawns.Length}");
-                    return;
-                }
+                    if (ch == null)
+                        return;
 
-                Transform spawn = allySpawns[spawnIndex];
-                SpawnCharacter(ch, spawn);
+                    bool isFront = pd.TryGetPosition(characterId, out bool f) && f;
+
+                    int spawnIndex = isFront
+                        ? fIdx++
+                        : front + bIdx++;
+
+                    if (spawnIndex < 0 || spawnIndex >= allySpawns.Length)
+                    {
+                        Debug.LogError($"Spawn index out of range. characterId: {characterId}, index: {spawnIndex}, spawnCount: {allySpawns.Length}");
+                        return;
+                    }
+
+                    Transform spawn = allySpawns[spawnIndex];
+                    SpawnCharacter(ch, spawn);
+                }
+                finally
+                {
+                    pending--;
+
+                    if (pending == 0)
+                        onCompleted?.Invoke();
+                }
             });
         }
     }
@@ -220,13 +250,23 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-        if (playerData.currentStage != "Town")
-        {
-            MercenaryGenerator.RefreshRecruitmentCandidates(playerData);
-            PlayerManager.Instance.SavePlayerDataToPlayFab();
-        }
+        ApplyStage(playerData.currentStage);
 
-        StageManager.Instance.SetActiveStage(playerData.currentStage);
+        ActiveQuestRuntime activeQuest = QuestManager.Instance != null
+            ? QuestManager.Instance.active
+            : null;
+        QuestRouteNode currentRouteNode = activeQuest != null
+            ? QuestManager.Instance.GetCurrentRouteNode()
+            : null;
+
+        if (activeQuest != null &&
+            activeQuest.status == QuestStatus.Active &&
+            currentRouteNode != null &&
+            currentRouteNode.cleared)
+        {
+            UIManager.Instance?.OpenQuestNodeMap();
+            yield break;
+        }
 
         allCharacters.Clear();
 
@@ -283,10 +323,209 @@ public class GameManager : MonoBehaviour
                     pending--;
 
                     if (pending == 0)
-                        SignalRosterReady();
+                        HandleCurrentRouteNodeReady();
                 }
             });
         }
+    }
+
+    private void HandleCurrentRouteNodeReady()
+    {
+        QuestRouteNode routeNode = QuestManager.Instance != null
+            ? QuestManager.Instance.GetCurrentRouteNode()
+            : null;
+
+        if (routeNode == null)
+        {
+            SignalRosterReady();
+            return;
+        }
+
+        switch (routeNode.type)
+        {
+            case QuestRouteNodeType.RandomEncounter:
+                if (routeNode.encounterResolved &&
+                    routeNode.encounterMonsterRoleIds != null &&
+                    routeNode.encounterMonsterRoleIds.Count > 0)
+                {
+                    StartEncounterBattle(routeNode.encounterMonsterRoleIds);
+                }
+                else
+                {
+                    UIManager.Instance?.OpenQuestEncounter();
+                }
+                break;
+
+            case QuestRouteNodeType.Rest:
+                UIManager.Instance?.OpenQuestEncounter();
+                break;
+
+            case QuestRouteNodeType.Battle:
+            case QuestRouteNodeType.Elite:
+            case QuestRouteNodeType.Boss:
+                StartQuestNodeBattle(routeNode);
+                break;
+
+            default:
+                SignalRosterReady();
+                break;
+        }
+    }
+
+    private void StartQuestNodeBattle(QuestRouteNode routeNode)
+    {
+        QuestDef quest = QuestManager.Instance != null && QuestManager.Instance.active != null
+            ? QuestManager.Instance.active.def
+            : null;
+
+        if (quest == null || routeNode == null || GameDataRegistry.Instance == null)
+        {
+            SignalRosterReady();
+            return;
+        }
+
+        List<int> normalMonsterIds = new List<int>();
+        List<int> eliteMonsterIds = new List<int>();
+
+        if (quest.enemyPool != null)
+        {
+            foreach (MonsterSpawn spawn in quest.enemyPool)
+            {
+                if (spawn == null || spawn.count <= 0 || spawn.monsterUid == quest.bossUid)
+                    continue;
+
+                MonsterRoleSO role = GameDataRegistry.Instance.GetMonsterRole(spawn.monsterUid);
+
+                if (role == null)
+                    continue;
+
+                List<int> target = role.characterType == CharacterType.Elite
+                    ? eliteMonsterIds
+                    : role.characterType == CharacterType.Normal
+                        ? normalMonsterIds
+                        : null;
+
+                if (target == null)
+                    continue;
+
+                for (int i = 0; i < spawn.count; i++)
+                    target.Add(spawn.monsterUid);
+            }
+        }
+
+        QuestStageDefinitionSO stage = GameDataRegistry.Instance.GetQuestStage(quest.stageKey);
+
+        if (normalMonsterIds.Count == 0)
+        {
+            foreach (MonsterRoleSO role in GameDataRegistry.Instance.GetMonsterRolesByTypeAndTags(
+                         CharacterType.Normal,
+                         stage != null ? stage.monsterTags : null))
+            {
+                if (role != null)
+                    normalMonsterIds.Add(role.id);
+            }
+        }
+
+        if (routeNode.type == QuestRouteNodeType.Elite && eliteMonsterIds.Count == 0)
+        {
+            foreach (MonsterRoleSO role in GameDataRegistry.Instance.GetMonsterRolesByTypeAndTags(
+                         CharacterType.Elite,
+                         stage != null ? stage.monsterTags : null))
+            {
+                if (role != null)
+                    eliteMonsterIds.Add(role.id);
+            }
+        }
+
+        System.Random random = new System.Random(quest.seed ^ (routeNode.id * 397));
+        int recommendedPartySize = Mathf.Clamp(quest.recommendedPartySize, 1, 4);
+        int enemyCount = Mathf.Min(5, recommendedPartySize + random.Next(0, 2));
+        List<int> monsterRoleIds = new List<int>();
+
+        if (routeNode.type == QuestRouteNodeType.Boss && quest.bossUid != 0 &&
+            GameDataRegistry.Instance.GetMonsterRole(quest.bossUid) != null)
+        {
+            monsterRoleIds.Add(quest.bossUid);
+        }
+        else if (routeNode.type == QuestRouteNodeType.Elite && eliteMonsterIds.Count > 0)
+        {
+            monsterRoleIds.Add(eliteMonsterIds[random.Next(0, eliteMonsterIds.Count)]);
+        }
+
+        while (monsterRoleIds.Count < enemyCount && normalMonsterIds.Count > 0)
+            monsterRoleIds.Add(normalMonsterIds[random.Next(0, normalMonsterIds.Count)]);
+
+        if (monsterRoleIds.Count == 0)
+        {
+            Debug.LogError($"No monsters available for quest node. stageKey: {quest.stageKey}, nodeType: {routeNode.type}");
+            SignalRosterReady();
+            return;
+        }
+
+        StartEncounterBattle(monsterRoleIds);
+    }
+
+    public void StartEncounterBattle(List<int> monsterRoleIds)
+    {
+        if (monsterRoleIds == null || monsterRoleIds.Count == 0 ||
+            SpawnPointManager.Instance == null || GameDataRegistry.Instance == null)
+        {
+            return;
+        }
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.questNodeMapPanel?.Close();
+            UIManager.Instance.UISwitch(UIMode.Battle);
+        }
+
+        int spawnCount = Mathf.Min(5, monsterRoleIds.Count);
+        Transform[] spawnPoints = SpawnPointManager.Instance.GetEnemySpawnPoints(spawnCount, 0);
+        int questLevel = QuestManager.Instance != null && QuestManager.Instance.active != null &&
+                         QuestManager.Instance.active.def != null
+            ? QuestManager.Instance.active.def.recommendedLevel
+            : 1;
+
+        for (int i = 0; i < spawnCount && i < spawnPoints.Length; i++)
+        {
+            MonsterRoleSO role = GameDataRegistry.Instance.GetMonsterRole(monsterRoleIds[i]);
+            CharacterData monster = MonsterGenerator.Generate(
+                role,
+                questLevel,
+                QuestManager.Instance != null && QuestManager.Instance.active != null &&
+                QuestManager.Instance.active.def != null
+                    ? QuestManager.Instance.active.def.seed + i + 1
+                    : 0);
+
+            if (monster != null)
+                SpawnEnemy(monster, spawnPoints[i]);
+        }
+
+        SignalRosterReady();
+    }
+
+    private void ApplyStage(string stageType)
+    {
+        ActiveQuestRuntime activeQuest =
+            QuestManager.Instance != null
+                ? QuestManager.Instance.active
+                : null;
+
+        if (activeQuest != null &&
+            activeQuest.status == QuestStatus.Active &&
+            activeQuest.def != null &&
+            activeQuest.stageKey == stageType)
+        {
+            QuestRouteNode routeNode = QuestManager.Instance.GetCurrentRouteNode();
+            int mapPrefabIndex = routeNode != null
+                ? routeNode.mapPrefabIndex
+                : activeQuest.def.mapPrefabIndex;
+
+            StageManager.Instance.SetActiveQuestStage(activeQuest.def, mapPrefabIndex);
+            return;
+        }
+
+        StageManager.Instance.SetActiveStage(stageType);
     }
 
 
@@ -298,6 +537,18 @@ public class GameManager : MonoBehaviour
             Debug.LogError("Spawn point not found.");
             return;
         }
+
+        CharacterManager pooledCharacter = CharacterPoolManager.Instance != null
+            ? CharacterPoolManager.Instance.Get(characterData.ID)
+            : null;
+
+        if (characterData.Portrait == null &&
+            pooledCharacter != null &&
+            pooledCharacter.character != null)
+        {
+            characterData.Portrait = pooledCharacter.character.Portrait;
+        }
+
         GameObject allyCharacter = new GameObject();
 
         if (characterData.customizationData.IsMale == true)
@@ -309,6 +560,10 @@ public class GameManager : MonoBehaviour
         if (characterManager != null)
         {
             characterManager.InitializeCharacter(characterData);
+            characterManager.battlePresentationHandler?.BindVisual(
+                characterManager.transform,
+                humanoidCombatController,
+                true);
             RegisterCharacter(characterManager);
         }
         else
@@ -330,23 +585,53 @@ public class GameManager : MonoBehaviour
             ? GameDataRegistry.Instance.GetMonsterRole(enemyData.monsterRoleId)
             : null;
 
-        GameObject prefab = monsterRole != null && monsterRole.modelPrefabOverride != null
+        GameObject modelPrefab = monsterRole != null && monsterRole.modelPrefabOverride != null
             ? monsterRole.modelPrefabOverride
             : monsterRole != null && monsterRole.baseMonster != null && monsterRole.baseMonster.modelPrefab != null
                 ? monsterRole.baseMonster.modelPrefab
-                : enemyPrefab;
+                : null;
 
-        if (prefab == null)
+        if (enemyPrefab == null)
         {
-            Debug.LogError($"Monster prefab not found. monsterRoleId: {enemyData.monsterRoleId}");
+            Debug.LogError($"Enemy combat prefab not found. monsterRoleId: {enemyData.monsterRoleId}");
             return;
         }
 
-        GameObject gameObject = Instantiate(prefab, spawnPoint.position, spawnPoint.rotation);
+        GameObject gameObject = Instantiate(enemyPrefab, spawnPoint.position, spawnPoint.rotation);
         var characterManager = gameObject.GetComponent<CharacterManager>();
         if (characterManager != null)
         {
             characterManager.InitializeCharacter(enemyData);
+
+            foreach (Renderer renderer in gameObject.GetComponentsInChildren<Renderer>(true))
+                renderer.enabled = false;
+
+            if (modelPrefab != null)
+            {
+                GameObject visual = Instantiate(modelPrefab, gameObject.transform);
+                visual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+                visual.transform.localScale = Vector3.one;
+
+                foreach (Collider collider in visual.GetComponentsInChildren<Collider>(true))
+                    collider.enabled = false;
+
+                Outline outline = gameObject.GetComponent<Outline>();
+
+                if (outline == null)
+                    outline = gameObject.AddComponent<Outline>();
+
+                outline.enabled = false;
+
+                characterManager.battlePresentationHandler?.BindVisual(
+                    visual.transform,
+                    humanoidCombatController,
+                    true);
+            }
+            else
+            {
+                Debug.LogWarning($"Monster model prefab not found. monsterRoleId: {enemyData.monsterRoleId}");
+            }
+
             RegisterCharacter(characterManager); 
         }
         else

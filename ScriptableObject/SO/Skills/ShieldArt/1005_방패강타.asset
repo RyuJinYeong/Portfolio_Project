@@ -17,6 +17,7 @@ MonoBehaviour:
   description: "\uBC29\uD328\uB85C \uC801\uC744 \uBC00\uCCD0 \uB0AE\uC740 \uD53C\uD574\uC640
     \uD750\uD2B8\uB7EC\uC9D0\uC744 \uC900\uB2E4."
   icon: {fileID: 2800000, guid: 28fd9fdd1600da7489f1701ff673abe7, type: 3}
+  composer: {fileID: 11400000, guid: f1d7124b7e664dc0c9a34f642f121187, type: 2}
   activationSpeed: 0.8
   staminaCost: 1
   mentalCost: 0

@@ -14,6 +14,9 @@ public class PlayerManager : MonoBehaviour
     // 현재 로그인한 플레이어 정보
     private PlayerData currentPlayerData;
 
+    [NonSerialized]
+    public bool suppressRemotePersistence;
+
     public List<CharacterManager> Characters = new List<CharacterManager>();
 
     private void Awake()
@@ -69,7 +72,7 @@ public class PlayerManager : MonoBehaviour
                 }
                 else
                 {
-                    QuestManager.Instance?.GenerateBoardIfEmpty(8);
+                    QuestManager.Instance?.GenerateBoardIfEmpty();
                 }
             }
             else
@@ -77,14 +80,14 @@ public class PlayerManager : MonoBehaviour
                 _instance.currentPlayerData = new PlayerData();
                 Debug.LogWarning("No player data found, initializing new player data.");
 
-                QuestManager.Instance?.GenerateBoardIfEmpty(8);
+                QuestManager.Instance?.GenerateBoardIfEmpty();
             }
         }
         catch (Exception e)
         {
             Debug.LogError($"OnDataReceived parse error: {e}");
             _instance.currentPlayerData = new PlayerData();
-            QuestManager.Instance?.GenerateBoardIfEmpty(8);
+            QuestManager.Instance?.GenerateBoardIfEmpty();
         }
     }
 
@@ -97,6 +100,9 @@ public class PlayerManager : MonoBehaviour
     // 플레이어 데이터를 PlayFab에 저장하는 메서드
     public void SavePlayerDataToPlayFab()
     {
+        if (suppressRemotePersistence)
+            return;
+
         var dto = SaveMapper.ToDto(_instance.currentPlayerData);
         string jsonData = JsonConvert.SerializeObject(dto);
 
@@ -141,6 +147,9 @@ public class PlayerManager : MonoBehaviour
     // 캐릭터 데이터를 ID를 키로 플레이팹에 저장
     public void SaveCharacter(CharacterData characterData)
     {
+        if (suppressRemotePersistence)
+            return;
+
         var dto = SaveMapper.ToDto(characterData);
         string json = JsonConvert.SerializeObject(dto);
 

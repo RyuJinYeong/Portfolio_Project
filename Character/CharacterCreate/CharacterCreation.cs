@@ -623,11 +623,33 @@ public class CharacterCreation : MonoBehaviour
     public void OnGameStartButtonPressed()
     {
         PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
+        string stage = "Town";
+
+        ActiveQuestRuntime activeQuest = QuestManager.Instance != null
+            ? QuestManager.Instance.active
+            : null;
+
+        if (activeQuest != null &&
+            activeQuest.status == QuestStatus.Active &&
+            activeQuest.def != null &&
+            !string.IsNullOrEmpty(activeQuest.stageKey))
+        {
+            QuestManager.Instance.EnsureActiveRoute();
+            stage = activeQuest.stageKey;
+
+            if (playerData != null &&
+                activeQuest.partyCharacterIds != null &&
+                activeQuest.partyCharacterIds.Count > 0)
+            {
+                playerData.activeCharacterIds =
+                    new List<string>(activeQuest.partyCharacterIds);
+            }
+        }
 
         if (playerData != null)
-            playerData.currentStage = "Town";
+            playerData.currentStage = stage;
 
-        GameManager.Instance.LoadGameScene("Town");
+        GameManager.Instance.LoadGameScene(stage);
     }
 
     public void OnCreateCharacterButtonPressed()
@@ -661,6 +683,7 @@ public class CharacterCreation : MonoBehaviour
 
         character.Name = characterNameInput.text;
         character.IsMine = true;
+        character.Belonging = 100;
 
         FinalizeCharacterBeforeSave(character);
 

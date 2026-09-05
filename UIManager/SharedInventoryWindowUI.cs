@@ -38,11 +38,11 @@ public class SharedInventoryWindowUI : MonoBehaviour
         SharedInventoryUtility.InventoryChanged += Refresh;
         SharedInventoryUtility.CharacterChanged += OnCharacterChanged;
 
-        if (inventoryType != SharedInventoryType.CompanyStorage && actionButton != null)
-            actionButton.onClick.AddListener(UseOrEquipSelected);
+        if (actionButton != null)
+            actionButton.onClick.AddListener(OpenSelectedItemTargetMenu);
 
-        if (inventoryType != SharedInventoryType.CompanyStorage && transferButton != null)
-            transferButton.onClick.AddListener(TransferSelected);
+        if (transferButton != null)
+            transferButton.gameObject.SetActive(false);
 
         if (closeButton != null)
             closeButton.onClick.AddListener(Close);
@@ -55,11 +55,8 @@ public class SharedInventoryWindowUI : MonoBehaviour
         SharedInventoryUtility.InventoryChanged -= Refresh;
         SharedInventoryUtility.CharacterChanged -= OnCharacterChanged;
 
-        if (inventoryType != SharedInventoryType.CompanyStorage && actionButton != null)
-            actionButton.onClick.RemoveListener(UseOrEquipSelected);
-
-        if (inventoryType != SharedInventoryType.CompanyStorage && transferButton != null)
-            transferButton.onClick.RemoveListener(TransferSelected);
+        if (actionButton != null)
+            actionButton.onClick.RemoveListener(OpenSelectedItemTargetMenu);
 
         if (closeButton != null)
             closeButton.onClick.RemoveListener(Close);
@@ -81,6 +78,8 @@ public class SharedInventoryWindowUI : MonoBehaviour
 
     public void Close()
     {
+        UIManager.Instance?.CloseInventoryItemActionMenu();
+
         if (InventoryItemTooltipUI.Instance != null)
             InventoryItemTooltipUI.Instance.Hide();
 
@@ -117,13 +116,11 @@ public class SharedInventoryWindowUI : MonoBehaviour
         }
 
         occupiedSlotCount = occupiedSlots.Count;
-        displayedCapacity = inventoryType == SharedInventoryType.CompanyStorage
-            ? SharedInventoryUtility.GetStorageCapacity(playerData, inventoryType)
-            : occupiedSlotCount;
+        displayedCapacity = SharedInventoryUtility.GetStorageCapacity(
+            playerData,
+            inventoryType);
 
-        int viewCount = inventoryType == SharedInventoryType.CompanyStorage
-            ? Mathf.Max(displayedCapacity, occupiedSlotCount)
-            : occupiedSlotCount;
+        int viewCount = Mathf.Max(displayedCapacity, occupiedSlotCount);
 
         if (content != null && itemPrefab != null)
         {
@@ -149,69 +146,180 @@ public class SharedInventoryWindowUI : MonoBehaviour
 
         RefreshButtons();
 
-        if (button == (int)UnityEngine.EventSystems.PointerEventData.InputButton.Right)
-            UseOrEquipSelected();
+        if (button == (int)UnityEngine.EventSystems.PointerEventData.InputButton.Left)
+            OpenItemMenu(slot, true);
+        else if (button == (int)UnityEngine.EventSystems.PointerEventData.InputButton.Right)
+        {
+            if (!HandleContextRightClick(slot))
+                OpenItemMenu(slot, false);
+        }
     }
 
-    private void UseOrEquipSelected()
+    private bool HandleContextRightClick(InventorySlotData slot)
     {
-        if (selectedSlot == null || selectedCharacter == null)
+        InventoryUIController controller = InventoryUIController.Instance;
+
+        if (slot == null || controller == null)
+            return false;
+
+        bool equipmentOpen = controller.equipmentWindow != null &&
+                             controller.equipmentWindow.gameObject.activeInHierarchy;
+        bool companyStorageOpen = controller.companyStorageWindow != null &&
+                                  controller.companyStorageWindow.gameObject.activeInHierarchy;
+        bool expeditionStorageOpen = controller.expeditionInventoryWindow != null &&
+                                     controller.expeditionInventoryWindow.gameObject.activeInHierarchy;
+        int openWindowCount = (equipmentOpen ? 1 : 0) +
+                              (companyStorageOpen ? 1 : 0) +
+                              (expeditionStorageOpen ? 1 : 0);
+
+        if (openWindowCount == 2 && equipmentOpen)
+        {
+            ItemDefinitionSO item = GameDataRegistry.Instance != null
+                ? GameDataRegistry.Instance.GetItem(slot.itemUid)
+                : null;
+
+            if (item is EquipmentDefinitionSO)
+            {
+                UIManager.Instance?.CloseInventoryItemActionMenu();
+                UseOrEquip(controller.SelectedCharacter, slot);
+                return true;
+            }
+        }
+
+        if (openWindowCount == 2 && companyStorageOpen && expeditionStorageOpen)
+        {
+            PlayerData playerData = PlayerManager.Instance != null
+                ? PlayerManager.Instance.GetCurrentPlayerData()
+                : null;
+            SharedInventoryType destinationType =
+                inventoryType == SharedInventoryType.CompanyStorage
+                    ? SharedInventoryType.ExpeditionStorage
+                    : SharedInventoryType.CompanyStorage;
+            int count = slot.IsGeneratedEquipment() ? 1 : Mathf.Max(1, slot.count);
+
+            UIManager.Instance?.CloseInventoryItemActionMenu();
+
+            if (SharedInventoryUtility.MoveItem(
+                    playerData,
+                    inventoryType,
+                    destinationType,
+                    slot,
+                    count))
+            {
+                SharedInventoryUtility.SaveChanges();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void OpenSelectedItemTargetMenu()
+    {
+        if (selectedSlot == null)
+            return;
+
+        OpenItemMenu(selectedSlot, true);
+    }
+
+    private void OpenItemMenu(InventorySlotData slot, bool directTargetSelection)
+    {
+        if (slot == null || UIManager.Instance == null)
+            return;
+
+        ItemDefinitionSO item = GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetItem(slot.itemUid)
+            : null;
+
+        if (directTargetSelection &&
+            item is not EquipmentDefinitionSO &&
+            item is not ConsumableDefinitionSO)
+        {
+            return;
+        }
+
+        InventoryItemTooltipUI.Instance?.Hide();
+        TooltipManager.Instance?.HideTooltip();
+
+        UIManager.Instance.OpenInventoryItemActionMenu(
+            slot,
+            directTargetSelection,
+            IsInTown(),
+            target => UseOrEquip(target, slot),
+            () => Sell(slot),
+            () => Discard(slot));
+    }
+
+    private void UseOrEquip(CharacterManager target, InventorySlotData slot)
+    {
+        if (target == null || target.character == null || slot == null ||
+            PlayerManager.Instance == null || GameDataRegistry.Instance == null)
+        {
+            return;
+        }
+
+        PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
+        List<InventorySlotData> storage =
+            SharedInventoryUtility.GetStorage(playerData, inventoryType);
+
+        if (storage == null || !storage.Contains(slot))
+            return;
+
+        ItemDefinitionSO item = GameDataRegistry.Instance.GetItem(slot.itemUid);
+        bool changed = false;
+
+        if (item is EquipmentDefinitionSO equipment)
+        {
+            int slotIndex = equipment.equipType == EquipmentType.Ring
+                ? GetPreferredRingSlot(target.character.EquipmentSlots)
+                : 1;
+
+            changed = SharedInventoryUtility.EquipFromStorage(
+                target,
+                storage,
+                slot,
+                slotIndex);
+        }
+        else if (item is ConsumableDefinitionSO)
+        {
+            changed = SharedInventoryUtility.UseItem(
+                target,
+                storage,
+                slot);
+        }
+
+        if (changed)
+        {
+            selectedCharacter = target;
+            SharedInventoryUtility.SaveChanges(target);
+        }
+    }
+
+    private void Sell(InventorySlotData slot)
+    {
+        if (!IsInTown() || PlayerManager.Instance == null)
             return;
 
         PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
         List<InventorySlotData> storage =
             SharedInventoryUtility.GetStorage(playerData, inventoryType);
 
-        ItemDefinitionSO item = GameDataRegistry.Instance.GetItem(selectedSlot.itemUid);
-        bool changed = false;
-
-        if (item is EquipmentDefinitionSO equipment)
-        {
-            int slotIndex = equipment.equipType == EquipmentType.Ring
-                ? GetPreferredRingSlot(selectedCharacter.character.EquipmentSlots)
-                : 1;
-
-            changed = SharedInventoryUtility.EquipFromStorage(
-                selectedCharacter,
-                storage,
-                selectedSlot,
-                slotIndex);
-        }
-        else if (item is ConsumableDefinitionSO)
-        {
-            changed = SharedInventoryUtility.UseItem(
-                selectedCharacter,
-                storage,
-                selectedSlot);
-        }
-
-        if (changed)
-            SharedInventoryUtility.SaveChanges(selectedCharacter);
+        if (SharedInventoryUtility.SellInventorySlot(playerData, storage, slot))
+            SharedInventoryUtility.SaveChanges();
     }
 
-    private void TransferSelected()
+    private void Discard(InventorySlotData slot)
     {
-        if (selectedSlot == null)
+        if (PlayerManager.Instance == null)
             return;
 
         PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
-        SharedInventoryType destination = inventoryType == SharedInventoryType.CompanyStorage
-            ? SharedInventoryType.ExpeditionStorage
-            : SharedInventoryType.CompanyStorage;
+        List<InventorySlotData> storage =
+            SharedInventoryUtility.GetStorage(playerData, inventoryType);
 
-        int count = selectedSlot.IsGeneratedEquipment()
-            ? 1
-            : selectedSlot.count;
-
-        if (SharedInventoryUtility.MoveItem(
-                playerData,
-                inventoryType,
-                destination,
-                selectedSlot,
-                count))
-        {
+        if (SharedInventoryUtility.DiscardInventorySlot(storage, slot))
             SharedInventoryUtility.SaveChanges();
-        }
     }
 
     private void RefreshHeader()
@@ -235,18 +343,10 @@ public class SharedInventoryWindowUI : MonoBehaviour
         }
 
         if (itemCountText != null)
-        {
-            itemCountText.text = inventoryType == SharedInventoryType.CompanyStorage
-                ? $"  {occupiedSlotCount}/{displayedCapacity}"
-                : occupiedSlotCount.ToString();
-        }
+            itemCountText.text = $"  {occupiedSlotCount}/{displayedCapacity}";
 
         if (legacyItemCountText != null)
-        {
-            legacyItemCountText.text = inventoryType == SharedInventoryType.CompanyStorage
-                ? $"  {occupiedSlotCount}/{displayedCapacity}"
-                : occupiedSlotCount.ToString();
-        }
+            legacyItemCountText.text = $"  {occupiedSlotCount}/{displayedCapacity}";
 
         if (legacyGoldText != null)
         {
@@ -272,20 +372,13 @@ public class SharedInventoryWindowUI : MonoBehaviour
 
     private void RefreshButtons()
     {
-        if (inventoryType == SharedInventoryType.CompanyStorage)
-            return;
-
         bool hasSelection = selectedSlot != null;
-
-        if (transferButton != null)
-            transferButton.interactable = hasSelection;
 
         ItemDefinitionSO item = hasSelection && GameDataRegistry.Instance != null
             ? GameDataRegistry.Instance.GetItem(selectedSlot.itemUid)
             : null;
 
-        bool canAct = selectedCharacter != null &&
-                      (item is EquipmentDefinitionSO || item is ConsumableDefinitionSO);
+        bool canAct = item is EquipmentDefinitionSO || item is ConsumableDefinitionSO;
 
         if (actionButton != null)
             actionButton.interactable = canAct;
@@ -335,6 +428,15 @@ public class SharedInventoryWindowUI : MonoBehaviour
             return 2;
 
         return 1;
+    }
+
+    private static bool IsInTown()
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        return playerData == null || playerData.currentStage == "Town";
     }
 
 }

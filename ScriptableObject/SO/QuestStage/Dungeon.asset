@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55d1d54aaac64e719f7013fd6f84a322, type: 3}
+  m_Name: Dungeon
+  m_EditorClassIdentifier: 
+  stageKey: Dungeon
+  stageName: "\uB358\uC804"
+  description: "\uC5B8\uB370\uB4DC\uC640 \uBAAC\uC2A4\uD130\uB4E4\uC774 \uCD9C\uD604\uD569\uB2C8\uB2E4."
+  mapPrefabs:
+  - {fileID: 8172463280260534514, guid: 01e787e5c5b168c458ce5215e81793c6, type: 3}
+  monsterTags:
+  - Dungeon
+  statusEffectIds: 

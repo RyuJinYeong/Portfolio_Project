@@ -4,6 +4,24 @@ public static class TraitManager
 {
     public static void AddTrait(CharacterManager manager, int traitId)
     {
+        TraitDefinitionSO def = GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetTrait(traitId)
+            : null;
+
+        if (def == null)
+        {
+            Debug.LogWarning($"존재하지 않는 특성 ID입니다: {traitId}");
+            return;
+        }
+
+        AddTrait(manager, traitId, def.defaultAcquireGrade);
+    }
+
+    public static void AddTrait(
+        CharacterManager manager,
+        int traitId,
+        TraitGrade acquiredGrade)
+    {
         if (manager == null || manager.character == null)
             return;
 
@@ -21,7 +39,7 @@ public static class TraitManager
         TraitGradeUtility.AddTrait(
             character.Traits,
             def,
-            def.defaultAcquireGrade);
+            acquiredGrade);
 
         ValidateEquipmentsAfterTraitChanged(manager);
 

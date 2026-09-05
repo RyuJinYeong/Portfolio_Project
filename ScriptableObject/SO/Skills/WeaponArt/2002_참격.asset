@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2002_참격"
+  m_Name: "2002_\uCC38\uACA9"
   m_EditorClassIdentifier: 
   uid: 2002
-  skillName: "참격"
-  description: "베기를 발전시켜 더 강한 참격 피해를 준다."
-  icon: {fileID: 0}
-  activationSpeed: 1.0
+  skillName: "\uCC38\uACA9"
+  description: "\uBCA0\uAE30\uB97C \uBC1C\uC804\uC2DC\uCF1C \uB354 \uAC15\uD55C \uCC38\uACA9
+    \uD53C\uD574\uB97C \uC900\uB2E4."
+  icon: {fileID: 2800000, guid: 58f0bc9c539a5eb44b0c6610ebc39837, type: 3}
+  composer: {fileID: 11400000, guid: cb55d09daefff692eef46c817423ae39, type: 2}
+  activationSpeed: 1
   staminaCost: 1
   mentalCost: 0
   type: 0
   style: 1
   discipline: 1
+  firstRewardTier: 1
   damageComponents:
   - damageType: 0
     attribute: 5

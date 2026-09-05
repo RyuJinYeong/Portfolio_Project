@@ -11,6 +11,7 @@ public class CharacterManager : MonoBehaviour
     private StatHandler statHandler = new StatHandler();
     public CombatHandler combatHandler;
     public CharacterUIHandler characterUIHandler;
+    public BattlePresentationHandler battlePresentationHandler;
 
     public Transform characterPool;
     public bool isFront; // 캐릭터의 전열 여부를 나타내는 불린형 필드
@@ -22,7 +23,11 @@ public class CharacterManager : MonoBehaviour
 
     void Awake()
     {
-        combatHandler = gameObject.AddComponent<CombatHandler>();        
+        combatHandler = gameObject.AddComponent<CombatHandler>();
+        battlePresentationHandler = GetComponent<BattlePresentationHandler>();
+
+        if (battlePresentationHandler == null)
+            battlePresentationHandler = gameObject.AddComponent<BattlePresentationHandler>();
     }
 
     public void Start() // UI 작동 테스트
@@ -79,6 +84,8 @@ public class CharacterManager : MonoBehaviour
             customization.UpdateEquipmentAppearance(character);
         }
 
+        battlePresentationHandler?.BindVisual(transform);
+
         // 6) UI 갱신
         UpdateCharacterUI();
     }
@@ -102,7 +109,10 @@ public class CharacterManager : MonoBehaviour
 
     public void UpdateCharacterUI()
     {
-        characterUIHandler.UpdateUI();
+        if (characterUIHandler != null)
+            characterUIHandler.UpdateUI();
+
+        UIManager.Instance?.RefreshCharacterInfo(this);
     }
 
     #region 전투 관련 로직 위임
@@ -136,6 +146,7 @@ public class CharacterManager : MonoBehaviour
     {
         int finalDamage = damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
         UIManager.Instance.ShowDamage(finalDamage, transform.position);
+        UpdateCharacterUI();
         return finalDamage;
     }
 
@@ -152,8 +163,14 @@ public class CharacterManager : MonoBehaviour
     // 리소스 회복 메서드 (지구력, 정신력 등)
     public void RecoverResources()
     {
-        character.CurrentStamina += character.FinalStats.StaminaRecovery;
-        character.CurrentMentality += character.FinalStats.MentalityRecovery;
+        character.CurrentStamina = Mathf.Clamp(
+            character.CurrentStamina + character.FinalStats.StaminaRecovery,
+            0,
+            character.FinalStats.MaxStamina);
+        character.CurrentMentality = Mathf.Clamp(
+            character.CurrentMentality + character.FinalStats.MentalityRecovery,
+            0,
+            character.FinalStats.MaxMentality);
 
         UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
     }

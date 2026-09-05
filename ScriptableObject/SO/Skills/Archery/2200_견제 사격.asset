@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54a308a59996c0a49ad9cae5aa71a20f, type: 3}
-  m_Name: "2200_견제 사격"
+  m_Name: "2200_\uACAC\uC81C \uC0AC\uACA9"
   m_EditorClassIdentifier: 
   uid: 2200
-  skillName: "견제 사격"
-  description: "낮은 피해를 감수하고 빠르게 화살을 날려 적을 견제한다."
-  icon: {fileID: 0}
+  skillName: "\uACAC\uC81C \uC0AC\uACA9"
+  description: "\uB0AE\uC740 \uD53C\uD574\uB97C \uAC10\uC218\uD558\uACE0 \uBE60\uB974\uAC8C
+    \uD654\uC0B4\uC744 \uB0A0\uB824 \uC801\uC744 \uACAC\uC81C\uD55C\uB2E4."
+  icon: {fileID: 2800000, guid: daf60121b75d8fb49a44902e7053119e, type: 3}
+  composer: {fileID: 11400000, guid: 8d12c0205713eac5329690f45cc5777f, type: 2}
   activationSpeed: 1.4
   staminaCost: 1
   mentalCost: 0
   type: 0
   style: 2
   discipline: 3
+  firstRewardTier: 1
   damageComponents:
   - damageType: 0
     attribute: 4

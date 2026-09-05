@@ -323,8 +323,6 @@ public class CharacterSpecialStats
 
     [Header("유틸")]
     public int MapDetectionRange;
-    public int TrapDetectionBonus;
-    public int EventInsightBonus;
 
     [Header("전투 지속")]
     public int KillHpRecovery;
@@ -347,8 +345,6 @@ public class CharacterSpecialStats
             StatusResistance = a.StatusResistance + b.StatusResistance,
 
             MapDetectionRange = a.MapDetectionRange + b.MapDetectionRange,
-            TrapDetectionBonus = a.TrapDetectionBonus + b.TrapDetectionBonus,
-            EventInsightBonus = a.EventInsightBonus + b.EventInsightBonus,
 
             KillHpRecovery = a.KillHpRecovery + b.KillHpRecovery,
             KillStaminaRecovery = a.KillStaminaRecovery + b.KillStaminaRecovery,
@@ -370,8 +366,6 @@ public class CharacterSpecialStats
             StatusResistance = StatusResistance * multiplier,
 
             MapDetectionRange = MapDetectionRange * multiplier,
-            TrapDetectionBonus = TrapDetectionBonus * multiplier,
-            EventInsightBonus = EventInsightBonus * multiplier,
 
             KillHpRecovery = KillHpRecovery * multiplier,
             KillStaminaRecovery = KillStaminaRecovery * multiplier,
@@ -391,8 +385,6 @@ public class CharacterSpecialStats
             StatusResistance = StatusResistance,
 
             MapDetectionRange = MapDetectionRange,
-            TrapDetectionBonus = TrapDetectionBonus,
-            EventInsightBonus = EventInsightBonus,
 
             KillHpRecovery = KillHpRecovery,
             KillStaminaRecovery = KillStaminaRecovery,
@@ -475,6 +467,7 @@ public class CharacterData
 
     public bool IsAlive { get; set; } // 캐릭터의 생존유무
     public bool IsMine { get; set; } // 캐릭터 아군여부
+    public bool GrantsExperience { get; set; } = true;
 
     public int PhysicalArmor { get; set; } // 물리 방어도
     public int MagicalArmor { get; set; } // 마법 방어도
@@ -502,6 +495,7 @@ public class CharacterData
 
     public int Level { get; set; }
     public int Exp { get; set; }
+    public int PendingLevelUps { get; set; }
 
     public int CurrentHp { get; set; }
     public int CurrentStamina { get; set; }
@@ -938,7 +932,11 @@ public class CharacterData
     // 최종 스탯 계산 - 장비 탈착, 특성 추가 혹은 삭제, 버프 획득 등의 상황에 호출해줘야함
     public void UpdateFinalStats()
     {
-        FinalStats = BaseStats + ModifiedStats;
+        CharacterStats encounterStats = QuestManager.Instance != null
+            ? QuestManager.Instance.GetEncounterStatModifiers(ID)
+            : new CharacterStats();
+
+        FinalStats = BaseStats + ModifiedStats + encounterStats;
         tempStats = FinalStats;
 
         FinalStats = CalcStat(tempStats);
@@ -956,8 +954,8 @@ public class CharacterData
         if (FinalStats == null)
             return;
 
-        FinalSpecialStats.MapDetectionRange += FinalStats.Detection / 10;
-        FinalSpecialStats.EventInsightBonus += FinalStats.Insight / 10;
+        FinalSpecialStats.MapDetectionRange +=
+            (FinalStats.Detection + FinalStats.Insight) / 10;
 
         FinalSpecialStats.CriticalChance += 15;
         FinalSpecialStats.CriticalDamageBonus += 150;
