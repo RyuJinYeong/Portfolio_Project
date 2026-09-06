@@ -109,8 +109,20 @@ public class CharacterManager : MonoBehaviour
 
     public void UpdateCharacterUI()
     {
+        bool isAlive = character != null && character.IsAlive;
+
+        Collider targetingCollider = GetComponent<Collider>();
+        if (targetingCollider != null)
+            targetingCollider.enabled = isAlive;
+
         if (characterUIHandler != null)
-            characterUIHandler.UpdateUI();
+        {
+            if (characterUIHandler.StatusCanvas != null)
+                characterUIHandler.StatusCanvas.SetActive(isAlive);
+
+            if (isAlive)
+                characterUIHandler.UpdateUI();
+        }
 
         UIManager.Instance?.RefreshCharacterInfo(this);
     }
@@ -144,8 +156,20 @@ public class CharacterManager : MonoBehaviour
     // 데미지 처리
     public int TakeDamage(int damage, SkillType damageType, SkillAttribute damageAttribute)
     {
+        return TakeDamage(damage, damageType, damageAttribute, false);
+    }
+
+    public int TakeDamage(
+        int damage,
+        SkillType damageType,
+        SkillAttribute damageAttribute,
+        bool suppressZeroDamagePopup)
+    {
         int finalDamage = damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
-        UIManager.Instance.ShowDamage(finalDamage, transform.position);
+
+        if (!suppressZeroDamagePopup || finalDamage > 0)
+            UIManager.Instance.ShowDamage(finalDamage, transform.position);
+
         UpdateCharacterUI();
         return finalDamage;
     }

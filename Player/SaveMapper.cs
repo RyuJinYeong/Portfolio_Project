@@ -181,7 +181,12 @@ public static class SaveMapper
                 essenceQuestId = slot.essenceQuestId,
                 essenceMonsterRoleId = slot.essenceMonsterRoleId,
                 essenceMonsterName = slot.essenceMonsterName,
-                essenceTraits = CloneEssenceTraits(slot.essenceTraits)
+                essenceTraits = CloneEssenceTraits(slot.essenceTraits),
+                essenceAppraised = slot.essenceAppraised,
+                essenceTraitCountRevealed = slot.essenceTraitCountRevealed,
+                essenceTraitAppraisals = CloneEssenceTraitAppraisals(
+                    slot.essenceTraitAppraisals),
+                skillBookSkillUid = slot.skillBookSkillUid
             });
         }
 
@@ -231,6 +236,30 @@ public static class SaveMapper
             {
                 traitId = trait.traitId,
                 point = trait.point
+            });
+        }
+
+        return result;
+    }
+
+    private static List<MonsterEssenceTraitAppraisalData> CloneEssenceTraitAppraisals(
+        List<MonsterEssenceTraitAppraisalData> source)
+    {
+        List<MonsterEssenceTraitAppraisalData> result =
+            new List<MonsterEssenceTraitAppraisalData>();
+
+        if (source == null)
+            return result;
+
+        foreach (MonsterEssenceTraitAppraisalData appraisal in source)
+        {
+            if (appraisal == null)
+                continue;
+
+            result.Add(new MonsterEssenceTraitAppraisalData
+            {
+                traitId = appraisal.traitId,
+                revealLevel = appraisal.revealLevel
             });
         }
 

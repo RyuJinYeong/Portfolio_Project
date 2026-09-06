@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 989da68dcae59b846a6bc4afb64700f2, type: 3}
+  m_Name: "3005_냉정함"
+  m_EditorClassIdentifier: 
+  id: 3005
+  traitName: "냉정함"
+  description: "냉철한 판단력을 지녔지만 활력이 부족하다."
+  icon: {fileID: 0}
+  polarity: 2
+  canGradeUp: 0
+  defaultAcquireGrade: 3
+  isPercentage: 0
+  statDelta:
+    Wisdom: 8
+    Insight: 5
+    Vitality: -5
+  specialStatDelta: {}
+  specialFlags: []
+  hasRequiredWeaponCondition: 0
+  requiredWeaponType: 0
+  conditionalStatDelta: {}
+  conditionalSpecialStatDelta: {}

@@ -15,7 +15,7 @@ MonoBehaviour:
   id: 10000
   monsterName: 산적
   description: 숲길과 변두리를 습격하는 인간형 몬스터군입니다.
-  modelPrefab: {fileID: 0}
+  modelPrefab: {fileID: 7679047956566116426, guid: f44b4c3c5bd826346a3ae054f69d6942, type: 3}
   tags:
   - Forest
   - Human

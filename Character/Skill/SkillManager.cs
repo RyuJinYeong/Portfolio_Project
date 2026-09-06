@@ -35,6 +35,12 @@ public static class SkillManager
             return false;
         }
 
+        if (!def.CanBeAcquiredBy(character))
+        {
+            Debug.Log($"{def.skillName} 스킬의 습득 조건을 충족하지 못했습니다.");
+            return false;
+        }
+
         SkillRuntimeData runtime = SkillRuntimeFactory.Create(def);
 
         if (runtime == null)

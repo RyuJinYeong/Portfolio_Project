@@ -127,9 +127,6 @@ public class CharacterUIHandler : MonoBehaviour
             if (data == null || data.skill == null)
                 continue;
 
-            if (data.target != characterManager)
-                continue;
-
             GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
 
             ApplySkillIcon(skillIconInstance, data);
@@ -150,6 +147,24 @@ public class CharacterUIHandler : MonoBehaviour
                     {
                         TooltipManager.Instance?.HideTooltip();
 
+                        CharacterTargeting targeting = UIManager.Instance != null
+                            ? UIManager.Instance.characterTargeting
+                            : null;
+
+                        if (targeting != null && targeting.isDefenseSkillTargeting)
+                        {
+                            if (TurnManager.Instance != null &&
+                                TurnManager.Instance.defenseCharacter == caster)
+                            {
+                                caster.combatHandler.SetOrResetCounterSkill(
+                                    capturedIndex,
+                                    targeting.selectedSkill);
+                                targeting.StopTargeting();
+                            }
+
+                            return;
+                        }
+
                         if (caster.character.DefaultCounterSkill > 0 &&
                             capturedSkill.uid == caster.character.DefaultCounterSkill)
                         {
@@ -162,6 +177,12 @@ public class CharacterUIHandler : MonoBehaviour
                 }
             }
         }
+    }
+
+    public void ClearCounterSkillQueueUI()
+    {
+        if (counterSkillQueuePanel != null)
+            ClearChildren(counterSkillQueuePanel.transform);
     }
 
     private void ClearChildren(Transform parent)
@@ -384,21 +405,88 @@ public class CharacterUIHandler : MonoBehaviour
 
     public void UpdateStatusEffects()
     {
-        /*
-        foreach (var icon in activeStatusIcons)
+        foreach (GameObject icon in activeStatusIcons)
         {
-            Destroy(icon);
+            if (icon != null)
+                Destroy(icon);
         }
 
         activeStatusIcons.Clear();
 
-        foreach (var effect in activeEffects)
+        if (characterManager == null || characterManager.character == null ||
+            characterManager.character.StatusEffects == null ||
+            statusEffectIconPrefab == null || statusEffectIconParent == null)
         {
-            GameObject iconInstance = Instantiate(statusEffectIconPrefab, statusEffectIconParent);
-            iconInstance.GetComponentInChildren<RawImage>().texture = effect.Icon;
+            if (statusEffectPanel != null)
+                statusEffectPanel.SetActive(false);
+
+            return;
+        }
+
+        foreach (StatusEffectRuntimeData runtime in characterManager.character.StatusEffects)
+        {
+            if (runtime == null || runtime.stack <= 0)
+                continue;
+
+            StatusEffectDefinitionSO definition =
+                GameDataRegistry.Instance?.GetStatusEffect(runtime.statusEffectId);
+
+            if (definition == null)
+                continue;
+
+            GameObject iconInstance = Instantiate(
+                statusEffectIconPrefab,
+                statusEffectIconParent);
+
+            Image iconImage = iconInstance.GetComponent<Image>();
+            if (iconImage != null)
+            {
+                iconImage.sprite = definition.icon;
+                iconImage.color = definition.icon != null
+                    ? Color.white
+                    : new Color(0.25f, 0.25f, 0.25f, 0.85f);
+            }
+
+            TextMeshProUGUI stackText =
+                iconInstance.GetComponentInChildren<TextMeshProUGUI>(true);
+
+            if (stackText != null)
+                stackText.text = runtime.stack.ToString();
+
+            IconTooltipHandler tooltip =
+                iconInstance.GetComponent<IconTooltipHandler>();
+
+            if (tooltip != null)
+                tooltip.tooltipDescription = BuildStatusEffectTooltip(definition, runtime.stack);
+
             activeStatusIcons.Add(iconInstance);
         }
-        */
+
+        if (statusEffectPanel != null)
+            statusEffectPanel.SetActive(activeStatusIcons.Count > 0);
+    }
+
+    private string BuildStatusEffectTooltip(
+        StatusEffectDefinitionSO definition,
+        int stack)
+    {
+        string description = definition.description;
+
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            description = definition.effectType switch
+            {
+                StatusEffectType.PhysicalCounterPenalty =>
+                    "물리 대응 성공 확률이 감소합니다.",
+                StatusEffectType.MagicalCounterPenalty =>
+                    "마법 대응 성공 확률이 감소합니다.",
+                StatusEffectType.CancelNextCounter =>
+                    "다음 대응 스킬이 취소됩니다.",
+                _ => "상태이상 효과가 적용 중입니다."
+            };
+        }
+
+        return $"<b>{definition.statusName}</b>\n{description}\n현재 중첩: {stack}";
     }
 
     private void UpdateTurnIcon()

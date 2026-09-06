@@ -64,10 +64,6 @@ public class QuestPanelItem : MonoBehaviour
 
         var def = entry.def;
 
-        titleText.text = def.isRescueQuest
-            ? $"[구출] {def.title}"
-            : def.title;
-
         issuerText.gameObject.SetActive(false);
         tierDifficultyText.text = $"T{def.tier} · {GetDifficultyText(def.difficulty)}";
 
@@ -90,6 +86,15 @@ public class QuestPanelItem : MonoBehaviour
             GameDataRegistry.Instance != null && def.bossUid != 0
                 ? GameDataRegistry.Instance.GetMonsterRole(def.bossUid)
                 : null;
+
+
+        titleText.text = def.isRescueQuest
+            ? $"[구출] {def.title}"
+            : boss != null &&
+              boss.baseMonster != null &&
+              !string.IsNullOrEmpty(boss.baseMonster.monsterName)
+                ? $"{boss.baseMonster.monsterName} 토벌"
+                : def.title;
 
 
         bossText.gameObject.SetActive(boss != null);
@@ -118,7 +123,7 @@ public class QuestPanelItem : MonoBehaviour
 
 
         rewardText.text =
-            $"주요 보상: {GetRewardText(def.reward)}";
+            $"주요 보상: {GetRewardText(def)}";
 
         Color issuerColor = GetIssuerColor(def.issuer);
 
@@ -379,13 +384,37 @@ public class QuestPanelItem : MonoBehaviour
         if (reward == null)
             return "정보 없음";
 
+        return GetRewardText(reward, reward.goldAmount);
+    }
+
+
+    public static string GetRewardText(QuestDef quest)
+    {
+        if (quest == null || quest.reward == null)
+            return "정보 없음";
+
+        int goldAmount = quest.reward.goldAmount > 0
+            ? quest.reward.goldAmount
+            : QuestManager.CalculateGoldReward(quest.tier, quest.difficulty);
+
+        return GetRewardText(quest.reward, goldAmount);
+    }
+
+
+    private static string GetRewardText(QuestReward reward, int goldAmount)
+    {
+        string goldText = goldAmount > 0
+            ? $" / 의뢰 보수 {goldAmount:N0} G"
+            : string.Empty;
+
 
         if (reward.kind == QuestRewardKind.Equipment)
         {
             return
                 $"T{reward.tier} " +
                 $"{GetRarityText(reward.maxEquipmentRarity)}등급 이하 " +
-                GetEquipmentRewardCategoryText(reward);
+                GetEquipmentRewardCategoryText(reward) +
+                goldText;
         }
 
 
@@ -393,7 +422,8 @@ public class QuestPanelItem : MonoBehaviour
         {
             return
                 $"T{reward.tier} " +
-                $"{GetSkillDisciplineText(reward.skillDiscipline)} 계열 스킬";
+                $"{GetSkillDisciplineText(reward.skillDiscipline)} 계열 스킬북" +
+                goldText;
         }
 
 
@@ -408,8 +438,8 @@ public class QuestPanelItem : MonoBehaviour
 
 
             return equipment != null
-                ? equipment.itemName
-                : "장비 보상";
+                ? equipment.itemName + goldText
+                : "장비 보상" + goldText;
         }
 
 
@@ -424,12 +454,14 @@ public class QuestPanelItem : MonoBehaviour
 
 
             return skill != null
-                ? skill.skillName
-                : "스킬 보상";
+                ? skill.skillName + " 스킬북" + goldText
+                : "스킬북 보상" + goldText;
         }
 
 
-        return "정보 없음";
+        return goldAmount > 0
+            ? $"의뢰 보수 {goldAmount:N0} G"
+            : "정보 없음";
     }
 
 

@@ -23,6 +23,13 @@ public static class EquipmentManager
 
         CharacterData character = manager.character;
 
+        if (equipment.equipType == EquipmentType.SubWeapon &&
+            !character.CanEquipSubWeapon())
+        {
+            Debug.Log("장착 불가능한 보조무기입니다.");
+            return;
+        }
+
         if (equipment is WeaponDefinitionSO weapon)
         {
             if (equipment.equipType == EquipmentType.Weapon && !character.CanEquipMainWeapon(weapon))
@@ -31,11 +38,6 @@ public static class EquipmentManager
                 return;
             }
 
-            if (equipment.equipType == EquipmentType.SubWeapon && !character.CanEquipSubWeapon())
-            {
-                Debug.Log("장착 불가능한 보조무기입니다.");
-                return;
-            }
         }
 
         SetEquipmentSlot(character.EquipmentSlots, equipment.equipType, itemUid, instanceId);

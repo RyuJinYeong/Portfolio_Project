@@ -203,21 +203,30 @@ public class TownCharacterManagementPanel : MonoBehaviour
             CreateCharacterCard(character, null);
         }
 
-        SelectCharacter(firstCharacter);
+        SelectCharacter(firstCharacter, null);
     }
 
     public void SelectCharacter(CharacterManager characterManager)
     {
-        SelectedCharacter = characterManager;
-        SelectCharacter(characterManager != null ? characterManager.character : null);
-
-        if (inventoryUIController != null)
-            inventoryUIController.SetSelectedCharacter(characterManager);
+        SelectCharacter(
+            characterManager != null ? characterManager.character : null,
+            characterManager);
     }
 
-    private void SelectCharacter(CharacterData character)
+    private void SelectCharacter(
+        CharacterData character,
+        CharacterManager characterManager = null)
     {
+        SelectedCharacter = characterManager;
         SelectedCharacterData = character;
+
+        if (inventoryUIController != null)
+        {
+            if (characterManager != null)
+                inventoryUIController.SetSelectedCharacter(characterManager);
+            else
+                inventoryUIController.SetSelectedCharacterData(character);
+        }
 
         foreach (CharacterInfoPanel panel in infoPanels)
         {
@@ -265,12 +274,16 @@ public class TownCharacterManagementPanel : MonoBehaviour
     {
         if (SelectedCharacter != null)
             uiManager?.OpenCharacterEquipment(SelectedCharacter);
+        else if (SelectedCharacterData != null)
+            uiManager?.OpenCharacterEquipment(SelectedCharacterData);
     }
 
     public void OpenSelectedSkills()
     {
         if (SelectedCharacter != null)
             uiManager?.OpenCharacterSkills(SelectedCharacter);
+        else if (SelectedCharacterData != null)
+            uiManager?.OpenCharacterSkills(SelectedCharacterData);
     }
 
     public void OpenStorage()
@@ -310,7 +323,6 @@ public class TownCharacterManagementPanel : MonoBehaviour
         if (characterManager != null)
         {
             panel.Bind(characterManager);
-            RewireCardButtons(panel, characterManager);
             panelCharacters[panel] = characterManager;
         }
         else
@@ -318,7 +330,8 @@ public class TownCharacterManagementPanel : MonoBehaviour
             panel.Bind(character);
         }
 
-        WireCardSelection(cardObject, character);
+        RewireCardButtons(panel, character, characterManager);
+        WireCardSelection(cardObject, character, characterManager);
 
         Image panelImage = cardObject.GetComponent<Image>();
 
@@ -337,13 +350,19 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
     private void RewireCardButtons(
         CharacterInfoPanel panel,
+        CharacterData character,
         CharacterManager characterManager)
     {
         if (panel.btnEquipment != null)
         {
             panel.btnEquipment.onClick.RemoveAllListeners();
             panel.btnEquipment.onClick.AddListener(() =>
-                uiManager?.OpenCharacterEquipment(characterManager));
+            {
+                if (characterManager != null)
+                    uiManager?.OpenCharacterEquipment(characterManager);
+                else
+                    uiManager?.OpenCharacterEquipment(character);
+            });
         }
 
         if (panel.btnInventory != null)
@@ -360,13 +379,19 @@ public class TownCharacterManagementPanel : MonoBehaviour
         {
             panel.btnSkills.onClick.RemoveAllListeners();
             panel.btnSkills.onClick.AddListener(() =>
-                uiManager?.OpenCharacterSkills(characterManager));
+            {
+                if (characterManager != null)
+                    uiManager?.OpenCharacterSkills(characterManager);
+                else
+                    uiManager?.OpenCharacterSkills(character);
+            });
         }
     }
 
     private void WireCardSelection(
         GameObject cardObject,
-        CharacterData character)
+        CharacterData character,
+        CharacterManager characterManager)
     {
         Button selectButton = cardObject.GetComponent<Button>();
 
@@ -375,7 +400,8 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
         selectButton.targetGraphic = cardObject.GetComponent<Graphic>();
         selectButton.onClick.RemoveAllListeners();
-        selectButton.onClick.AddListener(() => SelectCharacter(character));
+        selectButton.onClick.AddListener(() =>
+            SelectCharacter(character, characterManager));
     }
 
     private CharacterData GetPanelData(CharacterInfoPanel panel)

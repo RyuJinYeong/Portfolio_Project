@@ -654,6 +654,12 @@ public class CharacterCreation : MonoBehaviour
 
     public void OnCreateCharacterButtonPressed()
     {
+        if (PlayerManager.Instance.HasLivingCharacter)
+        {
+            Debug.LogWarning("살아 있는 용병단원이 있어 새 캐릭터를 생성할 수 없습니다.");
+            return;
+        }
+
         if (characterNameInput == null || string.IsNullOrEmpty(characterNameInput.text))
         {
             Debug.LogWarning("Character name is required!");

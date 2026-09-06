@@ -130,6 +130,9 @@ public class TestSceneManager : MonoBehaviour
 
         if (GameManager.Instance != null && enemyCombatPrefab != null)
             GameManager.Instance.enemyPrefab = enemyCombatPrefab;
+
+        if (TurnManager.Instance != null)
+            TurnManager.Instance.returnToTownAfterBattle = false;
     }
 
     private QuestDef BuildTestQuest()

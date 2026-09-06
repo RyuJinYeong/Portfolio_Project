@@ -15,7 +15,7 @@ MonoBehaviour:
   uid: 5001
   itemName: "\uB5A0\uB3CC\uC774\uC758 \uAC80"
   description: "\uB5A0\uB3CC\uC774\uC758 \uAC80"
-  icon: {fileID: 2800000, guid: af407bd3e8a40094192f907aca2f50c0, type: 3}
+  icon: {fileID: 2800000, guid: 68f6ece4e35f13c4f8b6bdacd18a7b82, type: 3}
   category: 0
   price: 100
   weight: 3
@@ -65,8 +65,6 @@ MonoBehaviour:
     CriticalDamageBonus: 0
     StatusResistance: 0
     MapDetectionRange: 0
-    TrapDetectionBonus: 0
-    EventInsightBonus: 0
     KillHpRecovery: 0
     KillStaminaRecovery: 0
     KillMentalityRecovery: 0
@@ -84,4 +82,4 @@ MonoBehaviour:
   weaponCategory: 1
   weaponType: 2
   weaponTags: 
-  attributes: 0600000005000000
+  attributes: 0400000005000000

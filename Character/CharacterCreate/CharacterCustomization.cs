@@ -1,6 +1,10 @@
 using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Jorjouto.AnimComposerSystem;
 using UnityEngine;
+using UnityEngine.Animations;
 using P09.Modular.Humanoid.Data;
 
 public class CharacterCustomization : MonoBehaviour
@@ -23,6 +27,7 @@ public class CharacterCustomization : MonoBehaviour
     public Transform bowRoot;
     public Transform shieldRoot;
     public Transform staffRoot;
+    public Transform daggerRoot;
     public Transform swordRoot;
     public Transform axeRoot;
     public Transform hammerRoot;
@@ -32,10 +37,17 @@ public class CharacterCustomization : MonoBehaviour
     public GameObject[] bows;
     public GameObject[] shields;
     public GameObject[] staffs;
+    public GameObject[] daggers;
     public GameObject[] swords;
     public GameObject[] axes;
     public GameObject[] hammers;
     public GameObject[] twoHandedWeapons;
+
+    [Header("Weapon Draw")]
+    [SerializeField] private ScriptableObject_AnimComposer drawWeaponRight;
+    [SerializeField] private ScriptableObject_AnimComposer drawWeaponLeft;
+    [SerializeField] private ScriptableObject_AnimComposer drawDaggerRight;
+    [SerializeField] private ScriptableObject_AnimComposer drawDaggerLeft;
 
     [Header("Runtime")]
     public bool isMale = true;
@@ -83,6 +95,7 @@ public class CharacterCustomization : MonoBehaviour
             if (bowRoot == null) bowRoot = FindDirectChild(weaponRoot, "Bow");
             if (shieldRoot == null) shieldRoot = FindDirectChild(weaponRoot, "Shield");
             if (staffRoot == null) staffRoot = FindDirectChild(weaponRoot, "Staff");
+            if (daggerRoot == null) daggerRoot = FindDirectChild(weaponRoot, "Dagger");
             if (swordRoot == null) swordRoot = FindDirectChild(weaponRoot, "Sword");
             if (axeRoot == null) axeRoot = FindDirectChild(weaponRoot, "Axe");
             if (hammerRoot == null) hammerRoot = FindDirectChild(weaponRoot, "Hammer");
@@ -97,6 +110,9 @@ public class CharacterCustomization : MonoBehaviour
 
         if (staffRoot != null && (staffs == null || staffs.Length == 0))
             staffs = GetDirectChildObjectsByPrefix(staffRoot, "Staff_");
+
+        if (daggerRoot != null && (daggers == null || daggers.Length == 0))
+            daggers = GetDirectChildObjectsByPrefix(daggerRoot, "Dagger_");
 
         if (swordRoot != null && (swords == null || swords.Length == 0))
             swords = GetDirectChildObjectsByPrefix(swordRoot, "Sword_");
@@ -505,6 +521,70 @@ public class CharacterCustomization : MonoBehaviour
         }
     }
 
+    public IEnumerator DrawWeapons(CharacterData characterData, BattlePresentationHandler presentation)
+    {
+        if (weaponRoot == null || characterData == null || presentation == null)
+            yield break;
+
+        ParentConstraint[] constraints = weaponRoot.GetComponentsInChildren<ParentConstraint>(true);
+        WeaponDefinitionSO mainWeapon = characterData.GetMainWeapon();
+        WeaponDefinitionSO subWeapon = characterData.GetSubWeapon();
+
+        foreach (bool leftHand in new[] { false, true })
+        {
+            Dictionary<ParentConstraint, int> handConstraints = new();
+            foreach (ParentConstraint constraint in constraints)
+            {
+                if (!constraint.gameObject.activeInHierarchy || constraint.GetComponentInChildren<Renderer>() == null)
+                    continue;
+
+                int rightIndex = -1;
+                int leftIndex = -1;
+                for (int i = 0; i < constraint.sourceCount; i++)
+                {
+                    Transform source = constraint.GetSource(i).sourceTransform;
+                    if (source == null)
+                        continue;
+                    if (source.name.EndsWith("_Hand_R")) rightIndex = i;
+                    if (source.name.EndsWith("_Hand_L")) leftIndex = i;
+                }
+
+                int handIndex = leftHand ? (rightIndex < 0 ? leftIndex : -1) : rightIndex;
+                if (handIndex >= 0 && constraint.GetSource(handIndex).weight < 1f)
+                    handConstraints.Add(constraint, handIndex);
+            }
+
+            if (handConstraints.Count == 0)
+                continue;
+
+            WeaponDefinitionSO weapon = leftHand && (mainWeapon == null || mainWeapon.weaponType != WeaponType.Bow)
+                ? subWeapon : mainWeapon;
+            bool dagger = weapon != null && weapon.weaponType == WeaponType.Dagger;
+            ScriptableObject_AnimComposer composer = leftHand
+                ? (dagger ? drawDaggerLeft : drawWeaponLeft)
+                : (dagger ? drawDaggerRight : drawWeaponRight);
+
+            bool playing = presentation.PlayComposer(composer);
+            if (playing)
+                yield return new WaitForSeconds(composer.AnimationClip.length / composer.PlayRate * 0.5f);
+
+            foreach (var pair in handConstraints)
+            {
+                for (int i = 0; i < pair.Key.sourceCount; i++)
+                {
+                    ConstraintSource source = pair.Key.GetSource(i);
+                    source.weight = i == pair.Value ? 1f : 0f;
+                    pair.Key.SetSource(i, source);
+                }
+                pair.Key.weight = 1f;
+                pair.Key.constraintActive = true;
+            }
+
+            if (playing)
+                yield return presentation.WaitForSkill();
+        }
+    }
+
     private void UpdateArmorAppearance(CharacterData characterData)
     {
         DeactivateAllArmorVisuals();
@@ -524,6 +604,9 @@ public class CharacterCustomization : MonoBehaviour
 
     private void ActivateArmorPart(EquipmentDefinitionSO equipment, string partSuffix)
     {
+        if (equipment == null && partSuffix == "Head")
+            return;
+
         string visualKey = equipment != null
             ? equipment.visualKey
             : "Armor_001";
@@ -683,7 +766,7 @@ public class CharacterCustomization : MonoBehaviour
                 break;
 
             case WeaponType.Dagger:
-                ActivateArrayIndex(swords, 1);
+                ActivateArrayIndex(daggers, 0);
                 break;
 
             case WeaponType.Greatsword:
@@ -717,7 +800,7 @@ public class CharacterCustomization : MonoBehaviour
                 break;
 
             case WeaponType.Dagger:
-                ActivateArrayIndex(swords, 1);
+                ActivateArrayIndex(daggers, 0);
                 break;
 
             case WeaponType.Orb:
@@ -785,6 +868,7 @@ public class CharacterCustomization : MonoBehaviour
         SetAllActive(bows, false);
         SetAllActive(shields, false);
         SetAllActive(staffs, false);
+        SetAllActive(daggers, false);
         SetAllActive(swords, false);
         SetAllActive(axes, false);
         SetAllActive(hammers, false);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 public enum SharedInventoryType
@@ -14,6 +15,7 @@ public static class SharedInventoryUtility
     public const int ExpeditionStorageCapacity = 20;
     public const int MonsterEssenceItemUid = 20001;
     public const int FadedEssenceItemUid = 20002;
+    public const int SkillBookItemUid = 20003;
 
     public static event Action InventoryChanged;
     public static event Action<CharacterManager> EquipmentChanged;
@@ -53,9 +55,15 @@ public static class SharedInventoryUtility
         List<InventorySlotData> storage,
         int itemUid,
         int count = 1,
-        string equipmentInstanceId = null)
+        string equipmentInstanceId = null,
+        int skillBookSkillUid = 0)
     {
-        if (!AddItemInternal(storage, itemUid, count, equipmentInstanceId))
+        if (!AddItemInternal(
+                storage,
+                itemUid,
+                count,
+                equipmentInstanceId,
+                skillBookSkillUid))
             return false;
 
         InventoryChanged?.Invoke();
@@ -127,7 +135,14 @@ public static class SharedInventoryUtility
             return false;
 
         if (!source.IsMonsterEssence())
-            return AddItem(storage, source.itemUid, source.count, source.equipmentInstanceId);
+        {
+            return AddItem(
+                storage,
+                source.itemUid,
+                source.count,
+                source.equipmentInstanceId,
+                source.skillBookSkillUid);
+        }
 
         if (GameDataRegistry.Instance == null ||
             GameDataRegistry.Instance.GetItem(source.itemUid) is not ItemDefinitionSO item ||
@@ -137,6 +152,8 @@ public static class SharedInventoryUtility
         }
 
         List<MonsterEssenceTraitData> traits = new List<MonsterEssenceTraitData>();
+        List<MonsterEssenceTraitAppraisalData> appraisals =
+            CloneEssenceTraitAppraisals(source.essenceTraitAppraisals);
 
         if (source.essenceTraits != null)
         {
@@ -160,7 +177,11 @@ public static class SharedInventoryUtility
             essenceQuestId = source.essenceQuestId,
             essenceMonsterRoleId = source.essenceMonsterRoleId,
             essenceMonsterName = source.essenceMonsterName,
-            essenceTraits = traits
+            essenceTraits = traits,
+            essenceAppraised = source.essenceAppraised,
+            essenceTraitCountRevealed = source.essenceTraitCountRevealed,
+            essenceTraitAppraisals = appraisals,
+            skillBookSkillUid = source.skillBookSkillUid
         });
 
         InventoryChanged?.Invoke();
@@ -242,6 +263,41 @@ public static class SharedInventoryUtility
         return recoveredCount;
     }
 
+    public static int DiscardDefeatedExpedition(
+        PlayerData playerData,
+        string sourceQuestId)
+    {
+        if (playerData == null ||
+            string.IsNullOrEmpty(sourceQuestId) ||
+            playerData.lostExpeditionInventories == null)
+        {
+            return 0;
+        }
+
+        LostExpeditionInventoryData lost = playerData.lostExpeditionInventories.Find(
+            inventory => inventory != null && inventory.sourceQuestId == sourceQuestId);
+
+        if (lost == null)
+            return 0;
+
+        int discardedCount = 0;
+
+        foreach (InventorySlotData slot in lost.items ?? new List<InventorySlotData>())
+        {
+            if (slot == null)
+                continue;
+
+            discardedCount += Mathf.Max(1, slot.count);
+
+            if (slot.IsGeneratedEquipment())
+                EquipmentInstanceRepository.RemoveFromPlayer(slot.equipmentInstanceId);
+        }
+
+        playerData.lostExpeditionInventories.Remove(lost);
+        InventoryChanged?.Invoke();
+        return discardedCount;
+    }
+
     public static int TransferExpeditionToCompany(PlayerData playerData)
     {
         if (playerData?.expeditionStorage == null)
@@ -312,11 +368,12 @@ public static class SharedInventoryUtility
 
         int count = slot.IsGeneratedEquipment() ? 1 : Mathf.Max(1, slot.count);
         string equipmentInstanceId = slot.equipmentInstanceId;
+        int salePrice = GetSalePrice(slot);
 
         if (!RemoveItemInternal(storage, slot, count))
             return false;
 
-        playerData.gold += Mathf.Max(0, item.price) * count;
+        playerData.gold += salePrice;
 
         if (!string.IsNullOrEmpty(equipmentInstanceId))
             EquipmentInstanceRepository.RemoveFromPlayer(equipmentInstanceId);
@@ -325,12 +382,49 @@ public static class SharedInventoryUtility
         return true;
     }
 
+    public static int GetSalePrice(InventorySlotData slot)
+    {
+        ItemDefinitionSO item = slot != null && GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetItem(slot.itemUid)
+            : null;
+
+        if (slot == null || item == null)
+            return 0;
+
+        int count = slot.IsGeneratedEquipment() ? 1 : Mathf.Max(1, slot.count);
+        int basePrice = Mathf.Max(0, item.price) * count;
+
+        if (!slot.IsGeneratedEquipment())
+            return basePrice;
+
+        GeneratedEquipmentData equipment =
+            EquipmentInstanceRepository.Get(slot.equipmentInstanceId);
+
+        if (equipment == null)
+            return basePrice;
+
+        float tierMultiplier = 1f + Mathf.Max(0, equipment.tier - 1) * 0.5f;
+        float rarityMultiplier = equipment.rarity switch
+        {
+            EquipmentRarity.Uncommon => 1.25f,
+            EquipmentRarity.Rare => 1.6f,
+            EquipmentRarity.Epic => 2.1f,
+            EquipmentRarity.Legendary => 3f,
+            _ => 1f
+        };
+        int adjustedPrice = Mathf.RoundToInt(basePrice * tierMultiplier * rarityMultiplier);
+
+        return Mathf.Max(basePrice, Mathf.RoundToInt(adjustedPrice / 5f) * 5);
+    }
+
     public static InventorySlotData CloneInventorySlot(InventorySlotData source)
     {
         if (source == null)
             return null;
 
         List<MonsterEssenceTraitData> traits = new();
+        List<MonsterEssenceTraitAppraisalData> appraisals =
+            CloneEssenceTraitAppraisals(source.essenceTraitAppraisals);
 
         foreach (MonsterEssenceTraitData trait in
                  source.essenceTraits ?? new List<MonsterEssenceTraitData>())
@@ -353,8 +447,189 @@ public static class SharedInventoryUtility
             essenceQuestId = source.essenceQuestId,
             essenceMonsterRoleId = source.essenceMonsterRoleId,
             essenceMonsterName = source.essenceMonsterName,
-            essenceTraits = traits
+            essenceTraits = traits,
+            essenceAppraised = source.essenceAppraised,
+            essenceTraitCountRevealed = source.essenceTraitCountRevealed,
+            essenceTraitAppraisals = appraisals,
+            skillBookSkillUid = source.skillBookSkillUid
         };
+    }
+
+    public static bool AppraiseMonsterEssence(
+        CharacterManager manager,
+        List<InventorySlotData> storage,
+        InventorySlotData sourceSlot)
+    {
+        if (manager == null ||
+            manager.character == null ||
+            manager.character.FinalStats == null ||
+            !manager.character.IsAlive ||
+            storage == null ||
+            sourceSlot == null ||
+            !storage.Contains(sourceSlot) ||
+            !sourceSlot.IsMonsterEssence() ||
+            sourceSlot.essenceAppraised)
+        {
+            return false;
+        }
+
+        int perception = Mathf.Max(
+            manager.character.FinalStats.Detection,
+            manager.character.FinalStats.Insight);
+        sourceSlot.essenceAppraised = true;
+        sourceSlot.essenceTraitCountRevealed = RollAppraisal(
+            GetAppraisalChance(45, perception));
+        sourceSlot.essenceTraitAppraisals =
+            new List<MonsterEssenceTraitAppraisalData>();
+
+        if (sourceSlot.essenceTraitCountRevealed)
+        {
+            foreach (MonsterEssenceTraitData trait in
+                     sourceSlot.essenceTraits ?? new List<MonsterEssenceTraitData>())
+            {
+                if (trait == null)
+                    continue;
+
+                MonsterEssenceAppraisalRevealLevel revealLevel =
+                    MonsterEssenceAppraisalRevealLevel.None;
+
+                if (RollAppraisal(GetAppraisalChance(35, perception)))
+                {
+                    revealLevel = MonsterEssenceAppraisalRevealLevel.Polarity;
+
+                    if (RollAppraisal(GetAppraisalChance(25, perception)))
+                    {
+                        revealLevel = MonsterEssenceAppraisalRevealLevel.Grade;
+
+                        if (RollAppraisal(GetAppraisalChance(15, perception)))
+                            revealLevel = MonsterEssenceAppraisalRevealLevel.Details;
+                    }
+                }
+
+                sourceSlot.essenceTraitAppraisals.Add(
+                    new MonsterEssenceTraitAppraisalData
+                    {
+                        traitId = trait.traitId,
+                        revealLevel = revealLevel
+                    });
+            }
+        }
+
+        InventoryChanged?.Invoke();
+        return true;
+    }
+
+    public static string GetMonsterEssenceAppraisalText(InventorySlotData slot)
+    {
+        if (slot == null || !slot.IsMonsterEssence() || !slot.essenceAppraised)
+            return string.Empty;
+
+        if (!slot.essenceTraitCountRevealed)
+            return "아무것도 간파하지 못했습니다.";
+
+        List<MonsterEssenceTraitData> traits =
+            slot.essenceTraits ?? new List<MonsterEssenceTraitData>();
+        StringBuilder builder = new StringBuilder();
+        builder.Append($"특성 수: {traits.Count}");
+
+        for (int i = 0; i < traits.Count; i++)
+        {
+            MonsterEssenceTraitData essenceTrait = traits[i];
+            MonsterEssenceTraitAppraisalData appraisal =
+                slot.essenceTraitAppraisals?.Find(entry =>
+                    entry != null &&
+                    essenceTrait != null &&
+                    entry.traitId == essenceTrait.traitId);
+            MonsterEssenceAppraisalRevealLevel revealLevel = appraisal != null
+                ? appraisal.revealLevel
+                : MonsterEssenceAppraisalRevealLevel.None;
+            TraitDefinitionSO trait = essenceTrait != null && GameDataRegistry.Instance != null
+                ? GameDataRegistry.Instance.GetTrait(essenceTrait.traitId)
+                : null;
+
+            builder.Append($"\n{i + 1}. ");
+
+            if (trait == null || revealLevel == MonsterEssenceAppraisalRevealLevel.None)
+            {
+                builder.Append("???");
+                continue;
+            }
+
+            builder.Append(GetTraitPolarityText(trait.polarity));
+
+            if (revealLevel < MonsterEssenceAppraisalRevealLevel.Grade)
+            {
+                builder.Append(" · ???");
+                continue;
+            }
+
+            TraitRuntimeData runtime = new TraitRuntimeData
+            {
+                traitId = essenceTrait.traitId,
+                point = Mathf.Max(1, essenceTrait.point)
+            };
+            TraitGrade grade = TraitGradeUtility.GetGrade(runtime.point);
+            builder.Append($" · {grade}");
+
+            if (revealLevel < MonsterEssenceAppraisalRevealLevel.Details)
+            {
+                builder.Append(" · ???");
+                continue;
+            }
+
+            builder.Append($" {trait.traitName}");
+            string details = TownTraitPreviewCardUI.BuildDescription(runtime, trait);
+
+            if (!string.IsNullOrWhiteSpace(details))
+                builder.Append($"\n   {details.Replace("\n", "\n   ")}");
+        }
+
+        return builder.ToString();
+    }
+
+    private static int GetAppraisalChance(int baseChance, int perception)
+    {
+        return Mathf.Clamp(
+            Mathf.RoundToInt(baseChance + Mathf.Max(0, perception) * 0.75f),
+            5,
+            95);
+    }
+
+    private static bool RollAppraisal(int chance)
+    {
+        return UnityEngine.Random.Range(1, 101) <= chance;
+    }
+
+    private static string GetTraitPolarityText(TraitPolarity polarity)
+    {
+        return polarity switch
+        {
+            TraitPolarity.Positive => "긍정",
+            TraitPolarity.Negative => "부정",
+            TraitPolarity.Mixed => "혼합",
+            _ => "???"
+        };
+    }
+
+    private static List<MonsterEssenceTraitAppraisalData> CloneEssenceTraitAppraisals(
+        List<MonsterEssenceTraitAppraisalData> source)
+    {
+        List<MonsterEssenceTraitAppraisalData> result = new();
+
+        foreach (MonsterEssenceTraitAppraisalData appraisal in
+                 source ?? new List<MonsterEssenceTraitAppraisalData>())
+        {
+            if (appraisal == null)
+                continue;
+
+            result.Add(new MonsterEssenceTraitAppraisalData
+            {
+                traitId = appraisal.traitId,
+                revealLevel = appraisal.revealLevel
+            });
+        }
+
+        return result;
     }
 
     private static List<InventorySlotData> CloneInventorySlots(
@@ -398,6 +673,9 @@ public static class SharedInventoryUtility
             slot.essenceMonsterRoleId = 0;
             slot.essenceMonsterName = null;
             slot.essenceTraits?.Clear();
+            slot.essenceAppraised = false;
+            slot.essenceTraitCountRevealed = false;
+            slot.essenceTraitAppraisals?.Clear();
             changedCount += Mathf.Max(1, slot.count);
         }
 
@@ -444,13 +722,24 @@ public static class SharedInventoryUtility
 
         int itemUid = sourceSlot.itemUid;
         string instanceId = sourceSlot.equipmentInstanceId;
+        int skillBookSkillUid = sourceSlot.skillBookSkillUid;
 
-        if (!AddItemInternal(destination, itemUid, moveCount, instanceId))
+        if (!AddItemInternal(
+                destination,
+                itemUid,
+                moveCount,
+                instanceId,
+                skillBookSkillUid))
             return false;
 
         if (!RemoveItemInternal(source, sourceSlot, moveCount))
         {
-            RemoveMatchingItemInternal(destination, itemUid, moveCount, instanceId);
+            RemoveMatchingItemInternal(
+                destination,
+                itemUid,
+                moveCount,
+                instanceId,
+                skillBookSkillUid);
             return false;
         }
 
@@ -609,8 +898,13 @@ public static class SharedInventoryUtility
             }
 
             case ConsumableType.LearnSkill:
-                applied = SkillManager.AddSkill(character, consumable.skillUid);
+            {
+                int skillUid = sourceSlot.IsSkillBook()
+                    ? sourceSlot.skillBookSkillUid
+                    : consumable.skillUid;
+                applied = SkillManager.AddSkill(character, skillUid);
                 break;
+            }
 
             case ConsumableType.GainTrait:
             {
@@ -697,6 +991,8 @@ public static class SharedInventoryUtility
                 Mathf.Max(1, essenceTrait.point));
             int weight = Mathf.Max(0, consumable.GetMonsterEssenceTraitWeight(grade));
 
+            weight *= trait.polarity == TraitPolarity.Negative ? 1 : 2;
+
             if (weight <= 0)
                 continue;
 
@@ -736,6 +1032,18 @@ public static class SharedInventoryUtility
 
         if (applied)
         {
+            TraitDefinitionSO acquiredTrait = GameDataRegistry.Instance.GetTrait(
+                selected.traitId);
+            TraitRuntimeData acquiredRuntime = character.Traits?.Find(
+                runtime => runtime != null && runtime.traitId == selected.traitId);
+
+            if (acquiredTrait != null && acquiredRuntime != null)
+            {
+                UIManager.Instance?.ShowTraitAcquisition(
+                    acquiredTrait,
+                    TraitGradeUtility.GetGrade(acquiredRuntime.point));
+            }
+
             ReturnRemovedEquipments(
                 storage,
                 equippedBefore,
@@ -918,6 +1226,12 @@ public static class SharedInventoryUtility
         if (character == null || equipment == null)
             return false;
 
+        if (equipment.equipType == EquipmentType.SubWeapon &&
+            !character.CanEquipSubWeapon())
+        {
+            return false;
+        }
+
         if (equipment is WeaponDefinitionSO weapon)
         {
             if (equipment.equipType == EquipmentType.Weapon &&
@@ -926,11 +1240,6 @@ public static class SharedInventoryUtility
                 return false;
             }
 
-            if (equipment.equipType == EquipmentType.SubWeapon &&
-                !character.CanEquipSubWeapon())
-            {
-                return false;
-            }
         }
 
         return true;
@@ -1007,7 +1316,8 @@ public static class SharedInventoryUtility
         List<InventorySlotData> storage,
         int itemUid,
         int count,
-        string equipmentInstanceId)
+        string equipmentInstanceId,
+        int skillBookSkillUid = 0)
     {
         if (storage == null || count <= 0 || GameDataRegistry.Instance == null)
             return false;
@@ -1019,6 +1329,21 @@ public static class SharedInventoryUtility
 
         if (!HasCapacityFor(storage, item, count, equipmentInstanceId))
             return false;
+
+        if (skillBookSkillUid > 0)
+        {
+            if (itemUid != SkillBookItemUid || count != 1)
+                return false;
+
+            storage.Add(new InventorySlotData
+            {
+                itemUid = itemUid,
+                count = 1,
+                skillBookSkillUid = skillBookSkillUid
+            });
+
+            return true;
+        }
 
         if (!string.IsNullOrEmpty(equipmentInstanceId))
         {
@@ -1167,7 +1492,8 @@ public static class SharedInventoryUtility
         List<InventorySlotData> storage,
         int itemUid,
         int count,
-        string equipmentInstanceId)
+        string equipmentInstanceId,
+        int skillBookSkillUid = 0)
     {
         if (storage == null || count <= 0)
             return;
@@ -1178,7 +1504,8 @@ public static class SharedInventoryUtility
 
             if (slot == null ||
                 slot.itemUid != itemUid ||
-                slot.equipmentInstanceId != equipmentInstanceId)
+                slot.equipmentInstanceId != equipmentInstanceId ||
+                slot.skillBookSkillUid != skillBookSkillUid)
             {
                 continue;
             }

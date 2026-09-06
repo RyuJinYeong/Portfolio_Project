@@ -18,6 +18,9 @@ MonoBehaviour:
     \uD53C\uD574\uC640 \uD654\uC0C1\uC744 \uC900\uB2E4."
   icon: {fileID: 2800000, guid: 72cb0c66bee941547998aea126ec0d21, type: 3}
   composer: {fileID: 11400000, guid: 51400b04db78ffd0091c8e6d3fb05356, type: 2}
+  followUpComposers:
+  - {fileID: 11400000, guid: 360cb24194d957997d9943c83fa934a3, type: 2}
+  - {fileID: 11400000, guid: dc26954758e7a4dc4c2270a6a04f531b, type: 2}
   activationSpeed: 0.8
   staminaCost: 0
   mentalCost: 2

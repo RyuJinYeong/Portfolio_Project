@@ -6,12 +6,12 @@ using UnityEngine;
 public class BattlePresentationDirector : MonoBehaviour
 {
     public static BattlePresentationDirector Instance { get; private set; }
+    public bool IsPresenting { get; private set; }
 
     [Header("Camera Timing")]
     [SerializeField] private float cameraMoveTime = 0.35f;
     [SerializeField] private float attackerIntroTime = 0.2f;
     [SerializeField] private float impactDelay = 0.35f;
-    [SerializeField] private float resultHoldTime = 0.35f;
 
     [Header("Camera Framing")]
     [SerializeField] private float attackerFocusDistance = 5.5f;
@@ -21,19 +21,34 @@ public class BattlePresentationDirector : MonoBehaviour
     [SerializeField] private int cameraFollowFrameDelay = 3;
     [SerializeField] private float cameraFollowSharpness = 8f;
 
+    [Header("Camera Impact")]
+    [SerializeField] private float impactShakeDuration = 0.14f;
+    [SerializeField] private float impactShakeStrength = 0.08f;
+
     [Header("Movement")]
     [SerializeField] private float meleeStopDistance = 1f;
     [SerializeField] private float protectedTargetRetreatDistance = 0.8f;
     [SerializeField] private float returnJumpDuration = 0.45f;
     [SerializeField] private float returnJumpHeight = 0.6f;
+    [SerializeField] private float returnCameraDelay = 0.5f;
+    [SerializeField] private float battleSpeedMultiplier = 2f;
+    [SerializeField, Range(0f, 0.5f)] private float repeatedSkillEndSkipRatio = 0.2f;
 
     private readonly HashSet<BattlePresentationHandler> movingHandlers = new();
+    private readonly HashSet<BattlePresentationHandler> skillHandlers = new();
+    private readonly HashSet<BattlePresentationHandler> runBackHandlers = new();
     private Camera battleCamera;
     private Vector3 cameraHomePosition;
     private Quaternion cameraHomeRotation;
     private float cameraHomeFov;
     private bool hasCameraHome;
+    private CharacterManager sequenceAttacker;
+    private CharacterManager sequenceTarget;
+    private bool sequenceRanged;
+    private bool cameraZoomed;
     private readonly List<GameObject> hiddenHudObjects = new();
+    private Coroutine cameraShakeRoutine;
+    private Vector3 cameraShakeBaseLocalPosition;
 
     private void Awake()
     {
@@ -55,8 +70,14 @@ public class BattlePresentationDirector : MonoBehaviour
 
     public void PrepareBattle(IList<CharacterManager> characters)
     {
+        ResetCameraShake();
         StopAllCoroutines();
         StopTrackedMovement();
+        IsPresenting = false;
+        sequenceAttacker = null;
+        sequenceTarget = null;
+        cameraZoomed = false;
+        runBackHandlers.Clear();
         ResolveBattleCamera();
         CaptureCameraHome();
 
@@ -67,7 +88,10 @@ public class BattlePresentationDirector : MonoBehaviour
             character?.battlePresentationHandler?.CaptureHomePose();
     }
 
-    public IEnumerator PlaySkill(SkillQueueData action, Action applyImpact)
+    public IEnumerator PlaySkill(
+        SkillQueueData action,
+        Action applyImpact,
+        bool repeatsSameSkill = false)
     {
         if (action == null || action.user == null || action.target == null || action.skill == null)
         {
@@ -87,12 +111,21 @@ public class BattlePresentationDirector : MonoBehaviour
             yield break;
         }
 
+        IsPresenting = true;
+
         ResolveBattleCamera();
 
-        if (!isRanged)
-            HideBattleHud();
+        bool startsSequence = sequenceAttacker != attacker;
+        bool needsFraming = startsSequence || sequenceTarget != originalTarget || sequenceRanged != isRanged;
 
-        if (!isRanged)
+        if (isRanged && cameraZoomed)
+        {
+            yield return RestoreCameraHome();
+            RestoreBattleHud();
+            cameraZoomed = false;
+        }
+
+        if (startsSequence && !isRanged)
         {
             Vector3 attackerFocus = GetFocusPoint(attacker.transform);
             yield return MoveCameraToFocus(
@@ -101,35 +134,66 @@ public class BattlePresentationDirector : MonoBehaviour
                 attackerFocusFov);
 
             if (attackerIntroTime > 0f)
-                yield return new WaitForSeconds(attackerIntroTime);
+                yield return new WaitForSeconds(attackerIntroTime / battleSpeedMultiplier);
         }
 
         CharacterManager protector = GetProtector(originalTarget);
-        bool hasInterception = !isRanged && protector != null && protector != originalTarget;
 
-        BattlePresentationHandler protectorPresentation = hasInterception
+        BattlePresentationHandler protectorPresentation = protector != null
             ? protector.battlePresentationHandler
             : null;
 
-        if (!isRanged)
+        CharacterManager anticipatedCounterUser = GetAnticipatedCounterUser(
+            originalTarget,
+            protector);
+        SkillDefinitionSO anticipatedCounterSkill = GetFirstCounterSkill(
+            anticipatedCounterUser);
+
+        attacker.combatHandler?.PrepareProtectionForPresentation(action);
+
+        bool hasInterception =
+            protector != null &&
+            protector != originalTarget &&
+            protectorPresentation != null &&
+            attacker.combatHandler != null &&
+            attacker.combatHandler.LastProtectionSucceeded &&
+            attacker.combatHandler.LastResolvedTarget == protector;
+
+        if (hasInterception)
         {
-            CharacterManager approachTarget = hasInterception ? protector : originalTarget;
+            Vector3 protectedPosition = originalTarget.transform.position;
+            Vector3 attackDirection = GetFlatDirection(
+                attacker.transform.position,
+                protectedPosition);
+
+            StartTrackedMove(
+                targetPresentation,
+                protectedPosition + attackDirection * protectedTargetRetreatDistance);
+            StartTrackedMove(protectorPresentation, protectedPosition);
+            runBackHandlers.Add(targetPresentation);
+            runBackHandlers.Add(protectorPresentation);
+
+            if (!isRanged)
+            {
+                StartTrackedMove(
+                    attackerPresentation,
+                    protectedPosition - attackDirection * meleeStopDistance);
+                yield return FollowTrackedMovement(attackerPresentation, attacker.transform);
+            }
+
+            yield return WaitForTrackedMovement();
+            targetPresentation.FaceTarget(protector.transform);
+        }
+
+        CharacterManager approachTarget = hasInterception ? protector : originalTarget;
+
+        if (!isRanged && needsFraming)
+        {
+            cameraZoomed = true;
+            HideBattleHud();
             Vector3 attackDirection = GetFlatDirection(attacker.transform.position, originalTarget.transform.position);
 
-            if (hasInterception && protectorPresentation != null)
-            {
-                Vector3 originalPosition = originalTarget.transform.position;
-                Vector3 protectorPosition = originalPosition - attackDirection * meleeStopDistance;
-                Vector3 retreatPosition = originalPosition + attackDirection * protectedTargetRetreatDistance;
-                Vector3 attackerPosition = protectorPosition - attackDirection * meleeStopDistance;
-
-                StartTrackedMove(targetPresentation, retreatPosition);
-                StartTrackedMove(protectorPresentation, protectorPosition);
-                StartTrackedMove(attackerPresentation, attackerPosition);
-                yield return FollowTrackedMovement(attackerPresentation, attacker.transform);
-                yield return WaitForTrackedMovement();
-            }
-            else
+            if (!hasInterception)
             {
                 Vector3 destination = approachTarget.transform.position - attackDirection * meleeStopDistance;
                 StartTrackedMove(attackerPresentation, destination);
@@ -139,6 +203,8 @@ public class BattlePresentationDirector : MonoBehaviour
 
             attackerPresentation.FaceTarget(approachTarget.transform);
             approachTarget.battlePresentationHandler?.FaceTarget(attacker.transform);
+            if (hasInterception)
+                protectorPresentation.FaceTarget(attacker.transform);
 
             yield return MoveCameraToPair(
                 attacker.transform,
@@ -148,13 +214,35 @@ public class BattlePresentationDirector : MonoBehaviour
         }
         else
         {
-            attackerPresentation.FaceTarget(originalTarget.transform);
+            attackerPresentation.FaceTarget(approachTarget.transform);
         }
 
-        attackerPresentation.PlayAttack();
+        skillHandlers.Add(attackerPresentation);
+        skillHandlers.Add(targetPresentation);
+        if (protectorPresentation != null)
+            skillHandlers.Add(protectorPresentation);
+
+        attackerPresentation.PlaySkill(action.skill);
+
+        if (anticipatedCounterSkill != null)
+        {
+            anticipatedCounterUser.battlePresentationHandler?.FaceTarget(attacker.transform);
+            anticipatedCounterUser.battlePresentationHandler?.PlaySkill(anticipatedCounterSkill);
+        }
+
+        yield return attackerPresentation.WaitForSkillImpact();
 
         if (impactDelay > 0f)
-            yield return new WaitForSeconds(impactDelay);
+        {
+            float impactDurationScale = Mathf.Clamp(
+                2f - action.skill.activationSpeed,
+                0.25f,
+                2f);
+            yield return new WaitForSeconds(
+                impactDelay /
+                Mathf.Max(0.01f, attackerPresentation.SkillAnimationSpeed) *
+                impactDurationScale);
+        }
 
         try
         {
@@ -162,68 +250,140 @@ public class BattlePresentationDirector : MonoBehaviour
         }
         catch
         {
+            foreach (BattlePresentationHandler handler in skillHandlers)
+                handler?.StopSkill();
+            skillHandlers.Clear();
             RestoreBattleHud();
+            IsPresenting = false;
             throw;
         }
+
+        if (attacker.combatHandler != null && attacker.combatHandler.LastSkillWasCancelled)
+            attackerPresentation.StopSkill();
+
+        if (attacker.character != null && !attacker.character.IsAlive)
+            attackerPresentation.PlayDeath();
 
         CharacterManager resolvedTarget = attacker.combatHandler != null
             ? attacker.combatHandler.LastResolvedTarget
             : originalTarget;
 
+        if (resolvedTarget != null &&
+            (attacker.combatHandler == null || !attacker.combatHandler.LastSkillWasCancelled) &&
+            action.skill.GetTotalDamageMultiplier() > 0f)
+        {
+            float strengthMultiplier = Mathf.Clamp(
+                action.skill.GetTotalDamageMultiplier(),
+                0.75f,
+                1.35f);
+            StartImpactShake(strengthMultiplier);
+        }
+
+        if (attacker.combatHandler != null)
+        {
+            foreach (var counter in attacker.combatHandler.LastSuccessfulCounters)
+            {
+                if (counter.Key.character != null && counter.Key.character.IsAlive)
+                {
+                    counter.Key.battlePresentationHandler?.FaceTarget(attacker.transform);
+
+                    if (counter.Key != anticipatedCounterUser)
+                        counter.Key.battlePresentationHandler?.PlaySkill(counter.Value);
+                }
+            }
+        }
+
+        bool anticipatedCounterSucceeded = anticipatedCounterUser != null &&
+            attacker.combatHandler != null &&
+            attacker.combatHandler.LastSuccessfulCounters.ContainsKey(anticipatedCounterUser);
+
+        if (anticipatedCounterUser != null &&
+            anticipatedCounterUser != resolvedTarget &&
+            !anticipatedCounterSucceeded &&
+            anticipatedCounterUser.character != null &&
+            anticipatedCounterUser.character.IsAlive)
+        {
+            anticipatedCounterUser.battlePresentationHandler?.PlayHit();
+        }
+
+        bool counterSucceeded = resolvedTarget != null && attacker.combatHandler != null &&
+            attacker.combatHandler.LastSuccessfulCounters.ContainsKey(resolvedTarget);
+
         if (resolvedTarget != null)
         {
             if (resolvedTarget.character != null && resolvedTarget.character.IsAlive)
-                resolvedTarget.battlePresentationHandler?.PlayHit();
+            {
+                if (!counterSucceeded)
+                    resolvedTarget.battlePresentationHandler?.PlayHit();
+            }
             else
                 resolvedTarget.battlePresentationHandler?.PlayDeath();
         }
 
-        if (resultHoldTime > 0f)
-            yield return new WaitForSeconds(resultHoldTime);
-
-        bool keepMeleeEngagement =
-            !isRanged &&
-            attacker.character != null &&
-            attacker.character.IsAlive &&
+        bool blendIntoRepeatedSkill =
+            repeatsSameSkill &&
+            !hasInterception &&
+            anticipatedCounterSkill == null &&
+            !attacker.combatHandler.LastSkillWasCancelled &&
             resolvedTarget != null &&
             resolvedTarget.character != null &&
-            resolvedTarget.character.IsAlive &&
-            attacker.isInMeleeCombat &&
-            attacker.meleeTarget == resolvedTarget;
+            resolvedTarget.character.IsAlive;
 
-        if (!isRanged && !keepMeleeEngagement)
+        yield return attackerPresentation.WaitForSkill(
+            blendIntoRepeatedSkill ? repeatedSkillEndSkipRatio : 0f);
+        yield return targetPresentation.WaitForSkill();
+        if (protectorPresentation != null)
+            yield return protectorPresentation.WaitForSkill();
+        skillHandlers.Clear();
+
+        sequenceAttacker = attacker;
+        sequenceTarget = resolvedTarget != null ? resolvedTarget : originalTarget;
+        sequenceRanged = isRanged;
+    }
+
+    public IEnumerator ReturnCharactersHome(IList<CharacterManager> characters)
+    {
+        IsPresenting = true;
+
+        foreach (CharacterManager character in characters)
         {
-            if (attacker.character != null && attacker.character.IsAlive)
-                StartTrackedReturn(attackerPresentation);
+            if (character == null || character.character == null || !character.character.IsAlive)
+                continue;
 
-            if (hasInterception && protectorPresentation != null)
-            {
-                if (protector.character != null && protector.character.IsAlive)
-                    StartTrackedReturn(protectorPresentation);
+            BattlePresentationHandler handler = character.battlePresentationHandler;
+            if (handler != null &&
+                (character.transform.position - handler.HomePosition).sqrMagnitude > 0.0001f)
+                StartTrackedReturn(handler);
+        }
 
-                if (originalTarget.character != null && originalTarget.character.IsAlive)
-                    StartTrackedReturn(targetPresentation);
-            }
-
-            for (int frame = 0; frame < cameraFollowFrameDelay; frame++)
-                yield return null;
+        if (cameraZoomed)
+        {
+            if (movingHandlers.Count > 0 && returnCameraDelay > 0f)
+                yield return new WaitForSeconds(returnCameraDelay);
 
             yield return RestoreCameraHome();
-            yield return WaitForTrackedMovement();
-        }
-        else
-        {
-            yield return RestoreCameraHome();
         }
 
+        yield return WaitForTrackedMovement();
+        sequenceAttacker = null;
+        sequenceTarget = null;
+        cameraZoomed = false;
+        runBackHandlers.Clear();
         RestoreBattleHud();
+        IsPresenting = false;
     }
 
     public void CancelAndRestore()
     {
+        ResetCameraShake();
         StopAllCoroutines();
         StopTrackedMovement();
         RestoreBattleHud();
+        IsPresenting = false;
+        sequenceAttacker = null;
+        sequenceTarget = null;
+        cameraZoomed = false;
+        runBackHandlers.Clear();
 
         if (battleCamera != null && hasCameraHome)
         {
@@ -275,6 +435,51 @@ public class BattlePresentationDirector : MonoBehaviour
         hasCameraHome = true;
     }
 
+    private void StartImpactShake(float strengthMultiplier)
+    {
+        if (battleCamera == null || !battleCamera.isActiveAndEnabled ||
+            impactShakeDuration <= 0f || impactShakeStrength <= 0f)
+        {
+            return;
+        }
+
+        ResetCameraShake();
+        cameraShakeBaseLocalPosition = battleCamera.transform.localPosition;
+        cameraShakeRoutine = StartCoroutine(ShakeCamera(
+            impactShakeDuration,
+            impactShakeStrength * Mathf.Max(0f, strengthMultiplier)));
+    }
+
+    private IEnumerator ShakeCamera(float duration, float strength)
+    {
+        for (float elapsed = 0f; elapsed < duration; elapsed += Time.deltaTime)
+        {
+            float remaining = 1f - elapsed / duration;
+            Vector2 offset = UnityEngine.Random.insideUnitCircle * strength * remaining;
+            battleCamera.transform.localPosition = cameraShakeBaseLocalPosition +
+                                                   new Vector3(offset.x, offset.y, 0f);
+            yield return null;
+        }
+
+        if (battleCamera != null)
+            battleCamera.transform.localPosition = cameraShakeBaseLocalPosition;
+
+        cameraShakeRoutine = null;
+    }
+
+    private void ResetCameraShake()
+    {
+        if (cameraShakeRoutine == null)
+            return;
+
+        StopCoroutine(cameraShakeRoutine);
+
+        if (battleCamera != null)
+            battleCamera.transform.localPosition = cameraShakeBaseLocalPosition;
+
+        cameraShakeRoutine = null;
+    }
+
     private IEnumerator MoveCameraToPair(
         Transform first,
         Transform second,
@@ -319,10 +524,11 @@ public class BattlePresentationDirector : MonoBehaviour
         if (battleCamera == null)
             yield break;
 
+        ResetCameraShake();
         Vector3 startPosition = battleCamera.transform.position;
         Quaternion startRotation = battleCamera.transform.rotation;
         float startFov = battleCamera.fieldOfView;
-        float duration = Mathf.Max(0.01f, cameraMoveTime);
+        float duration = Mathf.Max(0.01f, cameraMoveTime / battleSpeedMultiplier);
 
         for (float elapsed = 0f; elapsed < duration; elapsed += Time.deltaTime)
         {
@@ -352,9 +558,37 @@ public class BattlePresentationDirector : MonoBehaviour
             return;
 
         movingHandlers.Add(handler);
-        StartCoroutine(TrackMovement(
-            handler,
-            handler.JumpBackToHome(returnJumpDuration, returnJumpHeight)));
+        IEnumerator movement = runBackHandlers.Contains(handler)
+            ? handler.MoveBackToHome()
+            : handler.JumpBackToHome(
+                returnJumpDuration / battleSpeedMultiplier,
+                returnJumpHeight);
+        StartCoroutine(TrackMovement(handler, movement));
+    }
+
+    private static CharacterManager GetAnticipatedCounterUser(
+        CharacterManager originalTarget,
+        CharacterManager protector)
+    {
+        if (GetFirstCounterSkill(protector) != null)
+            return protector;
+
+        if (GetFirstCounterSkill(originalTarget) != null)
+            return originalTarget;
+
+        return null;
+    }
+
+    private static SkillDefinitionSO GetFirstCounterSkill(CharacterManager character)
+    {
+        if (character == null || character.combatHandler == null)
+            return null;
+
+        List<SkillQueueData> queue = character.combatHandler.GetCounterSkillQueue();
+
+        return queue != null && queue.Count > 0 && queue[0] != null
+            ? queue[0].skill
+            : null;
     }
 
     private IEnumerator FollowTrackedMovement(
@@ -364,6 +598,7 @@ public class BattlePresentationDirector : MonoBehaviour
         if (battleCamera == null || movingHandler == null || movingCharacter == null)
             yield break;
 
+        ResetCameraShake();
         Queue<Vector3> delayedFocusPoints = new();
         int frameDelay = Mathf.Max(0, cameraFollowFrameDelay);
         Vector3 delayedFocus = GetFocusPoint(movingCharacter);
@@ -413,6 +648,11 @@ public class BattlePresentationDirector : MonoBehaviour
 
     private void StopTrackedMovement()
     {
+        foreach (BattlePresentationHandler handler in skillHandlers)
+            handler?.StopSkill();
+
+        skillHandlers.Clear();
+
         foreach (BattlePresentationHandler handler in movingHandlers)
             handler?.StopMovementAnimation();
 

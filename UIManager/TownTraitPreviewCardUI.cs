@@ -1,11 +1,9 @@
 using System.Text;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class TownTraitPreviewCardUI : MonoBehaviour
 {
-    public RawImage icon;
     public TMP_Text nameText;
     public TMP_Text polarityText;
     public TMP_Text descriptionText;
@@ -21,15 +19,12 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         if (trait == null)
             return;
 
-        if (icon != null)
-            icon.texture = trait.icon;
-
         if (nameText != null)
         {
             TraitGrade grade = runtime != null
                 ? TraitGradeUtility.GetGrade(runtime.point)
                 : trait.defaultAcquireGrade;
-            nameText.text = $"{trait.traitName} ({grade})";
+            nameText.text = $"{grade} {trait.traitName}";
             nameText.color = GetPolarityTextColor(trait.polarity);
         }
 
@@ -48,6 +43,9 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         if (descriptionText != null)
             descriptionText.text = BuildDescription(runtime, trait);
 
+        if (tooltipHandler != null)
+            tooltipHandler.Bind(trait, runtime);
+
     }
 
     private Color GetPolarityTextColor(TraitPolarity polarity)
@@ -61,7 +59,7 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         };
     }
 
-    private static string BuildDescription(TraitRuntimeData runtime, TraitDefinitionSO trait)
+    public static string BuildDescription(TraitRuntimeData runtime, TraitDefinitionSO trait)
     {
         StringBuilder text = new StringBuilder();
         bool hasSpecialFlag = trait.specialFlags != null &&

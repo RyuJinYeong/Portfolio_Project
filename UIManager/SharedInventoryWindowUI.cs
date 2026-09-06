@@ -32,6 +32,7 @@ public class SharedInventoryWindowUI : MonoBehaviour
     private CharacterManager selectedCharacter;
     private int occupiedSlotCount;
     private int displayedCapacity;
+    private ScrollRect listScrollRect;
 
     private void OnEnable()
     {
@@ -48,6 +49,7 @@ public class SharedInventoryWindowUI : MonoBehaviour
             closeButton.onClick.AddListener(Close);
 
         Refresh();
+        ResetScrollToTop();
     }
 
     private void OnDisable()
@@ -67,6 +69,7 @@ public class SharedInventoryWindowUI : MonoBehaviour
         selectedCharacter = character;
         gameObject.SetActive(true);
         Refresh();
+        ResetScrollToTop();
     }
 
     public void SetCharacter(CharacterManager character)
@@ -247,8 +250,25 @@ public class SharedInventoryWindowUI : MonoBehaviour
             directTargetSelection,
             IsInTown(),
             target => UseOrEquip(target, slot),
+            target => Appraise(target, slot),
             () => Sell(slot),
             () => Discard(slot));
+    }
+
+    private void Appraise(CharacterManager target, InventorySlotData slot)
+    {
+        if (target == null || target.character == null || slot == null ||
+            PlayerManager.Instance == null)
+        {
+            return;
+        }
+
+        PlayerData playerData = PlayerManager.Instance.GetCurrentPlayerData();
+        List<InventorySlotData> storage =
+            SharedInventoryUtility.GetStorage(playerData, inventoryType);
+
+        if (SharedInventoryUtility.AppraiseMonsterEssence(target, storage, slot))
+            SharedInventoryUtility.SaveChanges(target);
     }
 
     private void UseOrEquip(CharacterManager target, InventorySlotData slot)
@@ -417,6 +437,22 @@ public class SharedInventoryWindowUI : MonoBehaviour
         }
 
         itemViews.Clear();
+    }
+
+    private void ResetScrollToTop()
+    {
+        if (listScrollRect == null && content != null)
+            listScrollRect = content.GetComponentInParent<ScrollRect>();
+
+        if (listScrollRect == null)
+            return;
+
+        if (content != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+
+        Canvas.ForceUpdateCanvases();
+        listScrollRect.StopMovement();
+        listScrollRect.verticalNormalizedPosition = 1f;
     }
 
     private static int GetPreferredRingSlot(EquipmentSlotData slots)

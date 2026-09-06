@@ -17,7 +17,8 @@ public static class MercenaryGenerator
 
     public static int CalculateContractFee(CharacterData character)
     {
-        return Mathf.RoundToInt(CalculateValue(character) * 100f);
+        int baseContractFee = Mathf.RoundToInt(CalculateValue(character) * 60f);
+        return baseContractFee + CalculateEquipmentValue(character);
     }
 
     public static int CalculateBaseSortiePay(CharacterData character)
@@ -59,7 +60,10 @@ public static class MercenaryGenerator
         if (playerData.recruitmentCandidates == null)
             playerData.recruitmentCandidates = new List<CharacterData>();
         else
+        {
+            ReleaseCandidateEquipment(playerData.recruitmentCandidates);
             playerData.recruitmentCandidates.Clear();
+        }
 
         playerData.recruitmentCandidatesInitialized = true;
 
@@ -123,6 +127,61 @@ public static class MercenaryGenerator
         }
 
         return value;
+    }
+
+    private static int CalculateEquipmentValue(CharacterData character)
+    {
+        EquipmentSlotData slots = character != null ? character.EquipmentSlots : null;
+
+        if (slots == null)
+            return 0;
+
+        int value = 0;
+        value += GetEquipmentValue(slots.helmetUid, slots.helmetInstanceId);
+        value += GetEquipmentValue(slots.armorUid, slots.armorInstanceId);
+        value += GetEquipmentValue(slots.glovesUid, slots.glovesInstanceId);
+        value += GetEquipmentValue(slots.shoesUid, slots.shoesInstanceId);
+        value += GetEquipmentValue(slots.ring1Uid, slots.ring1InstanceId);
+        value += GetEquipmentValue(slots.ring2Uid, slots.ring2InstanceId);
+        value += GetEquipmentValue(slots.necklaceUid, slots.necklaceInstanceId);
+        value += GetEquipmentValue(slots.weaponUid, slots.weaponInstanceId);
+        value += GetEquipmentValue(slots.subWeaponUid, slots.subWeaponInstanceId);
+        return value;
+    }
+
+    private static int GetEquipmentValue(int itemUid, string instanceId)
+    {
+        if (itemUid <= 0)
+            return 0;
+
+        return SharedInventoryUtility.GetSalePrice(
+            new InventorySlotData
+            {
+                itemUid = itemUid,
+                count = 1,
+                equipmentInstanceId = instanceId
+            });
+    }
+
+    private static void ReleaseCandidateEquipment(List<CharacterData> candidates)
+    {
+        foreach (CharacterData candidate in candidates)
+        {
+            EquipmentSlotData slots = candidate != null ? candidate.EquipmentSlots : null;
+
+            if (slots == null)
+                continue;
+
+            EquipmentInstanceRepository.RemoveRuntime(slots.helmetInstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.armorInstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.glovesInstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.shoesInstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.ring1InstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.ring2InstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.necklaceInstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.weaponInstanceId);
+            EquipmentInstanceRepository.RemoveRuntime(slots.subWeaponInstanceId);
+        }
     }
 
     public static CharacterData Generate(MercenaryDefinitionSO template, int accountLevel)

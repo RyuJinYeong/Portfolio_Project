@@ -38,7 +38,9 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
     public List<EquipmentSlotBinding> slots = new();
 
     private CharacterManager characterManager;
+    private CharacterData characterData;
     private StatsPage statsPage;
+    private string portraitEquipmentSignature;
 
     private void OnEnable()
     {
@@ -88,7 +90,26 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
         SharedInventoryType inventoryType = SharedInventoryType.ExpeditionStorage)
     {
         characterManager = manager;
+        characterData = manager != null ? manager.character : null;
+        portraitEquipmentSignature = GetPortraitEquipmentSignature(characterData);
         returnInventoryType = inventoryType;
+
+        if (storageButton != null)
+            storageButton.gameObject.SetActive(manager != null);
+
+        gameObject.SetActive(true);
+        Refresh();
+    }
+
+    public void Open(CharacterData character)
+    {
+        characterManager = null;
+        characterData = character;
+        portraitEquipmentSignature = GetPortraitEquipmentSignature(characterData);
+
+        if (storageButton != null)
+            storageButton.gameObject.SetActive(false);
+
         gameObject.SetActive(true);
         Refresh();
     }
@@ -115,9 +136,7 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
 
     public void Refresh()
     {
-        CharacterData character = characterManager != null
-            ? characterManager.character
-            : null;
+        CharacterData character = characterData;
 
         if (characterNameText != null)
             characterNameText.text = character != null ? character.Name : "";
@@ -142,11 +161,27 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
                     binding.equipmentType,
                     binding.slotIndex)
                 : null;
+            bool isLockedSubWeaponSlot =
+                slot == null &&
+                character != null &&
+                binding.equipmentType == EquipmentType.SubWeapon &&
+                !character.CanEquipSubWeapon();
 
             EquipmentSlotBinding capturedBinding = binding;
             binding.view.Bind(
                 slot,
-                (_, button) => OnSlotClicked(capturedBinding, button));
+                isLockedSubWeaponSlot
+                    ? null
+                    : (_, button) => OnSlotClicked(capturedBinding, button));
+
+            if (isLockedSubWeaponSlot)
+            {
+                if (binding.view.nameText != null)
+                    binding.view.nameText.text = "잠김";
+
+                if (binding.view.legacyNameText != null)
+                    binding.view.legacyNameText.text = "잠김";
+            }
         }
 
         RefreshStatsPanel(character);
@@ -179,9 +214,12 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
         if (manager != characterManager)
             return;
 
+        string currentSignature = GetPortraitEquipmentSignature(manager.character);
+        bool portraitChanged = portraitEquipmentSignature != currentSignature;
+        portraitEquipmentSignature = currentSignature;
         Refresh();
 
-        if (CharacterPoolManager.Instance != null)
+        if (portraitChanged && CharacterPoolManager.Instance != null)
         {
             CharacterPoolManager.Instance.RefreshPortrait(manager, () =>
             {
@@ -194,11 +232,34 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
         }
     }
 
+    private static string GetPortraitEquipmentSignature(CharacterData character)
+    {
+        EquipmentSlotData slots = character != null ? character.EquipmentSlots : null;
+
+        if (slots == null)
+            return string.Empty;
+
+        return string.Join(
+            "|",
+            slots.helmetUid,
+            slots.helmetInstanceId,
+            slots.armorUid,
+            slots.armorInstanceId,
+            slots.glovesUid,
+            slots.glovesInstanceId,
+            slots.shoesUid,
+            slots.shoesInstanceId,
+            slots.weaponUid,
+            slots.weaponInstanceId,
+            slots.subWeaponUid,
+            slots.subWeaponInstanceId);
+    }
+
     private void SetStatsPage(StatsPage page)
     {
         statsPage = page;
         UpdateStatsTabVisuals();
-        RefreshStatsPanel(characterManager != null ? characterManager.character : null);
+        RefreshStatsPanel(characterData);
     }
 
     private void ShowBaseStats()
@@ -254,7 +315,7 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
             return;
 
         AddStatRow("HP", stats.MaxHp.ToString());
-        AddStatRow("LV", characterManager.character.Level.ToString());
+        AddStatRow("LV", characterData.Level.ToString());
         AddStatRow("근력", stats.Strength.ToString());
         AddStatRow("기교", stats.Dexterity.ToString());
         AddStatRow("속도", stats.Speed.ToString());

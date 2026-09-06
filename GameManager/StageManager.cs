@@ -238,10 +238,16 @@ public class StageManager : MonoBehaviour
         }
 
         if (activeEncounterProps != null)
+        {
+            activeEncounterProps.SetActive(false);
             Destroy(activeEncounterProps);
+        }
 
         if (activeEncounterMap != null)
+        {
+            activeEncounterMap.SetActive(false);
             Destroy(activeEncounterMap);
+        }
 
         activeEncounterProps = null;
         activeEncounterMap = null;
@@ -250,6 +256,14 @@ public class StageManager : MonoBehaviour
             hiddenQuestMap.SetActive(true);
 
         hiddenQuestMap = null;
+    }
+
+    public void ActivateEncounterBattle()
+    {
+        DeactivateEncounterPresentation();
+        activeQuestMapLayout?.ActivateArea(QuestRouteNodeType.Battle);
+        AlignSpawnPointManager(QuestRouteNodeType.Battle);
+        SwitchCamera(UIMode.Battle);
     }
 
     private void ApplyStageProfile(string stageType)

@@ -24,7 +24,7 @@ MonoBehaviour:
     requiresCharacter: 0
     outcomes:
     - weight: 1
-      resultText: 파티가 휴식을 마치고 체력과 지구력, 정신력을 회복했습니다.
+      resultText: 파티가 휴식을 마치고 체력과 지구력, 정신력을 최대치의 20%만큼 회복했습니다. 쓰러진 원정대원도 체력 20%로 일어났습니다.
       effectType: 2
       targetScope: 2
       candidateStats: []

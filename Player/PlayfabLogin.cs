@@ -11,14 +11,13 @@ public class PlayfabLogin : MonoBehaviour
     public GameObject ConfirmWindow;
     public GameObject LoginCanvas;
     public GameObject MenuCanvas;
+    public GameObject NewCharacterButton;
 
     // PlayFab 로그인을 시도하는 메서드
     public void LoginOrCreatePlayer()
     {
         string playerName = id_info.text;
         string password = pw_info.text;
-
-        Debug.Log(playerName+password);
 
         var request = new LoginWithPlayFabRequest
         {
@@ -49,20 +48,30 @@ public class PlayfabLogin : MonoBehaviour
     private void OnLoginSuccess(LoginResult result, string playerName)
     {
         Debug.Log("Login successful!");
-        PlayerManager.Instance.LoadPlayerDataFromPlayFab();
+
+        if (NewCharacterButton != null)
+            NewCharacterButton.SetActive(false);
+
+        PlayerManager.Instance.LoadPlayerDataFromPlayFab(RefreshNewCharacterButton);
         LoginCanvas.SetActive(false);
         MenuCanvas.SetActive(true);
+    }
+
+    private void RefreshNewCharacterButton()
+    {
+        if (NewCharacterButton != null)
+            NewCharacterButton.SetActive(!PlayerManager.Instance.HasLivingCharacter);
     }
 
     // 로그인이 실패했을 때 호출되는 콜백 메서드
     private void OnLoginFailure(PlayFabError error, string playerName,string password)
     {
-        // 아이디가 존재하지 않을 경우 새로운 플레이어를 생성합니다.
-        if (error.Error == PlayFabErrorCode.AccountNotFound)
+        // PlayFab은 없는 아이디와 잘못된 비밀번호를 같은 오류로 반환할 수 있습니다.
+        // 가입을 시도한 뒤 기존 아이디라면 UsernameNotAvailable 오류로 처리합니다.
+        if (error.Error == PlayFabErrorCode.AccountNotFound ||
+            error.Error == PlayFabErrorCode.InvalidUsernameOrPassword)
         {
             RegisterNewPlayer(playerName,password);
-            LoginCanvas.SetActive(false);
-            MenuCanvas.SetActive(true);
         }
         else
         {
@@ -84,7 +93,11 @@ public class PlayfabLogin : MonoBehaviour
         // PlayFab API를 사용하여 새로운 플레이어를 생성하고 응답을 처리하는 콜백 메서드를 지정합니다.
         PlayFabClientAPI.RegisterPlayFabUser(request,
             result => OnRegisterSuccess(playerName,password),
-            error => Debug.LogError("Failed to register new player: " + error.ErrorMessage));
+            error =>
+            {
+                Debug.LogError("Failed to register new player: " + error.GenerateErrorReport());
+                ConfirmWindow.SetActive(true);
+            });
     }
 
     // 새로운 플레이어 생성이 성공했을 때 호출되는 콜백 메서드

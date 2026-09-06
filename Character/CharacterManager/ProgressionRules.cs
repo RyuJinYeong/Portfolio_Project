@@ -99,6 +99,46 @@ public static class ProgressionRules
         return totalGrantedExperience;
     }
 
+    public static int SettleVictoryGold(List<CharacterManager> combatants)
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+        QuestDef quest = QuestManager.Instance != null
+            ? QuestManager.Instance.active?.def
+            : null;
+
+        if (combatants == null || playerData == null)
+            return 0;
+
+        int questTier = Mathf.Max(1, quest?.tier ?? 1);
+        int difficultyStep = Mathf.Clamp((int)(quest?.difficulty ?? QuestDifficulty.Normal), 0, 2);
+        int totalGold = 0;
+
+        foreach (CharacterManager manager in combatants)
+        {
+            CharacterData monster = manager != null ? manager.character : null;
+
+            if (monster == null || monster.IsMine || monster.IsAlive ||
+                !monster.GrantsExperience)
+            {
+                continue;
+            }
+
+            int baseGold = 20 +
+                           Mathf.Max(1, monster.Level) * 5 +
+                           questTier * 15 +
+                           difficultyStep * 10;
+
+            totalGold += baseGold * GetMonsterRankMultiplier(monster.Type);
+        }
+
+        if (totalGold > 0)
+            playerData.gold += totalGold;
+
+        return totalGold;
+    }
+
     public static int SettleVictoryEssenceDrops(List<CharacterManager> combatants)
     {
         ActiveQuestRuntime activeQuest = QuestManager.Instance != null
@@ -215,6 +255,13 @@ public static class ProgressionRules
             character.PendingLevelUps++;
             gainedLevels++;
         }
+
+        CharacterManager pooledCharacter = CharacterPoolManager.Instance != null
+            ? CharacterPoolManager.Instance.Get(character.ID)
+            : null;
+
+        if (pooledCharacter != null && pooledCharacter != manager)
+            pooledCharacter.character = character;
 
         manager.UpdateCharacterUI();
         PlayerManager.Instance?.SaveCharacter(character);

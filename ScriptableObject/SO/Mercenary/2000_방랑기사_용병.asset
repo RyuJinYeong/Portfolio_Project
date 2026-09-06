@@ -13,27 +13,27 @@ MonoBehaviour:
   m_Name: "2000_방랑기사_용병"
   m_EditorClassIdentifier: 
   id: 2000
-  templateName: 
+  templateName: 정우
   baseOrigin: {fileID: 11400000, guid: 1f61a49575a33f74e9bca1d1a6844f74, type: 2}
   identityPool:
-    maleChance: 50
-    maleNames: []
+    maleChance: 100
+    maleNames: [정우]
     femaleNames: []
-    maleFaceTypeIds: []
-    femaleFaceTypeIds: []
-    maleHairStyleIds: []
-    femaleHairStyleIds: []
-    hairColorIds: []
-    skinColorIds: []
-    eyeColorIds: []
-    facialHairIds: []
-    bustSizeIds: []
+    maleFaceTypeIds: [1, 2, 3]
+    femaleFaceTypeIds: [1, 2, 3]
+    maleHairStyleIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    femaleHairStyleIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    hairColorIds: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    skinColorIds: [1, 2, 3]
+    eyeColorIds: [1, 2, 3, 4, 5]
+    facialHairIds: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    bustSizeIds: [1, 2, 3]
   fixedTraitIds: []
   fixedSkillUids: []
   fixedEquipments: []
   traitGeneration:
     tier: 1
-    fixedTraitPool: [1000, 1001]
+    fixedTraitPool: [1000, 1001, 1019, 1020, 1026, 1027, 3000, 3004, 3005, 5000, 5004, 5007, 5008, 5011, 5012, 5013, 5016, 5018, 5020, 5022, 5027]
     fixedTraitCount: 1
     additionalTraitChance: 0
     additionalTraitChanceDecrease: 10

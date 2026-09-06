@@ -11,6 +11,7 @@ public class InventoryItemActionMenuUI : MonoBehaviour
     public RectTransform targetContent;
     public Button useOrEquipButton;
     public TMP_Text useOrEquipButtonText;
+    public Button appraiseButton;
     public Button sellButton;
     public Button discardButton;
     public Button dismissButton;
@@ -19,6 +20,8 @@ public class InventoryItemActionMenuUI : MonoBehaviour
     private readonly List<Button> targetButtons = new();
     private readonly List<CharacterManager> targets = new();
     private Action<CharacterManager> useOrEquipRequested;
+    private Action<CharacterManager> appraiseRequested;
+    private Action<CharacterManager> activeTargetAction;
     private Action sellRequested;
     private Action discardRequested;
     private Vector2 pointerLocalPosition;
@@ -31,6 +34,9 @@ public class InventoryItemActionMenuUI : MonoBehaviour
 
         if (useOrEquipButton != null)
             useOrEquipButton.onClick.AddListener(ShowTargetPanel);
+
+        if (appraiseButton != null)
+            appraiseButton.onClick.AddListener(ShowAppraisalTargetPanel);
 
         if (sellButton != null)
             sellButton.onClick.AddListener(Sell);
@@ -45,11 +51,14 @@ public class InventoryItemActionMenuUI : MonoBehaviour
         bool directTargetSelection,
         bool allowSell,
         Action<CharacterManager> onUseOrEquip,
+        Action<CharacterManager> onAppraise,
         Action onSell,
         Action onDiscard)
     {
         ClearTargets();
         useOrEquipRequested = onUseOrEquip;
+        appraiseRequested = onAppraise;
+        activeTargetAction = null;
         sellRequested = onSell;
         discardRequested = onDiscard;
 
@@ -67,13 +76,27 @@ public class InventoryItemActionMenuUI : MonoBehaviour
             : null;
         bool canUseOrEquip = item is EquipmentDefinitionSO ||
                              item is ConsumableDefinitionSO;
+        bool canAppraise = slot != null &&
+                           slot.IsMonsterEssence() &&
+                           !slot.essenceAppraised &&
+                           appraiseRequested != null;
         bool canSell = allowSell && item != null && item.tradeable;
         bool canDiscard = item != null && item.deletable;
 
-        if (!directTargetSelection && !canUseOrEquip && !canSell && !canDiscard)
+        if (!directTargetSelection &&
+            !canUseOrEquip &&
+            !canAppraise &&
+            !canSell &&
+            !canDiscard)
         {
             Close();
             return;
+        }
+
+        if (appraiseButton != null)
+        {
+            appraiseButton.gameObject.SetActive(canAppraise);
+            appraiseButton.interactable = canAppraise && targets.Count > 0;
         }
 
         if (useOrEquipButton != null)
@@ -104,12 +127,16 @@ public class InventoryItemActionMenuUI : MonoBehaviour
         if (targetPanel != null)
             targetPanel.gameObject.SetActive(false);
 
-        BuildTargetButtons(item is EquipmentDefinitionSO ? "장착" : "사용");
         Canvas.ForceUpdateCanvases();
         CachePointerPosition();
 
         if (directTargetSelection)
+        {
+            PrepareTargetButtons(
+                item is EquipmentDefinitionSO ? "장착" : "사용",
+                useOrEquipRequested);
             ShowTargetPanelAtPointer();
+        }
         else
             PositionActionPanel();
     }
@@ -118,13 +145,20 @@ public class InventoryItemActionMenuUI : MonoBehaviour
     {
         ClearTargets();
         useOrEquipRequested = null;
+        appraiseRequested = null;
+        activeTargetAction = null;
         sellRequested = null;
         discardRequested = null;
         gameObject.SetActive(false);
     }
 
-    private void BuildTargetButtons(string actionName)
+    private void PrepareTargetButtons(
+        string actionName,
+        Action<CharacterManager> targetAction)
     {
+        ClearTargetButtons();
+        activeTargetAction = targetAction;
+
         if (targetButtonTemplate == null || targetContent == null)
             return;
 
@@ -139,7 +173,7 @@ public class InventoryItemActionMenuUI : MonoBehaviour
 
             CharacterManager capturedTarget = target;
             button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(() => UseOrEquip(capturedTarget));
+            button.onClick.AddListener(() => InvokeTargetAction(capturedTarget));
             targetButtons.Add(button);
         }
 
@@ -152,6 +186,12 @@ public class InventoryItemActionMenuUI : MonoBehaviour
 
     private void ClearTargets()
     {
+        ClearTargetButtons();
+        targets.Clear();
+    }
+
+    private void ClearTargetButtons()
+    {
         foreach (Button button in targetButtons)
         {
             if (button != null)
@@ -159,7 +199,6 @@ public class InventoryItemActionMenuUI : MonoBehaviour
         }
 
         targetButtons.Clear();
-        targets.Clear();
     }
 
     private void ShowTargetPanel()
@@ -167,6 +206,20 @@ public class InventoryItemActionMenuUI : MonoBehaviour
         if (targetPanel == null || targets.Count == 0)
             return;
 
+        PrepareTargetButtons(
+            useOrEquipButtonText != null ? useOrEquipButtonText.text : "사용",
+            useOrEquipRequested);
+        targetPanel.gameObject.SetActive(true);
+        Canvas.ForceUpdateCanvases();
+        PositionTargetPanelBesideActions();
+    }
+
+    private void ShowAppraisalTargetPanel()
+    {
+        if (targetPanel == null || targets.Count == 0)
+            return;
+
+        PrepareTargetButtons("감정", appraiseRequested);
         targetPanel.gameObject.SetActive(true);
         Canvas.ForceUpdateCanvases();
         PositionTargetPanelBesideActions();
@@ -185,9 +238,9 @@ public class InventoryItemActionMenuUI : MonoBehaviour
         PositionPanelAtPointer(targetPanel, out _);
     }
 
-    private void UseOrEquip(CharacterManager target)
+    private void InvokeTargetAction(CharacterManager target)
     {
-        Action<CharacterManager> callback = useOrEquipRequested;
+        Action<CharacterManager> callback = activeTargetAction;
         Close();
         callback?.Invoke(target);
     }

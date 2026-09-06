@@ -18,7 +18,8 @@ MonoBehaviour:
     \uBE44\uB840\uD55C \uBC29\uC5B4\uB3C4\uB97C \uC5BB\uB294\uB2E4."
   icon: {fileID: 2800000, guid: 8e7dde89d2c35f141a437ce94cc136d6, type: 3}
   composer: {fileID: 11400000, guid: 524f8e71beab26e5d5b8bc057c3e651e, type: 2}
-  activationSpeed: 0.6
+  followUpComposers: []
+  activationSpeed: 0.8
   staminaCost: 1
   mentalCost: 0
   type: 0
@@ -39,7 +40,7 @@ MonoBehaviour:
   isRangedSkill: 0
   monsterOnly: 0
   counterActionType: 3
-  successArmorAttackMultiplier: 1
+  successArmorAttackMultiplier: 0.5
   minEvadeReductionRate: 0.1
   attackEffects: 
   statusAccuracyBonus: 0

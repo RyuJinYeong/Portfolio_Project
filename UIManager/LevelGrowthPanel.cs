@@ -125,7 +125,13 @@ public class LevelGrowthPanel : MonoBehaviour
         }
 
         SetText(card.transform, "Text Title", GetStatName(choice.stat));
-        SetText(card.transform, "Text Lvl", $"+{choice.amount}");
+        int currentValue = GetCurrentStatValue(
+            currentManager.character.OriginBaseStats,
+            choice.stat);
+        SetText(
+            card.transform,
+            "Text Lvl",
+            $"현재 {currentValue}  →  {currentValue + choice.amount} (+{choice.amount})");
         SetText(card.transform, "Text Description", GetStatDescription(choice.stat));
 
         Transform flag = card.transform.Find("Flag");
@@ -268,6 +274,24 @@ public class LevelGrowthPanel : MonoBehaviour
                 return "최대 정신력과 통찰 능력에 영향을 줍니다.";
             default:
                 return "캐릭터의 기본 능력치를 증가시킵니다.";
+        }
+    }
+
+    private static int GetCurrentStatValue(CharacterStats stats, StatRequirementType stat)
+    {
+        if (stats == null)
+            return 0;
+
+        switch (stat)
+        {
+            case StatRequirementType.Strength: return stats.Strength;
+            case StatRequirementType.Dexterity: return stats.Dexterity;
+            case StatRequirementType.Speed: return stats.Speed;
+            case StatRequirementType.Health: return stats.Health;
+            case StatRequirementType.Vitality: return stats.Vitality;
+            case StatRequirementType.Intelligence: return stats.Intelligence;
+            case StatRequirementType.Wisdom: return stats.Wisdom;
+            default: return 0;
         }
     }
 }

@@ -42,6 +42,10 @@ public class UIManager : MonoBehaviour
     public GameObject expeditionMapButton;
 
     private GameObject activeBattleDefeatDialog;
+    private GameObject activeQuestAbandonDialog;
+    private float questAbandonPreviousTimeScale = 1f;
+    private float questDialogOriginalButtonY;
+    private bool questAbandonWarningOpen;
 
     [Header("Camera Focus")]
     public string storageFocusKey = "Storage";
@@ -146,6 +150,9 @@ public class UIManager : MonoBehaviour
 
     private void OnEnable()
     {
+        if (Instance == null)
+            Instance = this;
+
         if (storageButton != null)
             storageButton.onClick.AddListener(OpenCompanyStorage);
 
@@ -172,6 +179,14 @@ public class UIManager : MonoBehaviour
 
         if (recruitButton != null)
             recruitButton.onClick.RemoveListener(OpenRecruit);
+
+        if (activeQuestAbandonDialog != null)
+        {
+            Time.timeScale = questAbandonPreviousTimeScale;
+            Destroy(activeQuestAbandonDialog);
+            activeQuestAbandonDialog = null;
+            questAbandonWarningOpen = false;
+        }
     }
 
     private void WireQuestPanel()
@@ -196,6 +211,32 @@ public class UIManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            if (characterTargeting != null && characterTargeting.CancelTargeting())
+                return;
+
+            if (activeQuestAbandonDialog != null)
+            {
+                if (questAbandonWarningOpen)
+                    ConfigureQuestPauseMenu();
+                else
+                    CloseQuestPauseMenu();
+                return;
+            }
+
+            if (!IsInTown() &&
+                QuestManager.Instance != null &&
+                QuestManager.Instance.active != null)
+            {
+                if (HasOpenExpeditionDetailWindow())
+                {
+                    CloseTopWindow();
+                    return;
+                }
+
+                OpenQuestPauseMenu();
+                return;
+            }
+
             if (townWindowSession)
                 CloseTopWindow();
             else if (CameraFocusRig.Instance && CameraFocusRig.Instance.isFocused)
@@ -220,6 +261,7 @@ public class UIManager : MonoBehaviour
         {
             CloseManagedWindows();
             townWindowSession = false;
+            CameraFocusRig.Instance?.FocusHome();
         }
 
         SetExpeditionButtonState(false, !isTown);
@@ -289,6 +331,23 @@ public class UIManager : MonoBehaviour
         inventoryUIController.CloseAttachedStorage();
         SetWindowPosition(inventoryUIController.equipmentWindow, Vector2.zero);
         inventoryUIController.OpenEquipment();
+
+        if (inventoryUIController.equipmentWindow != null)
+            inventoryUIController.equipmentWindow.transform.SetAsLastSibling();
+    }
+
+    public void OpenCharacterEquipment(CharacterData character)
+    {
+        if (character == null || inventoryUIController == null)
+            return;
+
+        inventoryUIController.SetSelectedCharacterData(character);
+        inventoryUIController.CloseAttachedStorage();
+        SetWindowPosition(inventoryUIController.equipmentWindow, Vector2.zero);
+        inventoryUIController.OpenEquipment();
+
+        if (inventoryUIController.equipmentWindow != null)
+            inventoryUIController.equipmentWindow.transform.SetAsLastSibling();
     }
 
     public void OpenCharacterSkills(CharacterManager characterManager)
@@ -300,6 +359,21 @@ public class UIManager : MonoBehaviour
             BeginTownWindowSession(characterManagementFocusKey);
         inventoryUIController.SetSelectedCharacter(characterManager);
         inventoryUIController.OpenSkills();
+
+        if (inventoryUIController.skillWindow != null)
+            inventoryUIController.skillWindow.transform.SetAsLastSibling();
+    }
+
+    public void OpenCharacterSkills(CharacterData character)
+    {
+        if (character == null || inventoryUIController == null)
+            return;
+
+        inventoryUIController.SetSelectedCharacterData(character);
+        inventoryUIController.OpenSkills();
+
+        if (inventoryUIController.skillWindow != null)
+            inventoryUIController.skillWindow.transform.SetAsLastSibling();
     }
 
     public void CloseCharacterManagement()
@@ -321,6 +395,13 @@ public class UIManager : MonoBehaviour
 
     public void CloseTopWindow()
     {
+        if (inventoryItemActionMenu != null &&
+            inventoryItemActionMenu.gameObject.activeInHierarchy)
+        {
+            inventoryItemActionMenu.Close();
+            return;
+        }
+
         if (inventoryUIController != null && IsOpen(inventoryUIController.skillWindow))
         {
             inventoryUIController.skillWindow.Close();
@@ -384,6 +465,8 @@ public class UIManager : MonoBehaviour
 
     public void CloseManagedWindows()
     {
+        inventoryItemActionMenu?.Close();
+
         if (inventoryUIController != null)
             inventoryUIController.CloseAll();
 
@@ -423,13 +506,15 @@ public class UIManager : MonoBehaviour
 
     public void OpenExpeditionPartyManagement()
     {
-        inventoryUIController?.CloseAll();
+        if (TurnManager.Instance != null && TurnManager.Instance.IsBattleInProgress)
+            return;
 
         if (partyManagementPanel != null)
         {
             partyManagementPanel.OpenAndBuildExpeditionParty();
-            partyManagementPanel.transform.SetAsLastSibling();
         }
+
+        BringExpeditionButtonsToFront();
     }
 
     public void OpenExpeditionInventory()
@@ -485,6 +570,27 @@ public class UIManager : MonoBehaviour
 
     public void BringExpeditionButtonsToFront()
     {
+        if (partyManagementPanel != null &&
+            partyManagementPanel.gameObject.activeInHierarchy)
+        {
+            partyManagementPanel.transform.SetAsLastSibling();
+        }
+
+        if (inventoryUIController != null)
+        {
+            if (IsOpen(inventoryUIController.companyStorageWindow))
+                inventoryUIController.companyStorageWindow.transform.SetAsLastSibling();
+
+            if (IsOpen(inventoryUIController.expeditionInventoryWindow))
+                inventoryUIController.expeditionInventoryWindow.transform.SetAsLastSibling();
+
+            if (IsOpen(inventoryUIController.equipmentWindow))
+                inventoryUIController.equipmentWindow.transform.SetAsLastSibling();
+
+            if (IsOpen(inventoryUIController.skillWindow))
+                inventoryUIController.skillWindow.transform.SetAsLastSibling();
+        }
+
         if (expeditionButtonRoot != null && expeditionButtonRoot.activeInHierarchy)
             expeditionButtonRoot.transform.SetAsLastSibling();
     }
@@ -500,11 +606,22 @@ public class UIManager : MonoBehaviour
 
     public bool OpenPendingLevelUps(System.Action onCompleted = null)
     {
-        if (levelGrowthPanel == null || CharacterPoolManager.Instance == null)
+        IEnumerable<CharacterManager> characters = CharacterPoolManager.Instance != null
+            ? CharacterPoolManager.Instance.All()
+            : Enumerable.Empty<CharacterManager>();
+
+        return OpenPendingLevelUps(characters, onCompleted);
+    }
+
+    public bool OpenPendingLevelUps(
+        IEnumerable<CharacterManager> characters,
+        System.Action onCompleted = null)
+    {
+        if (levelGrowthPanel == null)
             return false;
 
         return levelGrowthPanel.Open(
-            CharacterPoolManager.Instance.All(),
+            characters,
             onCompleted);
     }
 
@@ -584,11 +701,198 @@ public class UIManager : MonoBehaviour
         return true;
     }
 
+    private bool OpenQuestPauseMenu()
+    {
+        if (battleDefeatDialogPrefab == null)
+        {
+            Debug.LogError("[UIManager] Quest abandon dialog prefab is not assigned.");
+            return false;
+        }
+
+        if (activeQuestAbandonDialog != null)
+            return true;
+
+        activeQuestAbandonDialog = Instantiate(battleDefeatDialogPrefab, transform);
+        activeQuestAbandonDialog.name = "QuestPauseMenu";
+        activeQuestAbandonDialog.transform.SetAsLastSibling();
+
+        Animator animator = activeQuestAbandonDialog.GetComponent<Animator>();
+        if (animator != null)
+            animator.enabled = false;
+
+        if (activeQuestAbandonDialog.transform is RectTransform rootRect)
+        {
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+            rootRect.localScale = Vector3.one;
+        }
+
+        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel != null
+            ? panel.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        TextMeshProUGUI messageText = panel != null
+            ? panel.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        Button continueButton = panel != null
+            ? panel.Find("ButtonYes")?.GetComponent<Button>()
+            : null;
+
+        if (panel == null || titleText == null || messageText == null || continueButton == null)
+        {
+            Debug.LogError("[UIManager] Quest abandon dialog hierarchy is invalid.");
+            Destroy(activeQuestAbandonDialog);
+            activeQuestAbandonDialog = null;
+            return false;
+        }
+
+        panel.localScale = Vector3.one;
+
+        GameObject abandonButtonObject = Instantiate(continueButton.gameObject, panel);
+        abandonButtonObject.name = "ButtonAbandon";
+
+        foreach (TextMeshProUGUI dialogText in
+                 activeQuestAbandonDialog.GetComponentsInChildren<TextMeshProUGUI>(true))
+        {
+            dialogText.fontSize *= 0.5f;
+        }
+
+        RectTransform continueRect = continueButton.transform as RectTransform;
+        questDialogOriginalButtonY = continueRect != null
+            ? continueRect.anchoredPosition.y
+            : 0f;
+
+        questAbandonPreviousTimeScale = Time.timeScale;
+        Time.timeScale = 0f;
+        ConfigureQuestPauseMenu();
+        return true;
+    }
+
+    private void ConfigureQuestPauseMenu()
+    {
+        if (activeQuestAbandonDialog == null)
+            return;
+
+        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel?.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI messageText = panel?.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>();
+        Button continueButton = panel?.Find("ButtonYes")?.GetComponent<Button>();
+        Button abandonButton = panel?.Find("ButtonAbandon")?.GetComponent<Button>();
+
+        if (panel == null || titleText == null || messageText == null ||
+            continueButton == null || abandonButton == null)
+        {
+            return;
+        }
+
+        Image panelImage = panel.GetComponent<Image>();
+        if (panelImage != null)
+            panelImage.enabled = false;
+
+        titleText.gameObject.SetActive(false);
+        messageText.gameObject.SetActive(false);
+        continueButton.interactable = true;
+        abandonButton.interactable = true;
+
+        if (continueButton.transform is RectTransform continueRect)
+            continueRect.anchoredPosition = new Vector2(0f, 60f);
+        if (abandonButton.transform is RectTransform abandonRect)
+            abandonRect.anchoredPosition = new Vector2(0f, -60f);
+
+        TextMeshProUGUI continueText = continueButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        TextMeshProUGUI abandonText = abandonButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (continueText != null)
+            continueText.text = "계속하기";
+        if (abandonText != null)
+            abandonText.text = "의뢰 포기";
+
+        continueButton.onClick = new Button.ButtonClickedEvent();
+        abandonButton.onClick = new Button.ButtonClickedEvent();
+        continueButton.onClick.AddListener(CloseQuestPauseMenu);
+        abandonButton.onClick.AddListener(ConfigureQuestAbandonWarning);
+        questAbandonWarningOpen = false;
+    }
+
+    private void ConfigureQuestAbandonWarning()
+    {
+        if (activeQuestAbandonDialog == null)
+            return;
+
+        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel?.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI messageText = panel?.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>();
+        Button cancelButton = panel?.Find("ButtonYes")?.GetComponent<Button>();
+        Button abandonButton = panel?.Find("ButtonAbandon")?.GetComponent<Button>();
+
+        if (panel == null || titleText == null || messageText == null ||
+            cancelButton == null || abandonButton == null)
+        {
+            return;
+        }
+
+        Image panelImage = panel.GetComponent<Image>();
+        if (panelImage != null)
+            panelImage.enabled = true;
+
+        titleText.gameObject.SetActive(true);
+        messageText.gameObject.SetActive(true);
+        titleText.text = "의뢰 포기";
+        messageText.text = "중도 포기할 경우 원정대가 실종 처리됩니다. 포기하시겠습니까?";
+
+        if (cancelButton.transform is RectTransform cancelRect)
+            cancelRect.anchoredPosition = new Vector2(-130f, questDialogOriginalButtonY);
+        if (abandonButton.transform is RectTransform abandonRect)
+            abandonRect.anchoredPosition = new Vector2(130f, questDialogOriginalButtonY);
+
+        TextMeshProUGUI cancelText = cancelButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        TextMeshProUGUI abandonText = abandonButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (cancelText != null)
+            cancelText.text = "취소";
+        if (abandonText != null)
+            abandonText.text = "의뢰 포기";
+
+        cancelButton.onClick = new Button.ButtonClickedEvent();
+        abandonButton.onClick = new Button.ButtonClickedEvent();
+        cancelButton.onClick.AddListener(ConfigureQuestPauseMenu);
+        abandonButton.onClick.AddListener(() =>
+        {
+            cancelButton.interactable = false;
+            abandonButton.interactable = false;
+            CloseQuestPauseMenu();
+            TurnManager.Instance.AbandonExpedition();
+        });
+        questAbandonWarningOpen = true;
+    }
+
+    private void CloseQuestPauseMenu()
+    {
+        if (activeQuestAbandonDialog == null)
+            return;
+
+        Time.timeScale = questAbandonPreviousTimeScale;
+        Destroy(activeQuestAbandonDialog);
+        activeQuestAbandonDialog = null;
+        questAbandonWarningOpen = false;
+    }
+
     public bool OpenBattleLoot(
         IReadOnlyList<InventorySlotData> loot,
         System.Action onCompleted)
     {
-        if (loot == null || !loot.Any(slot => slot != null && slot.itemUid > 0 && slot.count > 0))
+        return OpenBattleLoot(loot, 0, onCompleted);
+    }
+
+    public bool OpenBattleLoot(
+        IReadOnlyList<InventorySlotData> loot,
+        int gold,
+        System.Action onCompleted)
+    {
+        bool hasItems = loot != null &&
+            loot.Any(slot => slot != null && slot.itemUid > 0 && slot.count > 0);
+
+        if (!hasItems && gold <= 0)
             return false;
 
         if (battleLootPanelPrefab == null)
@@ -603,7 +907,7 @@ public class UIManager : MonoBehaviour
         if (panel.transform is RectTransform rectTransform)
             rectTransform.localScale = Vector3.one;
 
-        panel.Open(loot, onCompleted);
+        panel.Open(loot, gold, onCompleted);
         return true;
     }
 
@@ -612,6 +916,7 @@ public class UIManager : MonoBehaviour
         bool directTargetSelection,
         bool allowSell,
         System.Action<CharacterManager> onUseOrEquip,
+        System.Action<CharacterManager> onAppraise,
         System.Action onSell,
         System.Action onDiscard)
     {
@@ -624,6 +929,7 @@ public class UIManager : MonoBehaviour
             directTargetSelection,
             allowSell && IsInTown(),
             onUseOrEquip,
+            onAppraise,
             onSell,
             onDiscard);
         return true;
@@ -636,15 +942,16 @@ public class UIManager : MonoBehaviour
 
     private List<CharacterManager> GetInventoryActionTargets()
     {
-        IEnumerable<CharacterManager> candidates = CharacterPoolManager.Instance != null
-            ? CharacterPoolManager.Instance.All()
-            : GameManager.Instance != null
-                ? GameManager.Instance.GetAllCharacters()
+        bool isInTown = IsInTown();
+        IEnumerable<CharacterManager> candidates = !isInTown && GameManager.Instance != null
+            ? GameManager.Instance.GetAllCharacters()
+            : CharacterPoolManager.Instance != null
+                ? CharacterPoolManager.Instance.All()
                 : Enumerable.Empty<CharacterManager>();
         PlayerData playerData = PlayerManager.Instance != null
             ? PlayerManager.Instance.GetCurrentPlayerData()
             : null;
-        HashSet<string> expeditionIds = !IsInTown() && playerData?.activeCharacterIds != null
+        HashSet<string> expeditionIds = !isInTown && playerData?.activeCharacterIds != null
             ? new HashSet<string>(playerData.activeCharacterIds)
             : null;
 
@@ -662,6 +969,19 @@ public class UIManager : MonoBehaviour
 
     private void WireInventoryButtons()
     {
+        ReplaceButtonAction(
+            expeditionInventoryButton != null
+                ? expeditionInventoryButton.GetComponent<Button>() ??
+                  expeditionInventoryButton.GetComponentInChildren<Button>(true)
+                : null,
+            OpenExpeditionInventory);
+        ReplaceButtonAction(
+            expeditionPartyManagementButton != null
+                ? expeditionPartyManagementButton.GetComponent<Button>() ??
+                  expeditionPartyManagementButton.GetComponentInChildren<Button>(true)
+                : null,
+            OpenExpeditionPartyManagement);
+
         Transform partyPanel = partyFormationPanel != null
             ? partyFormationPanel.transform
             : transform.Find("PartyFormationPanel");
@@ -782,6 +1102,21 @@ public class UIManager : MonoBehaviour
                 IsOpen(inventoryUIController.skillWindow));
     }
 
+    private bool HasOpenExpeditionDetailWindow()
+    {
+        if (inventoryItemActionMenu != null &&
+            inventoryItemActionMenu.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
+        return inventoryUIController != null &&
+               (IsOpen(inventoryUIController.companyStorageWindow) ||
+                IsOpen(inventoryUIController.expeditionInventoryWindow) ||
+                IsOpen(inventoryUIController.equipmentWindow) ||
+                IsOpen(inventoryUIController.skillWindow));
+    }
+
     private static bool IsOpen(MonoBehaviour window)
     {
         return window != null && window.gameObject.activeInHierarchy;
@@ -817,6 +1152,71 @@ public class UIManager : MonoBehaviour
 
         // 텍스트를 일정 시간 동안 표시 후 사라지게 하는 코루틴 호출
         StartCoroutine(PopDamage(damageTextInstance));
+    }
+
+    public void ShowCombatResult(string resultText, Vector3 worldPosition)
+    {
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2.5f);
+        GameObject resultTextInstance = Instantiate(damageTextPrefab, transform);
+        resultTextInstance.transform.position = screenPosition;
+        resultTextInstance.transform.SetAsLastSibling();
+
+        TextMeshProUGUI resultLabel = resultTextInstance.GetComponent<TextMeshProUGUI>();
+        resultLabel.text = resultText;
+        resultLabel.fontStyle = FontStyles.Bold;
+        resultLabel.fontSize *= 1.25f;
+        resultLabel.color = resultText == "Critical"
+            ? new Color(1f, 0.45f, 0.05f)
+            : new Color(0.25f, 0.9f, 1f);
+
+        StartCoroutine(PopDamage(resultTextInstance));
+    }
+
+    public IEnumerator ShowExtraTurnNotification()
+    {
+        GameObject notification = Instantiate(damageTextPrefab, transform);
+        notification.transform.position = new Vector3(
+            Screen.width * 0.5f,
+            Screen.height * 0.5f,
+            0f);
+        notification.transform.SetAsLastSibling();
+
+        TextMeshProUGUI label = notification.GetComponent<TextMeshProUGUI>();
+        label.text = "추가 턴 획득";
+        label.fontStyle = FontStyles.Bold;
+        label.fontSize *= 0.8f;
+        label.color = new Color(1f, 0.82f, 0.25f);
+
+        yield return PopDamage(notification);
+    }
+
+    public void ShowTraitAcquisition(
+        TraitDefinitionSO trait,
+        TraitGrade grade)
+    {
+        if (trait == null || damageTextPrefab == null)
+            return;
+
+        GameObject notification = Instantiate(damageTextPrefab, transform);
+        notification.transform.position = new Vector3(
+            Screen.width * 0.5f,
+            Screen.height * 0.5f,
+            0f);
+        notification.transform.SetAsLastSibling();
+
+        TextMeshProUGUI label = notification.GetComponent<TextMeshProUGUI>();
+        label.text = $"{grade} {trait.traitName} 획득";
+        label.fontStyle = FontStyles.Bold;
+        label.fontSize *= 0.8f;
+        label.color = trait.polarity switch
+        {
+            TraitPolarity.Positive => new Color(0.29f, 0.67f, 0.22f, 1f),
+            TraitPolarity.Negative => new Color(0.85f, 0.24f, 0.18f, 1f),
+            TraitPolarity.Mixed => new Color(0.9f, 0.67f, 0.2f, 1f),
+            _ => Color.white
+        };
+
+        StartCoroutine(PopDamage(notification));
     }
 
     // 데미지 텍스트 표시 효과 (팝업 후 서서히 사라짐)
@@ -867,6 +1267,9 @@ public class UIManager : MonoBehaviour
         if (characterManager == null || characterManager.character == null)
             return;
 
+        if (characterManager != displayedCharacter)
+            return;
+
         foreach (GameObject button in hotbarButtons)
         {
             if (button == null)
@@ -886,7 +1289,12 @@ public class UIManager : MonoBehaviour
 
             if (characterManager == TurnManager.Instance.defenseCharacter)
             {
-                inactive = !canUseSkill;
+                bool evadeCannotProtectOther =
+                    linkedSkill.isCounterSkill &&
+                    linkedSkill.counterActionType == CounterActionType.Evade &&
+                    TurnManager.Instance.defenseTarget != characterManager;
+
+                inactive = !canUseSkill || evadeCannotProtectOther;
             }
 
             CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
@@ -1221,7 +1629,7 @@ public class UIManager : MonoBehaviour
         {
             if (skillQueue[i].target == owner)
             {
-                AddSkillIcon(skillPanel, skillQueue[i], owner, orderNumber);
+                AddSkillIcon(skillPanel, skillQueue[i], owner, i, orderNumber);
                 orderNumber++;
             }
         }
@@ -1232,6 +1640,7 @@ public class UIManager : MonoBehaviour
     Transform parent,
     SkillQueueData attackQueueData,
     CharacterManager owner,
+    int counterQueueIndex,
     int orderNumber)
     {
         if (parent == null || attackQueueData == null || attackQueueData.skill == null)
@@ -1249,7 +1658,7 @@ public class UIManager : MonoBehaviour
 
         ApplyAttackSkillIcon(atkSkillIcon, attackQueueData);
 
-        int idx0 = orderNumber - 1;
+        int idx0 = counterQueueIndex;
 
         List<SkillQueueData> counterQueue = defenseCharacter.combatHandler.GetCounterSkillQueue();
 
@@ -1275,7 +1684,7 @@ public class UIManager : MonoBehaviour
             button.onClick.AddListener(() =>
             {
                 CharacterTargeting tgt = UIManager.Instance.characterTargeting;
-                int idx0Local = orderNumber - 1;
+                int idx0Local = counterQueueIndex;
 
                 if (tgt.isDefenseSkillTargeting)
                 {
@@ -1342,7 +1751,19 @@ public class UIManager : MonoBehaviour
         if (characterManager.character.DefaultCounterSkill <= 0)
             return null;
 
-        return GameDataRegistry.Instance.GetSkill(characterManager.character.DefaultCounterSkill);
+        SkillDefinitionSO defaultCounter =
+            GameDataRegistry.Instance.GetSkill(characterManager.character.DefaultCounterSkill);
+
+        if (defaultCounter != null &&
+            defaultCounter.counterActionType == CounterActionType.Evade &&
+            TurnManager.Instance != null &&
+            TurnManager.Instance.defenseCharacter == characterManager &&
+            TurnManager.Instance.defenseTarget != characterManager)
+        {
+            return null;
+        }
+
+        return defaultCounter;
     }
 
 

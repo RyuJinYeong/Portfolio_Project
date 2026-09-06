@@ -27,6 +27,7 @@ public class CharacterTargeting : MonoBehaviour
 
     private Outline currentHoverOutline;
     private Outline selectedCharacterOutline;
+    private bool presentationOutlinesSuppressed;
 
     private readonly List<LineRenderer> confirmedLineRenderers = new();
     private LineRenderer previewLineRenderer;
@@ -45,6 +46,46 @@ public class CharacterTargeting : MonoBehaviour
 
     void Update()
     {
+        bool selectedCharacterIsAlive = selectedCharacter != null &&
+                                        selectedCharacter.character != null &&
+                                        selectedCharacter.character.IsAlive;
+
+        if (!selectedCharacterIsAlive && selectedCharacterOutline != null)
+            selectedCharacterOutline.enabled = false;
+
+        bool isPresenting = BattlePresentationDirector.Instance != null &&
+            BattlePresentationDirector.Instance.IsPresenting;
+
+        if (isPresenting)
+        {
+            if (!presentationOutlinesSuppressed)
+            {
+                if (currentHoverOutline != null)
+                {
+                    currentHoverOutline.enabled = false;
+                    currentHoverOutline = null;
+                }
+
+                if (selectedCharacterOutline != null)
+                    selectedCharacterOutline.enabled = false;
+
+                presentationOutlinesSuppressed = true;
+            }
+
+            return;
+        }
+
+        if (presentationOutlinesSuppressed)
+        {
+            presentationOutlinesSuppressed = false;
+
+            if (selectedCharacterOutline != null && selectedCharacterIsAlive)
+            {
+                selectedCharacterOutline.OutlineColor = selectedOutlineColor;
+                selectedCharacterOutline.enabled = true;
+            }
+        }
+
         if (mainCamera == null || !mainCamera.isActiveAndEnabled)
         {
             GameObject mainCameraObject = GameObject.Find("MainCamera");
@@ -185,7 +226,9 @@ public class CharacterTargeting : MonoBehaviour
         {
             CharacterManager characterManager = hit.transform.GetComponentInParent<CharacterManager>();
 
-            if (characterManager != null)
+            if (characterManager != null &&
+                characterManager.character != null &&
+                characterManager.character.IsAlive)
             {
                 if (selectedCharacter == characterManager)
                 {
@@ -243,6 +286,13 @@ public class CharacterTargeting : MonoBehaviour
 
     public void SelectCharacter(CharacterManager characterManager)
     {
+        if (characterManager == null ||
+            characterManager.character == null ||
+            !characterManager.character.IsAlive)
+        {
+            return;
+        }
+
         if (isTargeting || isDefenseCharacterTargeting)
         {
             ChangeCursor("Basic");
@@ -270,7 +320,9 @@ public class CharacterTargeting : MonoBehaviour
         if (selectedCharacterOutline != null)
         {
             selectedCharacterOutline.OutlineColor = selectedOutlineColor;
-            selectedCharacterOutline.enabled = true;
+            selectedCharacterOutline.enabled =
+                BattlePresentationDirector.Instance == null ||
+                !BattlePresentationDirector.Instance.IsPresenting;
         }
 
         RefreshConfirmedTargetLines();
@@ -283,7 +335,10 @@ public class CharacterTargeting : MonoBehaviour
 
     public void StartTargeting(SkillDefinitionSO skill)
     {
-        if (selectedCharacter == null || skill == null)
+        if (selectedCharacter == null ||
+            selectedCharacter.character == null ||
+            !selectedCharacter.character.IsAlive ||
+            skill == null)
             return;
 
         bool isDefenseTurn = TurnManager.Instance != null &&
@@ -291,6 +346,13 @@ public class CharacterTargeting : MonoBehaviour
 
         if (!selectedCharacter.isPlayerTurn && !(skill.isCounterSkill && isDefenseTurn))
             return;
+
+        if (isDefenseTurn &&
+            skill.counterActionType == CounterActionType.Evade &&
+            TurnManager.Instance.defenseTarget != selectedCharacter)
+        {
+            return;
+        }
 
         selectedSkill = skill;
         RefreshConfirmedTargetLines();
@@ -337,8 +399,22 @@ public class CharacterTargeting : MonoBehaviour
 
     public void SelectTarget(CharacterManager target)
     {
-        if (selectedCharacter == null || selectedSkill == null || target == null)
+        if (selectedCharacter == null ||
+            selectedSkill == null ||
+            target == null ||
+            target.character == null ||
+            !target.character.IsAlive)
             return;
+
+        if (!selectedSkill.isCounterSkill &&
+            !selectedSkill.isRangedSkill &&
+            selectedCharacter.isInMeleeCombat &&
+            selectedCharacter.meleeTarget != null &&
+            selectedCharacter.meleeTarget != target)
+        {
+            Debug.Log("경합 상태에서는 확정된 상대에게만 근접 스킬을 사용할 수 있습니다.");
+            return;
+        }
 
         selectedTarget = target;
         isTargeting = false;
@@ -356,7 +432,9 @@ public class CharacterTargeting : MonoBehaviour
 
     public void StartDefenseCharacterTargeting(CharacterManager defenseCharacter)
     {
-        if (defenseCharacter == null)
+        if (defenseCharacter == null ||
+            defenseCharacter.character == null ||
+            !defenseCharacter.character.IsAlive)
             return;
 
         InitializeLineRenderers();
@@ -374,8 +452,26 @@ public class CharacterTargeting : MonoBehaviour
 
     private void SelectDefenseTarget(CharacterManager target)
     {
-        if (target == null || selectedCharacter == null)
+        if (target == null ||
+            target.character == null ||
+            !target.character.IsAlive ||
+            selectedCharacter == null ||
+            selectedCharacter.character == null ||
+            !selectedCharacter.character.IsAlive)
             return;
+
+        CharacterManager attacker = TurnManager.Instance != null
+            ? TurnManager.Instance.currentCharacter
+            : null;
+        bool isAttackedTarget = attacker != null &&
+                                attacker.GetSkillQueue().Exists(entry =>
+                                    entry != null && entry.target == target);
+
+        if (!isAttackedTarget)
+        {
+            Debug.Log("현재 공격받는 캐릭터만 대응 대상으로 지정할 수 있습니다.");
+            return;
+        }
 
         if (target.character.IsMine == selectedCharacter.character.IsMine)
         {
@@ -398,11 +494,27 @@ public class CharacterTargeting : MonoBehaviour
         isTargeting = false;
         isDefenseSkillTargeting = false;
         isDefenseCharacterTargeting = false;
+        selectedSkill = null;
+        selectedTarget = null;
 
         SetLineRendererVisible(previewLineRenderer, false);
         ClearConfirmedTargetLines();
 
         ChangeCursor("Basic");
+    }
+
+    public bool CancelTargeting()
+    {
+        if (!isTargeting && !isDefenseCharacterTargeting)
+            return false;
+
+        bool cancelDefenseCharacterSelection = isDefenseCharacterTargeting;
+        StopTargeting();
+
+        if (cancelDefenseCharacterSelection)
+            TurnManager.Instance?.CancelDefenseCharacterSelection();
+
+        return true;
     }
 
     public void RefreshConfirmedTargetLines()

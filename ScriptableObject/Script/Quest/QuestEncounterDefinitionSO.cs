@@ -104,6 +104,7 @@ public class QuestEncounterChoiceData
 {
     public string text;
     public bool requiresCharacter;
+    [Range(0f, 100f)] public float randomSkillChancePercent;
     public QuestEncounterAbilityCheckData abilityCheck = new();
     public List<QuestEncounterOutcomeData> outcomes = new();
     public List<QuestEncounterOutcomeData> failureOutcomes = new();

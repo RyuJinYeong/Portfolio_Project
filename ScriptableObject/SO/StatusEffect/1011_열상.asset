@@ -16,7 +16,7 @@ MonoBehaviour:
   statusName: "\uC5F4\uC0C1"
   description: "\uD53C\uACA9 \uD0C0\uC218\uB9C8\uB2E4 \uC2A4\uD0DD \uBE44\uB840 \uACE0\uC815
     \uD53C\uD574"
-  icon: {fileID: 0}
+  icon: {fileID: -606357570, guid: 080cb6d98b00c2645b2c41df5f69bc78, type: 3}
   isDebuff: 1
   durationType: 1
   effectType: 2

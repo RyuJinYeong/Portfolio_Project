@@ -110,7 +110,7 @@ public class QuestEncounterDialog : MonoBehaviour
         ClearButtons();
 
         if (bodyText != null)
-            bodyText.text = $"{GetEncounterDescription()}\n\n누가 ‘{choice.text}’ 선택을 실행합니까?";
+            bodyText.text = $"{GetEncounterDescription()}\n\n‘{choice.text}’ 행동을 맡을 캐릭터를 선택하세요.";
 
         List<CharacterManager> party = GetPartyCharacters(choice);
 

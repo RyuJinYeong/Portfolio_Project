@@ -18,6 +18,9 @@ MonoBehaviour:
     \uD55C\uAE30\uB97C \uC900\uB2E4."
   icon: {fileID: 2800000, guid: 60ba2d980fb0ca148b70bb34e5553d3d, type: 3}
   composer: {fileID: 11400000, guid: 7bb84f17ddb0f127eff4170f9ddb5f55, type: 2}
+  followUpComposers:
+  - {fileID: 11400000, guid: 360cb24194d957997d9943c83fa934a3, type: 2}
+  - {fileID: 11400000, guid: dc26954758e7a4dc4c2270a6a04f531b, type: 2}
   activationSpeed: 1
   staminaCost: 0
   mentalCost: 1
@@ -28,7 +31,7 @@ MonoBehaviour:
   damageComponents:
   - damageType: 1
     attribute: 1
-    damageMultiplier: 0.9
+    damageMultiplier: 1.1
     hitCount: 1
   equipmentRequirement:
     requireMainHandEmpty: 0

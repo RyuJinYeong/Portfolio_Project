@@ -13,6 +13,9 @@ public class PlayerManager : MonoBehaviour
 
     // 현재 로그인한 플레이어 정보
     private PlayerData currentPlayerData;
+    private readonly HashSet<string> livingCharacterIds = new();
+
+    public bool HasLivingCharacter => livingCharacterIds.Count > 0;
 
     [NonSerialized]
     public bool suppressRemotePersistence;
@@ -34,7 +37,7 @@ public class PlayerManager : MonoBehaviour
             if (_instance == null)
             {
                 // 씬에서 PlayerManager 오브젝트를 찾음
-                _instance = FindObjectOfType<PlayerManager>();
+                _instance = FindFirstObjectByType<PlayerManager>();
 
                 // 씬에 PlayerManager 오브젝트가 없는 경우에는 새로 생성
                 if (_instance == null)
@@ -50,7 +53,19 @@ public class PlayerManager : MonoBehaviour
     // 플레이어 로그인 후 데이터를 불러오는 메서드
     public void LoadPlayerDataFromPlayFab()
     {
-        PlayFabClientAPI.GetUserData(new GetUserDataRequest(), OnDataReceived, OnDataError);
+        LoadPlayerDataFromPlayFab(null);
+    }
+
+    public void LoadPlayerDataFromPlayFab(Action onDataLoaded)
+    {
+        PlayFabClientAPI.GetUserData(
+            new GetUserDataRequest(),
+            result =>
+            {
+                OnDataReceived(result);
+                onDataLoaded?.Invoke();
+            },
+            OnDataError);
     }
 
     private void OnDataReceived(GetUserDataResult result)
@@ -64,30 +79,54 @@ public class PlayerManager : MonoBehaviour
                 var dto = JsonConvert.DeserializeObject<PlayerSaveDTO>(rec.Value);
 
                 _instance.currentPlayerData = SaveMapper.FromDto(dto);
+                RefreshLivingCharacterIds(data);
                 Debug.Log("Player data loaded.");
-
-                if (dto.questState != null)
-                {
-                    SaveMapper.FromDto(dto.questState);
-                }
-                else
-                {
-                    QuestManager.Instance?.GenerateBoardIfEmpty();
-                }
             }
             else
             {
                 _instance.currentPlayerData = new PlayerData();
+                livingCharacterIds.Clear();
                 Debug.LogWarning("No player data found, initializing new player data.");
 
-                QuestManager.Instance?.GenerateBoardIfEmpty();
+                SaveMapper.FromDto((QuestStateDTO)null);
             }
         }
         catch (Exception e)
         {
             Debug.LogError($"OnDataReceived parse error: {e}");
             _instance.currentPlayerData = new PlayerData();
-            QuestManager.Instance?.GenerateBoardIfEmpty();
+            livingCharacterIds.Clear();
+            SaveMapper.FromDto((QuestStateDTO)null);
+        }
+    }
+
+    private void RefreshLivingCharacterIds(Dictionary<string, UserDataRecord> accountData)
+    {
+        livingCharacterIds.Clear();
+
+        if (currentPlayerData?.characterIds == null || accountData == null)
+            return;
+
+        foreach (string characterId in currentPlayerData.characterIds)
+        {
+            if (string.IsNullOrEmpty(characterId) ||
+                !accountData.TryGetValue(characterId, out UserDataRecord record) ||
+                string.IsNullOrEmpty(record.Value))
+            {
+                continue;
+            }
+
+            try
+            {
+                CharacterSaveDTO character = JsonConvert.DeserializeObject<CharacterSaveDTO>(record.Value);
+
+                if (character != null && character.isAlive)
+                    livingCharacterIds.Add(characterId);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Character alive-state parse error ({characterId}): {e}");
+            }
         }
     }
 
@@ -147,6 +186,14 @@ public class PlayerManager : MonoBehaviour
     // 캐릭터 데이터를 ID를 키로 플레이팹에 저장
     public void SaveCharacter(CharacterData characterData)
     {
+        if (characterData != null && !string.IsNullOrEmpty(characterData.ID))
+        {
+            if (characterData.IsAlive)
+                livingCharacterIds.Add(characterData.ID);
+            else
+                livingCharacterIds.Remove(characterData.ID);
+        }
+
         if (suppressRemotePersistence)
             return;
 

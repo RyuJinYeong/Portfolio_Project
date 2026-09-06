@@ -152,7 +152,7 @@ public class TooltipManager : MonoBehaviour
             skillIcon.texture = skill.icon;
 
         if (skillNameText != null)
-            skillNameText.text = skill.skillName;
+            skillNameText.text = GetSkillDisplayName(skill);
 
         if (skillTypeText != null)
             skillTypeText.text = GetSkillTypeText(skill);
@@ -182,13 +182,26 @@ public class TooltipManager : MonoBehaviour
 
     public void ShowTraitTooltip(TraitDefinitionSO trait, Vector3 position)
     {
+        ShowTraitTooltip(trait, null, position);
+    }
+
+    public void ShowTraitTooltip(
+        TraitDefinitionSO trait,
+        TraitRuntimeData runtime,
+        Vector3 position)
+    {
         if (trait == null)
             return;
 
         SetTextTooltipMode();
 
+        TraitGrade grade = runtime != null
+            ? TraitGradeUtility.GetGrade(runtime.point)
+            : trait.defaultAcquireGrade;
+        string traitDescription = TownTraitPreviewCardUI.BuildDescription(runtime, trait);
+
         if (skillNameText != null)
-            skillNameText.text = trait.traitName;
+            skillNameText.text = $"{grade} {trait.traitName}";
 
         if (skillTypeText != null)
             skillTypeText.text = "특성";
@@ -200,10 +213,10 @@ public class TooltipManager : MonoBehaviour
             costText.text = "";
 
         if (descriptionText != null)
-            descriptionText.text = trait.description;
+            descriptionText.text = traitDescription;
 
         if (tooltipText != null)
-            tooltipText.text = $"<b>{trait.traitName} ({trait.defaultAcquireGrade})</b>\n{trait.description}";
+            tooltipText.text = $"<b>{grade} {trait.traitName}</b>\n{traitDescription}";
 
         UpdateTooltipPosition(position);
 
@@ -229,15 +242,29 @@ public class TooltipManager : MonoBehaviour
             ? EquipmentRuntimeResolver.Resolve(slot.itemUid, slot.equipmentInstanceId)
             : null;
 
-        string displayName = slot.IsMonsterEssence() &&
-                             !string.IsNullOrEmpty(slot.essenceMonsterName)
-            ? $"{slot.essenceMonsterName}의 정수"
-            : equipment != null && !string.IsNullOrEmpty(equipment.displayName)
+        string displayName;
+
+        if (slot.IsMonsterEssence() && !string.IsNullOrEmpty(slot.essenceMonsterName))
+        {
+            displayName = $"{slot.essenceMonsterName}의 정수";
+        }
+        else if (slot.IsSkillBook())
+        {
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(
+                slot.skillBookSkillUid);
+            displayName = skill != null
+                ? $"{skill.skillName} 스킬북"
+                : item.itemName;
+        }
+        else
+        {
+            displayName = equipment != null && !string.IsNullOrEmpty(equipment.displayName)
                 ? equipment.displayName
                 : item.itemName;
+        }
 
         string typeText = GetItemTypeText(item, equipment);
-        string detailText = BuildItemDescription(item, equipment);
+        string detailText = BuildItemDescription(slot, item, equipment);
 
         if (skillIcon != null)
             skillIcon.texture = item.icon;
@@ -406,7 +433,7 @@ public class TooltipManager : MonoBehaviour
 
     private string BuildSimpleSkillTooltip(SkillDefinitionSO skill)
     {
-        string text = $"<b>{skill.skillName}</b>\n{GetSkillTypeText(skill)}";
+        string text = $"<b>{GetSkillDisplayName(skill)}</b>\n{GetSkillTypeText(skill)}";
 
         if (skill.staminaCost > 0)
             text += $"\n지구력: {skill.staminaCost}";
@@ -435,6 +462,7 @@ public class TooltipManager : MonoBehaviour
     }
 
     private string BuildItemDescription(
+        InventorySlotData slot,
         ItemDefinitionSO item,
         EquipmentRuntimeData equipment)
     {
@@ -448,17 +476,6 @@ public class TooltipManager : MonoBehaviour
             AppendSection(builder, "능력치");
             AppendCharacterStats(builder, equipment.statModifiers);
             AppendSpecialStats(builder, equipment.specialStatModifiers);
-
-            if (equipment.generated != null && equipment.generated.appliedAffixes != null)
-            {
-                foreach (EquipmentAffixRollData affix in equipment.generated.appliedAffixes)
-                {
-                    if (affix == null || string.IsNullOrEmpty(affix.affixName))
-                        continue;
-
-                    AppendLine(builder, $"옵션: {affix.affixName}");
-                }
-            }
 
             if (equipment.grantedTraitIds != null)
             {
@@ -474,7 +491,15 @@ public class TooltipManager : MonoBehaviour
         else if (item is ConsumableDefinitionSO consumable)
         {
             AppendSection(builder, "사용 효과");
-            AppendLine(builder, GetConsumableEffectText(consumable));
+            AppendLine(builder, GetConsumableEffectText(slot, consumable));
+
+            string appraisal = SharedInventoryUtility.GetMonsterEssenceAppraisalText(slot);
+
+            if (!string.IsNullOrEmpty(appraisal))
+            {
+                AppendSection(builder, "감정 결과");
+                AppendLine(builder, appraisal);
+            }
         }
 
         return builder.ToString();
@@ -532,7 +557,9 @@ public class TooltipManager : MonoBehaviour
         AppendStat(builder, "최대 레벨업 상승치", stats.MaxLevelUpStatGainBonus);
     }
 
-    private string GetConsumableEffectText(ConsumableDefinitionSO consumable)
+    private string GetConsumableEffectText(
+        InventorySlotData slot,
+        ConsumableDefinitionSO consumable)
     {
         switch (consumable.consumableType)
         {
@@ -547,8 +574,13 @@ public class TooltipManager : MonoBehaviour
 
             case ConsumableType.LearnSkill:
             {
-                SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(consumable.skillUid);
-                return skill != null ? $"스킬 습득: {skill.skillName}" : "스킬 습득";
+                int skillUid = slot != null && slot.IsSkillBook()
+                    ? slot.skillBookSkillUid
+                    : consumable.skillUid;
+                SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(skillUid);
+                return skill != null
+                    ? $"스킬 습득: {skill.skillName}\n습득 조건: {skill.GetAcquisitionRequirementText()}"
+                    : "스킬 습득";
             }
 
             case ConsumableType.GainTrait:
@@ -739,6 +771,25 @@ public class TooltipManager : MonoBehaviour
             return $"{typeText} - {rangeText} 대응 - {GetCounterActionText(skill.counterActionType)}";
 
         return $"{typeText} - {rangeText}";
+    }
+
+    private static string GetSkillDisplayName(SkillDefinitionSO skill)
+    {
+        string disciplineText = skill.discipline switch
+        {
+            SkillDiscipline.Basic => "기본기",
+            SkillDiscipline.WeaponArt => "무기술",
+            SkillDiscipline.Swordsmanship => "검술",
+            SkillDiscipline.Archery => "궁술",
+            SkillDiscipline.ShieldArt => "방패술",
+            SkillDiscipline.MartialArt => "체술",
+            SkillDiscipline.DaggerArt => "단검술",
+            SkillDiscipline.Magic => "마법",
+            SkillDiscipline.Monster => "몬스터",
+            _ => skill.discipline.ToString()
+        };
+
+        return $"{skill.skillName} · {disciplineText}";
     }
 
     private string GetSkillRangeText(SkillDefinitionSO skill)

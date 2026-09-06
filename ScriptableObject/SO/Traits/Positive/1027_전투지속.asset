@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 989da68dcae59b846a6bc4afb64700f2, type: 3}
+  m_Name: "1027_전투지속"
+  m_EditorClassIdentifier: 
+  id: 1027
+  traitName: "전투지속"
+  description: "적을 처치할 때 체력과 지구력을 회복한다."
+  icon: {fileID: 0}
+  polarity: 0
+  canGradeUp: 1
+  defaultAcquireGrade: 4
+  isPercentage: 0
+  statDelta: {}
+  specialStatDelta:
+    KillHpRecovery: 2
+    KillStaminaRecovery: 2
+  specialFlags: []
+  hasRequiredWeaponCondition: 0
+  requiredWeaponType: 0
+  conditionalStatDelta: {}
+  conditionalSpecialStatDelta: {}

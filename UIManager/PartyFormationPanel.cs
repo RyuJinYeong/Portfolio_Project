@@ -215,7 +215,7 @@ public class PartyFormationPanel : MonoBehaviour
                 $"권장 레벨  Lv. {selectedQuest.recommendedLevel}    " +
                 $"권장 인원  {selectedQuest.recommendedPartySize}명    " +
                 $"최대 인원  {MaximumPartySize}명\n" +
-                $"주요 보상  {QuestPanelItem.GetRewardText(selectedQuest.reward)}";
+                $"주요 보상  {QuestPanelItem.GetRewardText(selectedQuest)}";
         }
     }
 

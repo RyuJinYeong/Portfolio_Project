@@ -15,6 +15,7 @@ public class SkillDefinitionSO : ScriptableObject
 
     [Header("Presentation")]
     public ScriptableObject_AnimComposer composer;
+    public List<ScriptableObject_AnimComposer> followUpComposers = new();
 
     [Header("Skill Value")]
     public float activationSpeed = 1f;
@@ -227,6 +228,48 @@ public class SkillDefinitionSO : ScriptableObject
         }
 
         return true;
+    }
+
+    public string GetAcquisitionRequirementText()
+    {
+        List<string> requirements = new List<string>();
+
+        foreach (StatRequirementData requirement in requiredStats ?? new List<StatRequirementData>())
+        {
+            if (requirement == null)
+                continue;
+
+            requirements.Add(
+                $"{GetStatRequirementName(requirement.stat)} {requirement.requiredValue} 이상");
+        }
+
+        foreach (int traitId in requiredTraitIds ?? new List<int>())
+        {
+            TraitDefinitionSO trait = GameDataRegistry.Instance != null
+                ? GameDataRegistry.Instance.GetTrait(traitId)
+                : null;
+            requirements.Add(trait != null ? $"특성: {trait.traitName}" : $"특성 UID: {traitId}");
+        }
+
+        return requirements.Count > 0 ? string.Join(" / ", requirements) : "없음";
+    }
+
+    private static string GetStatRequirementName(StatRequirementType type)
+    {
+        return type switch
+        {
+            StatRequirementType.Strength => "근력",
+            StatRequirementType.Dexterity => "기교",
+            StatRequirementType.Speed => "속도",
+            StatRequirementType.Intelligence => "지능",
+            StatRequirementType.Wisdom => "지혜",
+            StatRequirementType.Health => "건강",
+            StatRequirementType.Vitality => "활력",
+            StatRequirementType.Endurance => "인내",
+            StatRequirementType.Detection => "눈썰미",
+            StatRequirementType.Insight => "통찰력",
+            _ => type.ToString()
+        };
     }
 
     public bool CanBeUsedBy(CharacterData character)

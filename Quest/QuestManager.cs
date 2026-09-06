@@ -55,6 +55,9 @@ public class QuestReward
 
     public QuestRewardKind kind;
     public int tier;
+    public int goldAmount;
+    public bool goldClaimed;
+    public bool itemsClaimed;
 
     public EquipmentRarity maxEquipmentRarity = EquipmentRarity.Common;
     public QuestEquipmentRewardFilter equipmentFilter;
@@ -651,6 +654,9 @@ public class QuestManager : MonoBehaviour
             return false;
 
 
+        ExpirePendingRescueQuests(entry.def.id);
+
+
         active =
             new ActiveQuestRuntime
             {
@@ -693,6 +699,63 @@ public class QuestManager : MonoBehaviour
 
 
         return true;
+    }
+
+
+    private void ExpirePendingRescueQuests(string acceptedQuestId)
+    {
+        if (board == null)
+            return;
+
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+        int expiredQuestCount = 0;
+        int lostCharacterCount = 0;
+
+        for (int i = board.Count - 1; i >= 0; i--)
+        {
+            QuestBoardEntry rescueEntry = board[i];
+            QuestDef rescueQuest = rescueEntry != null
+                ? rescueEntry.def
+                : null;
+
+            if (rescueQuest == null ||
+                !rescueQuest.isRescueQuest ||
+                rescueQuest.id == acceptedQuestId)
+            {
+                continue;
+            }
+
+            if (playerData != null && rescueQuest.rescueCharacterIds != null)
+            {
+                foreach (string characterId in rescueQuest.rescueCharacterIds)
+                {
+                    if (string.IsNullOrEmpty(characterId))
+                        continue;
+
+                    playerData.characterIds?.RemoveAll(id => id == characterId);
+                    playerData.activeCharacterIds?.RemoveAll(id => id == characterId);
+                    playerData.missingCharacterIds?.RemoveAll(id => id == characterId);
+                    playerData.revivalRequiredCharacterIds?.RemoveAll(id => id == characterId);
+                    playerData.RemovePosition(characterId);
+                    lostCharacterCount++;
+                }
+            }
+
+            SharedInventoryUtility.DiscardDefeatedExpedition(
+                playerData,
+                rescueQuest.sourceQuestId);
+            board.RemoveAt(i);
+            expiredQuestCount++;
+        }
+
+        if (expiredQuestCount > 0)
+        {
+            Debug.Log(
+                $"다른 의뢰 출발로 구출 의뢰 {expiredQuestCount}건이 만료되고 " +
+                $"실종 원정대원 {lostCharacterCount}명이 영구 사망 처리되었습니다.");
+        }
     }
 
 
@@ -1033,6 +1096,7 @@ public class QuestManager : MonoBehaviour
         runtime.routeNodes.Add(start);
         List<QuestRouteNode> previousLayer = new List<QuestRouteNode> { start };
         bool previousLayerHasElite = false;
+        int lastRestDepth = -1000;
 
         for (int depth = 1; depth <= encounterDepth; depth++)
         {
@@ -1040,12 +1104,30 @@ public class QuestManager : MonoBehaviour
             List<QuestRouteNode> layer = new List<QuestRouteNode>();
             bool guaranteedRest = guaranteedRestDepths.Contains(depth);
             bool layerHasElite = false;
+            bool layerHasRest = false;
+            bool nearGuaranteedRest = false;
+
+            if (!guaranteedRest)
+            {
+                foreach (int guaranteedRestDepth in guaranteedRestDepths)
+                {
+                    if (Mathf.Abs(guaranteedRestDepth - depth) <= 2)
+                    {
+                        nearGuaranteedRest = true;
+                        break;
+                    }
+                }
+            }
+
+            bool allowRest = depth > 2 &&
+                             depth - lastRestDepth > 2 &&
+                             !nearGuaranteedRest;
 
             for (int column = 0; column < nodeCount; column++)
             {
                 QuestRouteNodeType nodeType = guaranteedRest
                     ? QuestRouteNodeType.Rest
-                    : PickRouteNodeType(random, depth > 2, !previousLayerHasElite);
+                    : PickRouteNodeType(random, allowRest, !previousLayerHasElite);
 
                 QuestRouteNode node = new QuestRouteNode
                 {
@@ -1057,6 +1139,7 @@ public class QuestManager : MonoBehaviour
                 };
 
                 layerHasElite |= nodeType == QuestRouteNodeType.Elite;
+                layerHasRest |= nodeType == QuestRouteNodeType.Rest;
                 runtime.routeNodes.Add(node);
                 layer.Add(node);
             }
@@ -1064,6 +1147,9 @@ public class QuestManager : MonoBehaviour
             ConnectRouteLayers(previousLayer, layer, random);
             previousLayer = layer;
             previousLayerHasElite = layerHasElite;
+
+            if (layerHasRest)
+                lastRestDepth = depth;
         }
 
         QuestRouteNode boss = new QuestRouteNode
@@ -1227,6 +1313,7 @@ public class QuestManager : MonoBehaviour
             return;
 
 
+        ReviveActivePartyMembers();
         ResolveReward(active.def);
 
         if (active.def != null && active.def.isRescueQuest)
@@ -1265,6 +1352,80 @@ public class QuestManager : MonoBehaviour
 
         OnActiveChanged?.Invoke();
         OnCompletedChanged?.Invoke();
+    }
+
+    private void ReviveActivePartyMembers()
+    {
+        if (active?.partyCharacterIds == null)
+            return;
+
+        foreach (string characterId in active.partyCharacterIds)
+        {
+            if (string.IsNullOrEmpty(characterId))
+                continue;
+
+            CharacterManager battleCharacter = null;
+
+            if (GameManager.Instance != null)
+            {
+                foreach (CharacterManager manager in GameManager.Instance.GetAllCharacters())
+                {
+                    if (manager != null &&
+                        manager.character != null &&
+                        manager.character.ID == characterId)
+                    {
+                        battleCharacter = manager;
+                        break;
+                    }
+                }
+            }
+
+            CharacterManager pooledCharacter = CharacterPoolManager.Instance != null
+                ? CharacterPoolManager.Instance.Get(characterId)
+                : null;
+            CharacterData character = battleCharacter != null
+                ? battleCharacter.character
+                : pooledCharacter != null
+                    ? pooledCharacter.character
+                    : null;
+
+            if (character == null)
+                continue;
+
+            ReviveCharacter(character);
+            RefreshRevivedCharacter(battleCharacter);
+
+            if (pooledCharacter != null && pooledCharacter != battleCharacter)
+            {
+                ReviveCharacter(pooledCharacter.character);
+                RefreshRevivedCharacter(pooledCharacter);
+            }
+
+            PlayerManager.Instance?.SaveCharacter(character);
+        }
+    }
+
+    private static void ReviveCharacter(CharacterData character)
+    {
+        if (character == null)
+            return;
+
+        if (character.FinalStats == null)
+            character.UpdateFinalStats();
+
+        character.IsAlive = true;
+        character.CurrentHp = character.FinalStats != null
+            ? Mathf.Max(1, character.FinalStats.MaxHp)
+            : 1;
+    }
+
+    private static void RefreshRevivedCharacter(CharacterManager manager)
+    {
+        if (manager == null)
+            return;
+
+        manager.battlePresentationHandler?.SetDeadState(false);
+        manager.UpdateCharacterUI();
     }
 
 
@@ -1320,6 +1481,9 @@ public class QuestManager : MonoBehaviour
                 randomSeed = sourceReward.randomSeed,
                 kind = sourceReward.kind,
                 tier = sourceReward.tier,
+                goldAmount = sourceReward.goldAmount,
+                goldClaimed = sourceReward.goldClaimed,
+                itemsClaimed = sourceReward.itemsClaimed,
                 maxEquipmentRarity = sourceReward.maxEquipmentRarity,
                 equipmentFilter = sourceReward.equipmentFilter,
                 weaponType = sourceReward.weaponType,
@@ -1800,16 +1964,10 @@ public class QuestManager : MonoBehaviour
         QuestStageDefinitionSO stage)
     {
         if (boss != null &&
-            boss.baseMonster != null)
+            boss.baseMonster != null &&
+            !string.IsNullOrEmpty(
+                boss.baseMonster.monsterName))
         {
-            if (!string.IsNullOrEmpty(
-                    boss.roleName))
-            {
-                return
-                    $"{boss.baseMonster.monsterName} " +
-                    $"{boss.roleName} 토벌";
-            }
-
             return
                 $"{boss.baseMonster.monsterName} 토벌";
         }
@@ -2020,6 +2178,7 @@ public class QuestManager : MonoBehaviour
             {
                 randomSeed = rand.Next(1, int.MaxValue),
                 tier = questTier,
+                goldAmount = CalculateGoldReward(questTier, difficulty),
                 maxEquipmentRarity = GetMaximumEquipmentRewardRarity(difficulty)
             };
 
@@ -2442,6 +2601,14 @@ public class QuestManager : MonoBehaviour
         QuestReward reward = quest.reward;
 
 
+        if (reward.goldAmount <= 0)
+        {
+            reward.goldAmount = CalculateGoldReward(
+                quest.tier,
+                quest.difficulty);
+        }
+
+
         if (reward.rolled)
             return reward;
 
@@ -2536,6 +2703,177 @@ public class QuestManager : MonoBehaviour
 
         reward.rolled = true;
         return reward;
+    }
+
+
+    public static int CalculateGoldReward(
+        int questTier,
+        QuestDifficulty difficulty)
+    {
+        int tier = Mathf.Max(1, questTier);
+        int difficultyStep = Mathf.Clamp((int)difficulty, 0, 2);
+
+        return 1000 + tier * 1000 + difficultyStep * 400;
+    }
+
+
+    public int ClaimCompletedGoldRewards(PlayerData playerData)
+    {
+        return ClaimCompletedRewards(playerData);
+    }
+
+
+    public int ClaimCompletedRewards(PlayerData playerData)
+    {
+        if (playerData == null || completed == null)
+            return 0;
+
+        int totalGold = 0;
+        int grantedItemCount = 0;
+        bool changed = false;
+
+        foreach (CompletedQuestEntry entry in completed)
+        {
+            if (entry?.def == null)
+                continue;
+
+            QuestReward reward = ResolveReward(entry.def);
+
+            if (reward == null)
+                continue;
+
+            if (!reward.goldClaimed)
+            {
+                if (reward.goldAmount > 0)
+                {
+                    playerData.gold += reward.goldAmount;
+                    totalGold += reward.goldAmount;
+                }
+
+                reward.goldClaimed = true;
+                changed = true;
+            }
+
+            bool hasItemReward =
+                (reward.kind == QuestRewardKind.Equipment &&
+                 reward.equipmentUids != null &&
+                 reward.equipmentUids.Count > 0) ||
+                (reward.kind == QuestRewardKind.Skill &&
+                 reward.skillUids != null &&
+                 reward.skillUids.Count > 0);
+
+            if (!reward.itemsClaimed && TryClaimCompletedItemReward(playerData, reward))
+            {
+                reward.itemsClaimed = true;
+
+                if (hasItemReward)
+                    grantedItemCount++;
+
+                changed = true;
+            }
+
+            QuestStatus nextStatus = reward.goldClaimed && reward.itemsClaimed
+                ? QuestStatus.Rewarded
+                : QuestStatus.CompletedPendingReward;
+
+            if (entry.status != nextStatus)
+            {
+                entry.status = nextStatus;
+                changed = true;
+            }
+        }
+
+        if (totalGold > 0)
+            Debug.Log($"완료 의뢰 보수 {totalGold:N0} G를 수령했습니다.");
+
+        if (grantedItemCount > 0)
+            Debug.Log($"완료 의뢰의 주요 보상 {grantedItemCount}개를 용병단 창고에 보관했습니다.");
+
+        if (changed)
+            OnCompletedChanged?.Invoke();
+
+        return totalGold;
+    }
+
+
+    private static bool TryClaimCompletedItemReward(
+        PlayerData playerData,
+        QuestReward reward)
+    {
+        if (playerData == null || reward == null)
+            return false;
+
+        if (reward.kind == QuestRewardKind.None)
+            return true;
+
+        List<InventorySlotData> storage = SharedInventoryUtility.GetStorage(
+            playerData,
+            SharedInventoryType.CompanyStorage);
+
+        if (storage == null || GameDataRegistry.Instance == null)
+            return false;
+
+        if (reward.kind == QuestRewardKind.Equipment)
+        {
+            if (reward.equipmentUids == null || reward.equipmentUids.Count == 0)
+                return true;
+
+            EquipmentDefinitionSO definition = GameDataRegistry.Instance.GetEquipment(
+                reward.equipmentUids[0]);
+
+            if (definition == null)
+                return false;
+
+            EquipmentRarity rarity = reward.equipmentRarities != null &&
+                                     reward.equipmentRarities.Count > 0
+                ? reward.equipmentRarities[0]
+                : EquipmentRarity.Common;
+            GeneratedEquipmentData generated = EquipmentGenerator.Generate(
+                definition,
+                rarity);
+
+            if (generated == null)
+                return false;
+
+            EquipmentInstanceRepository.AddToPlayer(generated);
+
+            if (SharedInventoryUtility.AddItem(
+                    storage,
+                    definition.uid,
+                    1,
+                    generated.instanceId))
+            {
+                return true;
+            }
+
+            EquipmentInstanceRepository.RemoveFromPlayer(generated.instanceId);
+            return false;
+        }
+
+        if (reward.kind == QuestRewardKind.Skill)
+        {
+            if (reward.skillUids == null || reward.skillUids.Count == 0)
+                return true;
+
+            int skillUid = reward.skillUids[0];
+
+            if (GameDataRegistry.Instance.GetSkill(skillUid) == null ||
+                GameDataRegistry.Instance.GetItem(SharedInventoryUtility.SkillBookItemUid) == null)
+            {
+                return false;
+            }
+
+            return SharedInventoryUtility.AddInventorySlot(
+                storage,
+                new InventorySlotData
+                {
+                    itemUid = SharedInventoryUtility.SkillBookItemUid,
+                    count = 1,
+                    skillBookSkillUid = skillUid
+                });
+        }
+
+        return true;
     }
 
 

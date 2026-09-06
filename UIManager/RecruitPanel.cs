@@ -12,6 +12,7 @@ public class RecruitPanel : MonoBehaviour
     public TMP_Text sortiePayText;
     public TMP_Text currentGoldText;
     public Button hireButton;
+    public Button refreshButton;
 
     [Header("Hire Dialog")]
     public GameObject hireDialog;
@@ -43,6 +44,12 @@ public class RecruitPanel : MonoBehaviour
             hireButton.onClick.AddListener(OnHireButtonClicked);
         }
 
+        if (refreshButton != null)
+        {
+            refreshButton.onClick.RemoveListener(OnRefreshButtonClicked);
+            refreshButton.onClick.AddListener(OnRefreshButtonClicked);
+        }
+
         if (hireDialogConfirmButton != null)
         {
             hireDialogConfirmButton.onClick.RemoveListener(OnHireDialogConfirmed);
@@ -69,6 +76,9 @@ public class RecruitPanel : MonoBehaviour
         if (hireButton != null)
             hireButton.onClick.RemoveListener(OnHireButtonClicked);
 
+        if (refreshButton != null)
+            refreshButton.onClick.RemoveListener(OnRefreshButtonClicked);
+
         if (hireDialogConfirmButton != null)
             hireDialogConfirmButton.onClick.RemoveListener(OnHireDialogConfirmed);
 
@@ -93,7 +103,12 @@ public class RecruitPanel : MonoBehaviour
         if (playerData.recruitmentCandidates == null)
             playerData.recruitmentCandidates = new System.Collections.Generic.List<CharacterData>();
 
-        if (!playerData.recruitmentCandidatesInitialized)
+        bool hasLegacyCandidateNames = playerData.recruitmentCandidates.Exists(
+            candidate => candidate != null &&
+                         !string.IsNullOrEmpty(candidate.Name) &&
+                         candidate.Name.EndsWith(" 용병"));
+
+        if (!playerData.recruitmentCandidatesInitialized || hasLegacyCandidateNames)
         {
             MercenaryGenerator.RefreshRecruitmentCandidates(playerData);
             PlayerManager.Instance.SavePlayerDataToPlayFab();
@@ -181,6 +196,22 @@ public class RecruitPanel : MonoBehaviour
             hireDialog.SetActive(true);
     }
 
+    private void OnRefreshButtonClicked()
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        if (playerData == null)
+            return;
+
+        HideHireDialog();
+        selectedCharacter = null;
+        MercenaryGenerator.RefreshRecruitmentCandidates(playerData);
+        PlayerManager.Instance.SavePlayerDataToPlayFab();
+        BuildCandidates();
+    }
+
     private void OnHireDialogConfirmed()
     {
         if (!hireConfirmationPending)
@@ -227,6 +258,8 @@ public class RecruitPanel : MonoBehaviour
         SetText(currentGoldText, $"{playerData.gold:N0}");
         selectedCharacter.IsMine = true;
 
+        PromoteEquippedItems(selectedCharacter.EquipmentSlots);
+
         PlayerManager.Instance.CreateCharacter(selectedCharacter);
         playerData.characterIds.Add(selectedCharacter.ID);
         playerData.SetPosition(selectedCharacter.ID, false);
@@ -246,6 +279,22 @@ public class RecruitPanel : MonoBehaviour
         HideHireDialog();
         gameObject.SetActive(false);
         UIManager.Instance?.ReturnToTownCameraWhenIdle();
+    }
+
+    private static void PromoteEquippedItems(EquipmentSlotData slots)
+    {
+        if (slots == null)
+            return;
+
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.helmetInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.armorInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.glovesInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.shoesInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.ring1InstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.ring2InstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.necklaceInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.weaponInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.subWeaponInstanceId);
     }
 
     private static void SetText(TMP_Text target, string value)

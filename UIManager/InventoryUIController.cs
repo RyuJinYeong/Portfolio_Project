@@ -11,6 +11,7 @@ public class InventoryUIController : MonoBehaviour
     public GameObject itemTooltipPrefab;
 
     public CharacterManager SelectedCharacter { get; private set; }
+    public CharacterData SelectedCharacterData { get; private set; }
 
     private void Awake()
     {
@@ -37,12 +38,27 @@ public class InventoryUIController : MonoBehaviour
     public void SetSelectedCharacter(CharacterManager characterManager)
     {
         SelectedCharacter = characterManager;
+        SelectedCharacterData = characterManager != null
+            ? characterManager.character
+            : null;
 
         if (companyStorageWindow != null)
             companyStorageWindow.SetCharacter(characterManager);
 
         if (expeditionInventoryWindow != null)
             expeditionInventoryWindow.SetCharacter(characterManager);
+    }
+
+    public void SetSelectedCharacterData(CharacterData character)
+    {
+        SelectedCharacter = null;
+        SelectedCharacterData = character;
+
+        if (companyStorageWindow != null)
+            companyStorageWindow.SetCharacter(null);
+
+        if (expeditionInventoryWindow != null)
+            expeditionInventoryWindow.SetCharacter(null);
     }
 
     public void OpenCompanyStorage()
@@ -71,18 +87,26 @@ public class InventoryUIController : MonoBehaviour
 
     public void OpenEquipment()
     {
-        if (equipmentWindow != null && SelectedCharacter != null)
-        {
+        if (equipmentWindow == null)
+            return;
+
+        if (SelectedCharacter != null)
             equipmentWindow.Open(
                 SelectedCharacter,
                 GetAccessibleInventoryType());
-        }
+        else if (SelectedCharacterData != null)
+            equipmentWindow.Open(SelectedCharacterData);
     }
 
     public void OpenSkills()
     {
-        if (skillWindow != null && SelectedCharacter != null)
+        if (skillWindow == null)
+            return;
+
+        if (SelectedCharacter != null)
             skillWindow.Open(SelectedCharacter);
+        else if (SelectedCharacterData != null)
+            skillWindow.Open(SelectedCharacterData);
     }
 
     public void ToggleAccessibleStorageFromEquipment()
@@ -181,13 +205,19 @@ public class InventoryUIController : MonoBehaviour
         const float gap = 10f;
         float companyWidth = companyRect.rect.width;
         float expeditionWidth = expeditionRect.rect.width;
+        float commonTop = companyRect.anchoredPosition.y +
+                          companyRect.rect.height * (1f - companyRect.pivot.y);
+        float companyY = commonTop -
+                         companyRect.rect.height * (1f - companyRect.pivot.y);
+        float expeditionY = commonTop -
+                            expeditionRect.rect.height * (1f - expeditionRect.pivot.y);
 
         SetWindowPosition(
             companyStorageWindow,
-            new Vector2(-(expeditionWidth + gap) * 0.5f, 0f));
+            new Vector2(-(expeditionWidth + gap) * 0.5f, companyY));
         SetWindowPosition(
             expeditionInventoryWindow,
-            new Vector2((companyWidth + gap) * 0.5f, 0f));
+            new Vector2((companyWidth + gap) * 0.5f, expeditionY));
     }
 
     public SharedInventoryWindowUI GetAccessibleStorageWindow()

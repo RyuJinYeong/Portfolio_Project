@@ -143,9 +143,7 @@ public static class TraitGenerationUtility
 
         for (int i = 0; i < count && candidates.Count > 0; i++)
         {
-            int index = random.Next(0, candidates.Count);
-            TraitDefinitionSO trait = candidates[index];
-            candidates.RemoveAt(index);
+            TraitDefinitionSO trait = TakeWeightedRandomTrait(candidates, random);
 
             AddTrait(character, trait, gradeBonus);
         }
@@ -165,10 +163,38 @@ public static class TraitGenerationUtility
         if (candidates.Count == 0)
             return false;
 
-        TraitDefinitionSO trait = candidates[random.Next(0, candidates.Count)];
+        TraitDefinitionSO trait = TakeWeightedRandomTrait(candidates, random);
         TraitGrade grade = RollAdditionalTraitGrade(random, gradeBonus);
         TraitGradeUtility.AddTrait(character.Traits, trait, grade);
         return true;
+    }
+
+    private static TraitDefinitionSO TakeWeightedRandomTrait(
+        List<TraitDefinitionSO> candidates,
+        System.Random random)
+    {
+        int totalWeight = 0;
+
+        foreach (TraitDefinitionSO trait in candidates)
+            totalWeight += 64 >> (int)trait.defaultAcquireGrade;
+
+        int roll = random.Next(0, totalWeight);
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            TraitDefinitionSO trait = candidates[i];
+            roll -= 64 >> (int)trait.defaultAcquireGrade;
+
+            if (roll >= 0)
+                continue;
+
+            candidates.RemoveAt(i);
+            return trait;
+        }
+
+        TraitDefinitionSO fallback = candidates[candidates.Count - 1];
+        candidates.RemoveAt(candidates.Count - 1);
+        return fallback;
     }
 
     private static TraitGrade RollAdditionalTraitGrade(

@@ -741,12 +741,25 @@ public class CharacterData
             return false;
         }
 
+        if (weapon.weaponTags != null &&
+            weapon.weaponTags.Contains(WeaponTag.TwoHanded) &&
+            GetSubWeapon() != null)
+        {
+            return false;
+        }
+
         return true;
     }
 
     public bool CanEquipSubWeapon()
     {
-        return !HasTraitFlag(TraitSpecialFlag.OneArmed);
+        WeaponDefinitionSO mainWeapon = GetMainWeapon();
+        bool hasTwoHandedMainWeapon =
+            mainWeapon != null &&
+            mainWeapon.weaponTags != null &&
+            mainWeapon.weaponTags.Contains(WeaponTag.TwoHanded);
+
+        return !HasTraitFlag(TraitSpecialFlag.OneArmed) && !hasTwoHandedMainWeapon;
     }
 
     // 모든 특성 효과 제거

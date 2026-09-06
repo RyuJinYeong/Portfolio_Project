@@ -124,6 +124,15 @@ public class InventoryItemSlotUI : MonoBehaviour,
         if (slot.IsMonsterEssence() && !string.IsNullOrEmpty(slot.essenceMonsterName))
             return $"{slot.essenceMonsterName}의 정수";
 
+        if (slot.IsSkillBook() && GameDataRegistry.Instance != null)
+        {
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(
+                slot.skillBookSkillUid);
+
+            if (skill != null)
+                return $"{skill.skillName} 스킬북";
+        }
+
         if (item is EquipmentDefinitionSO)
         {
             EquipmentRuntimeData runtime = EquipmentRuntimeResolver.Resolve(

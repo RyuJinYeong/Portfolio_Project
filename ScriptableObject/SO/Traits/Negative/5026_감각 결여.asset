@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 989da68dcae59b846a6bc4afb64700f2, type: 3}
+  m_Name: "5026_감각 결여"
+  m_EditorClassIdentifier: 
+  id: 5026
+  traitName: "감각 결여"
+  description: "탐색 감각이 거의 없어 눈썰미와 통찰력이 절반으로 감소한다."
+  icon: {fileID: 0}
+  polarity: 1
+  canGradeUp: 0
+  defaultAcquireGrade: 5
+  isPercentage: 1
+  statDelta:
+    Detection: -50
+    Insight: -50
+  specialStatDelta:
+    MapDetectionRange: -3
+  specialFlags: []
+  hasRequiredWeaponCondition: 0
+  requiredWeaponType: 0
+  conditionalStatDelta: {}
+  conditionalSpecialStatDelta: {}

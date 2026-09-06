@@ -103,12 +103,56 @@ public static class QuestEncounterResolver
             statName,
             amount,
             itemName);
+        string learnedSkillName = TryLearnRandomSkill(choice, selectedCharacter);
+
+        if (!string.IsNullOrEmpty(learnedSkillName))
+            resultMessage += $"\n\n책 속의 지식이 이어지며 {learnedSkillName} 스킬을 습득했습니다.";
+
         resolution.message = checkAttempted
             ? $"[{GetCheckStatName(choice.abilityCheck.stat)} 판정 {(checkSucceeded ? "성공" : "실패")}]\n{resultMessage}"
             : resultMessage;
 
         PlayerManager.Instance?.SavePlayerDataToPlayFab();
         return resolution;
+    }
+
+    private static string TryLearnRandomSkill(
+        QuestEncounterChoiceData choice,
+        CharacterManager selectedCharacter)
+    {
+        if (choice == null || choice.randomSkillChancePercent <= 0f ||
+            selectedCharacter == null || selectedCharacter.character == null ||
+            GameDataRegistry.Instance == null ||
+            Random.Range(0f, 100f) >= choice.randomSkillChancePercent)
+        {
+            return string.Empty;
+        }
+
+        ActiveQuestRuntime active = QuestManager.Instance != null
+            ? QuestManager.Instance.active
+            : null;
+        int questTier = active?.def != null
+            ? Mathf.Max(1, active.def.tier)
+            : 1;
+        CharacterData character = selectedCharacter.character;
+        List<SkillDefinitionSO> candidates = GameDataRegistry.Instance
+            .GetRewardSkills()
+            .FindAll(skill =>
+                skill != null &&
+                skill.CanAppearInRewardPool(questTier) &&
+                !SkillManager.HasSkill(character, skill.uid));
+
+        if (candidates.Count == 0)
+            return string.Empty;
+
+        SkillDefinitionSO learnedSkill = candidates[Random.Range(0, candidates.Count)];
+
+        if (!SkillManager.AddSkill(character, learnedSkill))
+            return string.Empty;
+
+        selectedCharacter.UpdateCharacterUI();
+        PlayerManager.Instance?.SaveCharacter(character);
+        return learnedSkill.skillName;
     }
 
     public static float GetSuccessChance(
@@ -382,12 +426,31 @@ public static class QuestEncounterResolver
 
     private static void RecoverResources(List<CharacterManager> targets)
     {
+        const float recoveryRate = 0.2f;
+
         foreach (CharacterManager manager in targets)
         {
             CharacterData character = manager.character;
-            character.CurrentHp = character.FinalStats.MaxHp;
-            character.CurrentStamina = character.FinalStats.MaxStamina;
-            character.CurrentMentality = character.FinalStats.MaxMentality;
+            bool wasDead = !character.IsAlive || character.CurrentHp <= 0;
+            int hpRecovery = Mathf.CeilToInt(character.FinalStats.MaxHp * recoveryRate);
+            int staminaRecovery = Mathf.CeilToInt(character.FinalStats.MaxStamina * recoveryRate);
+            int mentalityRecovery = Mathf.CeilToInt(character.FinalStats.MaxMentality * recoveryRate);
+
+            character.CurrentHp = wasDead
+                ? hpRecovery
+                : Mathf.Min(character.CurrentHp + hpRecovery, character.FinalStats.MaxHp);
+            character.CurrentStamina = Mathf.Min(
+                character.CurrentStamina + staminaRecovery,
+                character.FinalStats.MaxStamina);
+            character.CurrentMentality = Mathf.Min(
+                character.CurrentMentality + mentalityRecovery,
+                character.FinalStats.MaxMentality);
+
+            if (wasDead)
+            {
+                character.IsAlive = true;
+                manager.battlePresentationHandler?.SetDeadState(false);
+            }
 
             if (manager.characterUIHandler != null)
                 manager.UpdateCharacterUI();

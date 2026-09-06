@@ -15,7 +15,7 @@ MonoBehaviour:
   uid: 5002
   itemName: "\uC815\uCC30\uBCD1\uC758 \uB2E8\uAC80"
   description: "\uC815\uCC30\uBCD1\uC758 \uB2E8\uAC80"
-  icon: {fileID: 2800000, guid: 0ffee6f84c73c914a85e04746d324dd7, type: 3}
+  icon: {fileID: 2800000, guid: 1c2b9dd0a4882d744a8efc77c094625e, type: 3}
   category: 0
   price: 80
   weight: 2
@@ -65,8 +65,6 @@ MonoBehaviour:
     CriticalDamageBonus: 0
     StatusResistance: 0
     MapDetectionRange: 0
-    TrapDetectionBonus: 0
-    EventInsightBonus: 0
     KillHpRecovery: 0
     KillStaminaRecovery: 0
     KillMentalityRecovery: 0
@@ -76,12 +74,12 @@ MonoBehaviour:
   isUnique: 0
   canDrop: 1
   grantedTraitIds: 
-  visualKey: Sword_001
-  uncommonVisualKey: Sword_001
-  rareVisualKey: Sword_002
-  epicVisualKey: Sword_002
+  visualKey: Dagger_001
+  uncommonVisualKey: Dagger_001
+  rareVisualKey: Dagger_001
+  epicVisualKey: Dagger_001
   legendaryVisualKey: 
   weaponCategory: 1
   weaponType: 3
   weaponTags: 
-  attributes: 0600000005000000
+  attributes: 0400000005000000

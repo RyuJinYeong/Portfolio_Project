@@ -85,7 +85,12 @@ public class GameManager : MonoBehaviour
     // 스테이지 전환 + 스킬 아이콘 로드 
     public void SwitchStage(string stageType)
     {
-        StartCoroutine(CoSwitchStage(stageType));
+        StartCoroutine(CoSwitchStage(stageType, true));
+    }
+
+    public void ReturnToTownAfterQuestAbandon()
+    {
+        StartCoroutine(CoSwitchStage("Town", false));
     }
 
     public void EnterQuestRouteNode(QuestRouteNode node)
@@ -100,13 +105,18 @@ public class GameManager : MonoBehaviour
         SwitchStage(activeQuest.stageKey);
     }
 
-    IEnumerator CoSwitchStage(string stageType)
+    IEnumerator CoSwitchStage(
+        string stageType,
+        bool claimCompletedQuestRewards)
     {
         var pd = PlayerManager.Instance.GetCurrentPlayerData();
         if (pd == null)
             yield break;
 
         pd.currentStage = stageType;
+
+        if (stageType == "Town")
+            RecoverReturningExpeditionHealth(pd);
 
         ClearSpawnedUnits();
         ApplyStage(stageType);
@@ -116,18 +126,60 @@ public class GameManager : MonoBehaviour
             yield return null;
 
             SharedInventoryUtility.TransferExpeditionToCompany(pd);
+
+            if (claimCompletedQuestRewards)
+                QuestManager.Instance?.ClaimCompletedRewards(pd);
+
+            MercenaryGenerator.RefreshRecruitmentCandidates(pd);
+
             PlayerManager.Instance?.SavePlayerDataToPlayFab();
 
             yield break;
         }
 
-        if (pd.activeCharacterIds != null && pd.activeCharacterIds.Count > 0)
-        {
-            MercenaryGenerator.RefreshRecruitmentCandidates(pd);
-            PlayerManager.Instance.SavePlayerDataToPlayFab();
-        }
-
         SpawnSortie(pd, HandleCurrentRouteNodeReady);
+    }
+
+    private void RecoverReturningExpeditionHealth(PlayerData playerData)
+    {
+        if (playerData?.activeCharacterIds == null)
+            return;
+
+        foreach (string characterId in playerData.activeCharacterIds)
+        {
+            if (string.IsNullOrEmpty(characterId))
+                continue;
+
+            CharacterManager battleCharacter = allCharacters.Find(manager =>
+                manager != null &&
+                manager.character != null &&
+                manager.character.ID == characterId);
+            CharacterManager pooledCharacter = CharacterPoolManager.Instance != null
+                ? CharacterPoolManager.Instance.Get(characterId)
+                : null;
+            CharacterData character = battleCharacter != null
+                ? battleCharacter.character
+                : pooledCharacter != null
+                    ? pooledCharacter.character
+                    : null;
+
+            if (character == null || !character.IsAlive || character.FinalStats == null)
+                continue;
+
+            character.CurrentHp = character.FinalStats.MaxHp;
+
+            if (pooledCharacter != null &&
+                pooledCharacter.character != null &&
+                pooledCharacter.character != character &&
+                pooledCharacter.character.FinalStats != null)
+            {
+                pooledCharacter.character.CurrentHp = pooledCharacter.character.FinalStats.MaxHp;
+                pooledCharacter.UpdateCharacterUI();
+            }
+
+            battleCharacter?.UpdateCharacterUI();
+            PlayerManager.Instance?.SaveCharacter(character);
+        }
     }
 
     void ClearSpawnedUnits()
@@ -473,6 +525,24 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        QuestRouteNode currentNode = QuestManager.Instance != null
+            ? QuestManager.Instance.GetCurrentRouteNode() : null;
+        if (currentNode != null && currentNode.type == QuestRouteNodeType.RandomEncounter)
+        {
+            StageManager.Instance.ActivateEncounterBattle();
+            List<CharacterManager> allies = allCharacters
+                .Where(c => c != null && c.character != null && c.character.IsMine).ToList();
+            int frontCount = allies.Count(c => c.isFront);
+            Transform[] allyPoints = SpawnPointManager.Instance.GetAllySpawnPoints(frontCount, allies.Count - frontCount);
+            int frontIndex = 0;
+            int backIndex = frontCount;
+            foreach (CharacterManager ally in allies)
+            {
+                Transform point = allyPoints[ally.isFront ? frontIndex++ : backIndex++];
+                ally.transform.SetPositionAndRotation(point.position, point.rotation);
+            }
+        }
+
         if (UIManager.Instance != null)
         {
             UIManager.Instance.questNodeMapPanel?.Close();
@@ -480,15 +550,42 @@ public class GameManager : MonoBehaviour
         }
 
         int spawnCount = Mathf.Min(5, monsterRoleIds.Count);
-        Transform[] spawnPoints = SpawnPointManager.Instance.GetEnemySpawnPoints(spawnCount, 0);
+        int encounterSeed = QuestManager.Instance != null &&
+                            QuestManager.Instance.active != null &&
+                            QuestManager.Instance.active.def != null
+            ? QuestManager.Instance.active.def.seed
+            : 0;
+        int formationSeed = encounterSeed +
+                            (currentNode != null ? currentNode.id * 31 : 0) +
+                            7919;
+        System.Random formationRandom = new System.Random(formationSeed);
+        List<int> frontRoleIds = new List<int>();
+        List<int> backRoleIds = new List<int>();
+
+        for (int i = 0; i < spawnCount; i++)
+        {
+            int roleId = monsterRoleIds[i];
+            MonsterRoleSO role = GameDataRegistry.Instance.GetMonsterRole(roleId);
+
+            if (ShouldSpawnMonsterInFront(role, formationRandom))
+                frontRoleIds.Add(roleId);
+            else
+                backRoleIds.Add(roleId);
+        }
+
+        Transform[] spawnPoints = SpawnPointManager.Instance.GetEnemySpawnPoints(
+            frontRoleIds.Count,
+            backRoleIds.Count);
+        List<int> arrangedRoleIds = new List<int>(frontRoleIds);
+        arrangedRoleIds.AddRange(backRoleIds);
         int questLevel = QuestManager.Instance != null && QuestManager.Instance.active != null &&
                          QuestManager.Instance.active.def != null
             ? QuestManager.Instance.active.def.recommendedLevel
             : 1;
 
-        for (int i = 0; i < spawnCount && i < spawnPoints.Length; i++)
+        for (int i = 0; i < arrangedRoleIds.Count && i < spawnPoints.Length; i++)
         {
-            MonsterRoleSO role = GameDataRegistry.Instance.GetMonsterRole(monsterRoleIds[i]);
+            MonsterRoleSO role = GameDataRegistry.Instance.GetMonsterRole(arrangedRoleIds[i]);
             CharacterData monster = MonsterGenerator.Generate(
                 role,
                 questLevel,
@@ -498,10 +595,42 @@ public class GameManager : MonoBehaviour
                     : 0);
 
             if (monster != null)
-                SpawnEnemy(monster, spawnPoints[i]);
+                SpawnEnemy(monster, spawnPoints[i], i < frontRoleIds.Count);
         }
 
         SignalRosterReady();
+    }
+
+    private static bool ShouldSpawnMonsterInFront(
+        MonsterRoleSO role,
+        System.Random random)
+    {
+        if (role == null || role.skillUids == null || GameDataRegistry.Instance == null)
+            return true;
+
+        int meleeSkillCount = 0;
+        int rangedSkillCount = 0;
+
+        foreach (int skillUid in role.skillUids)
+        {
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(skillUid);
+
+            if (skill == null || skill.isCounterSkill)
+                continue;
+
+            if (skill.isRangedSkill)
+                rangedSkillCount++;
+            else
+                meleeSkillCount++;
+        }
+
+        if (rangedSkillCount > meleeSkillCount)
+            return false;
+
+        if (meleeSkillCount > rangedSkillCount || meleeSkillCount == 0)
+            return true;
+
+        return random == null || random.Next(0, 2) == 0;
     }
 
     private void ApplyStage(string stageType)
@@ -573,7 +702,7 @@ public class GameManager : MonoBehaviour
     }
 
     // 적군 스폰 (등록 포함)
-    private void SpawnEnemy(CharacterData enemyData, Transform spawnPoint)
+    private void SpawnEnemy(CharacterData enemyData, Transform spawnPoint, bool isFront)
     {
         if (spawnPoint == null)
         {
@@ -601,13 +730,14 @@ public class GameManager : MonoBehaviour
         var characterManager = gameObject.GetComponent<CharacterManager>();
         if (characterManager != null)
         {
+            characterManager.isFront = isFront;
             characterManager.InitializeCharacter(enemyData);
-
-            foreach (Renderer renderer in gameObject.GetComponentsInChildren<Renderer>(true))
-                renderer.enabled = false;
 
             if (modelPrefab != null)
             {
+                foreach (Renderer renderer in gameObject.GetComponentsInChildren<Renderer>(true))
+                    renderer.enabled = false;
+
                 GameObject visual = Instantiate(modelPrefab, gameObject.transform);
                 visual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
                 visual.transform.localScale = Vector3.one;
@@ -629,6 +759,9 @@ public class GameManager : MonoBehaviour
             }
             else
             {
+                foreach (Renderer renderer in gameObject.GetComponentsInChildren<Renderer>(true))
+                    renderer.enabled = false;
+
                 Debug.LogWarning($"Monster model prefab not found. monsterRoleId: {enemyData.monsterRoleId}");
             }
 

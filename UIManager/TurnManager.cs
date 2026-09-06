@@ -14,6 +14,10 @@ public class TurnManager : MonoBehaviour
     public CharacterManager currentCharacter; // 공격자
     public CharacterManager defenseCharacter; // 방어자
     public CharacterManager defenseTarget;    // 방어대상
+    public bool returnToTownAfterBattle = true;
+    [SerializeField] private bool enableTurnTimeLimit;
+    public bool IsTurnTimeLimitEnabled => enableTurnTimeLimit;
+    public bool IsBattleInProgress => _stageStarted && !battleEnded;
     private GameManager gameManager;
     private List<CharacterManager> allCharacters; // 전투에 참여한 모든 캐릭터들을 관리하는 리스트
 
@@ -98,6 +102,37 @@ public class TurnManager : MonoBehaviour
     {
         allCharacters = gameManager.GetAllCharacters(); // 모든 캐릭터들을 가져와서 리스트에 저장
         battleEnded = false;
+        currentCharacter = null;
+        defenseCharacter = null;
+        defenseTarget = null;
+
+        if (UIManager.Instance != null && UIManager.Instance.partyManagementPanel != null)
+            UIManager.Instance.partyManagementPanel.gameObject.SetActive(false);
+
+        if (UIManager.Instance != null && UIManager.Instance.turnTimerText != null)
+            UIManager.Instance.turnTimerText.gameObject.SetActive(enableTurnTimeLimit);
+
+        foreach (CharacterManager character in allCharacters)
+        {
+            if (character == null)
+                continue;
+
+            character.isPlayerTurn = false;
+            character.hasExtraTurn = false;
+            character.isInMeleeCombat = false;
+            character.meleeTarget = null;
+
+            if (character.combatHandler != null)
+            {
+                character.combatHandler.isDefenseCharacter = false;
+                character.combatHandler.isDefenseTarget = false;
+            }
+
+            character.battlePresentationHandler?.SetDeadState(
+                character.character != null && !character.character.IsAlive);
+            character.UpdateCharacterUI();
+        }
+
         BattlePresentationDirector.Instance?.PrepareBattle(allCharacters);
 
         foreach (CharacterManager character in allCharacters)
@@ -108,6 +143,30 @@ public class TurnManager : MonoBehaviour
 
         UpdateTurnQueue();
         Debug.Log("turn queue : "+turnQueue.Count);
+        StartCoroutine(PrepareBattleWeapons());
+    }
+
+    private IEnumerator PrepareBattleWeapons()
+    {
+        List<Coroutine> drawRoutines = new();
+        foreach (CharacterManager character in allCharacters)
+        {
+            if (character == null || character.character == null ||
+                !character.character.IsMine || !character.character.IsAlive)
+                continue;
+
+            CharacterCustomization customization = character.GetComponent<CharacterCustomization>();
+            if (customization != null)
+                drawRoutines.Add(StartCoroutine(customization.DrawWeapons(
+                    character.character, character.battlePresentationHandler)));
+        }
+
+        foreach (Coroutine routine in drawRoutines)
+            yield return routine;
+
+        if (battleEnded)
+            yield break;
+
         StartNextTurn();
     }
 
@@ -140,11 +199,31 @@ public class TurnManager : MonoBehaviour
         {
             currentCharacter.hasExtraTurn = false; // 추가 턴 사용 완료
             Debug.Log($"{currentCharacter.character.Name}이 추가 턴을 획득했습니다.");
+
+            StartCoroutine(StartExtraTurnAfterNotification(currentCharacter));
+            return;
         }
         else
         {
             currentCharacter = turnQueue.Dequeue(); // 추가 턴이 없으면 다음 캐릭터로 넘어감
         }
+
+        BeginCurrentTurn();
+    }
+
+    private IEnumerator StartExtraTurnAfterNotification(CharacterManager extraTurnCharacter)
+    {
+        if (UIManager.Instance != null)
+            yield return UIManager.Instance.ShowExtraTurnNotification();
+
+        if (battleEnded || currentCharacter != extraTurnCharacter)
+            yield break;
+
+        BeginCurrentTurn();
+    }
+
+    private void BeginCurrentTurn()
+    {
 
         Debug.Log("현재 Turn Queue.Count : " + turnQueue.Count + " 현재 턴 캐릭터 :" + currentCharacter.character.Name);
 
@@ -189,42 +268,21 @@ public class TurnManager : MonoBehaviour
 
         if (currentCharacter.GetSkillQueue().Count > 0)
         {
+            ClearCounterSkillQueues();
             currentCharacter.combatHandler.AutoAssignDefaultCounterSkills();
             Debug.Log("CounterTurn Start");
-            //대응턴 시작 30초 제한
-            currentCharacter.combatHandler.turnTimerCoroutine =
-                currentCharacter.combatHandler.StartCoroutine(
-                    currentCharacter.combatHandler.TurnTimer(30f, EndTurn));
+            if (enableTurnTimeLimit)
+            {
+                currentCharacter.combatHandler.turnTimerCoroutine =
+                    currentCharacter.combatHandler.StartCoroutine(
+                        currentCharacter.combatHandler.TurnTimer(30f, EndTurn));
+            }
 
             if (!currentCharacter.character.IsMine)
             {
                 SetCounterTurnButtonAction(); // 대응 턴 버튼 설정
 
-                // 현재 턴인 캐릭터와 반대 진영에 있는 캐릭터를 찾아 방어 버튼을 활성화
-                List<CharacterManager> allCharacters = GameManager.Instance.GetAllCharacters();
-                List<CharacterManager> enemies = allCharacters
-                    .Where(character => character.character.IsMine != currentCharacter.character.IsMine && character.character.IsAlive)
-                    .ToList();
-
-                // 방어 캐릭터 선택 UI 활성화
-                foreach (CharacterManager enemy in enemies)
-                {
-                    if (enemy.characterUIHandler.CounterButton != null)
-                    {
-                        enemy.characterUIHandler.CounterButton.SetActive(true);
-                        enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.RemoveAllListeners();
-                        enemy.characterUIHandler.CounterButton.GetComponent<Button>().onClick.AddListener(() =>
-                        {
-                            defenseCharacter = enemy;
-                            enemy.combatHandler.SetDefenseCharacter(enemy); // 캐릭터 매니저 필드값 변경 - 방어 캐릭터로 선택
-                            DisableDefenseButtons(enemies); // 방어 버튼 비활성화
-                            enemy.UpdateCharacterUI();
-
-                            // 방어 대상 타겟팅 시작
-                            UIManager.Instance.characterTargeting.StartDefenseCharacterTargeting(defenseCharacter);
-                        });
-                    }
-                }            
+                EnableDefenseCharacterButtons();
             }
             else
             {
@@ -254,6 +312,66 @@ public class TurnManager : MonoBehaviour
                 enemy.characterUIHandler.CounterButton.SetActive(false);
             }
         }
+    }
+
+    private void EnableDefenseCharacterButtons()
+    {
+        if (currentCharacter == null || allCharacters == null)
+            return;
+
+        List<CharacterManager> defenders = allCharacters
+            .Where(character =>
+                character != null &&
+                character.character != null &&
+                character.character.IsMine != currentCharacter.character.IsMine &&
+                character.character.IsAlive)
+            .ToList();
+
+        foreach (CharacterManager defender in defenders)
+        {
+            if (defender.characterUIHandler == null ||
+                defender.characterUIHandler.CounterButton == null)
+            {
+                continue;
+            }
+
+            GameObject counterButtonObject = defender.characterUIHandler.CounterButton;
+            Button counterButton = counterButtonObject.GetComponent<Button>();
+
+            if (counterButton == null)
+                continue;
+
+            counterButtonObject.SetActive(true);
+            counterButton.onClick.RemoveAllListeners();
+            counterButton.onClick.AddListener(() =>
+            {
+                defenseCharacter = defender;
+                defender.combatHandler.SetDefenseCharacter(defender);
+                DisableDefenseButtons(defenders);
+                defender.UpdateCharacterUI();
+                UIManager.Instance.characterTargeting.StartDefenseCharacterTargeting(
+                    defenseCharacter);
+            });
+        }
+    }
+
+    public void CancelDefenseCharacterSelection()
+    {
+        if (defenseTarget != null)
+            return;
+
+        CharacterManager canceledDefender = defenseCharacter;
+        defenseCharacter = null;
+
+        if (canceledDefender != null && canceledDefender.combatHandler != null)
+        {
+            canceledDefender.combatHandler.isDefenseCharacter = false;
+            canceledDefender.UpdateCharacterUI();
+            UIManager.Instance?.UpdateHotbarSkills(canceledDefender);
+        }
+
+        UIManager.Instance?.ClearCounterSkillPanel();
+        EnableDefenseCharacterButtons();
     }
 
     private void EndTurn()
@@ -302,6 +420,26 @@ public class TurnManager : MonoBehaviour
 
         if (battleEnded)
             return;
+
+        StartCoroutine(FinishTurnPresentation());
+    }
+
+    private IEnumerator FinishTurnPresentation()
+    {
+        foreach (CharacterManager character in allCharacters)
+        {
+            if (character == null)
+                continue;
+
+            character.isInMeleeCombat = false;
+            character.meleeTarget = null;
+        }
+
+        if (BattlePresentationDirector.Instance != null)
+            yield return BattlePresentationDirector.Instance.ReturnCharactersHome(allCharacters);
+
+        if (battleEnded)
+            yield break;
 
         // 스킬 및 대응 스킬 적용이 끝난 뒤 승리/패배 조건 체크
         if (!CheckBattleEnd())
@@ -359,41 +497,51 @@ public class TurnManager : MonoBehaviour
         _stageStarted = false;
         StopBattleActions();
         int grantedExperience = ProgressionRules.SettleVictoryExperience(allCharacters);
+        int droppedGold = ProgressionRules.SettleVictoryGold(allCharacters);
         List<InventorySlotData> droppedLoot = ProgressionRules.RollVictoryLoot(allCharacters);
         Debug.Log($"승리! 파티 경험치 총 지급량: {grantedExperience}");
+
+        if (droppedGold > 0)
+            Debug.Log($"몬스터 전리품 골드: +{droppedGold:N0} G");
 
         if (droppedLoot.Count > 0)
             Debug.Log($"전리품 발견: {droppedLoot.Count}개");
 
-        System.Action completeVictory = () =>
+        System.Action continueAfterGrowth = () =>
         {
-            QuestManager.Instance?.CompleteCurrentRouteNode();
             PlayerManager.Instance?.SavePlayerDataToPlayFab();
 
             if (QuestManager.Instance != null && QuestManager.Instance.active != null)
                 UIManager.Instance?.OpenQuestNodeMap();
-            else
+            else if (returnToTownAfterBattle)
                 GameManager.Instance?.SwitchStage("Town");
         };
 
-        System.Action continueAfterLoot = () =>
+        System.Action completeNodeAndOfferGrowth = () =>
         {
+            QuestManager.Instance?.CompleteCurrentRouteNode();
+
             bool openedGrowth = UIManager.Instance != null &&
-                UIManager.Instance.OpenPendingLevelUps(completeVictory);
+                UIManager.Instance.OpenPendingLevelUps(
+                    allCharacters,
+                    continueAfterGrowth);
 
             if (!openedGrowth)
-                completeVictory();
+                continueAfterGrowth();
         };
 
         bool openedLoot = UIManager.Instance != null &&
-            UIManager.Instance.OpenBattleLoot(droppedLoot, continueAfterLoot);
+            UIManager.Instance.OpenBattleLoot(
+                droppedLoot,
+                droppedGold,
+                completeNodeAndOfferGrowth);
 
         if (!openedLoot)
         {
             List<InventorySlotData> overflowLoot = CollectLootWithoutPanel(droppedLoot);
             DiscardUncollectedRuntimeLoot(overflowLoot);
             SharedInventoryUtility.SaveChanges();
-            continueAfterLoot();
+            completeNodeAndOfferGrowth();
         }
     }
 
@@ -455,6 +603,18 @@ public class TurnManager : MonoBehaviour
             ReturnToTownAfterDefeat();
     }
 
+    public void AbandonExpedition()
+    {
+        if (QuestManager.Instance == null || QuestManager.Instance.active?.def == null)
+            return;
+
+        battleEnded = true;
+        _stageStarted = false;
+        StopBattleActions();
+        RegisterExpeditionDefeat();
+        GameManager.Instance?.ReturnToTownAfterQuestAbandon();
+    }
+
     private void ReturnToTownAfterDefeat()
     {
         PlayerData playerData = PlayerManager.Instance != null
@@ -465,7 +625,8 @@ public class TurnManager : MonoBehaviour
             playerData.currentStage = "Town";
 
         QuestManager.Instance?.AbandonActive();
-        GameManager.Instance?.SwitchStage("Town");
+        if (returnToTownAfterBattle)
+            GameManager.Instance?.SwitchStage("Town");
         PlayerManager.Instance?.SavePlayerDataToPlayFab();
     }
 
@@ -624,11 +785,6 @@ public class TurnManager : MonoBehaviour
 
     private void ClearDefenseSelection()
     {
-        CharacterManager previousDefenseCharacter = defenseCharacter;
-
-        if (previousDefenseCharacter != null && previousDefenseCharacter.combatHandler != null)
-            previousDefenseCharacter.combatHandler.isDefenseCharacter = false;
-
         defenseCharacter = null;
         defenseTarget = null;
 
@@ -637,12 +793,30 @@ public class TurnManager : MonoBehaviour
             foreach (CharacterManager character in allCharacters)
             {
                 if (character != null && character.combatHandler != null)
+                {
+                    character.combatHandler.isDefenseCharacter = false;
                     character.combatHandler.isDefenseTarget = false;
+                    character.UpdateCharacterUI();
+                }
             }
         }
 
-        if (previousDefenseCharacter != null && previousDefenseCharacter != currentCharacter)
-            previousDefenseCharacter.UpdateCharacterUI();
+        ClearCounterSkillQueues();
+    }
+
+    private void ClearCounterSkillQueues()
+    {
+        if (allCharacters == null)
+            return;
+
+        foreach (CharacterManager character in allCharacters)
+        {
+            if (character == null || character.combatHandler == null)
+                continue;
+
+            character.combatHandler.GetCounterSkillQueue().Clear();
+            character.characterUIHandler?.ClearCounterSkillQueueUI();
+        }
     }
 
     private static bool HasBothBattleSides(List<CharacterManager> roster)

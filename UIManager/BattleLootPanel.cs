@@ -22,15 +22,25 @@ public class BattleLootPanel : MonoBehaviour
     private bool showingExpeditionStorage;
     private bool returnToTownAfterLoot;
     private bool preparingReturn;
+    private int acquiredGold;
     private BattleLootPickupMessageUI activePickupMessage;
 
     public void Open(IReadOnlyList<InventorySlotData> loot, Action onCompleted)
+    {
+        Open(loot, 0, onCompleted);
+    }
+
+    public void Open(
+        IReadOnlyList<InventorySlotData> loot,
+        int gold,
+        Action onCompleted)
     {
         ClearViews();
         remainingLoot.Clear();
         finishing = false;
         showingExpeditionStorage = false;
         preparingReturn = false;
+        acquiredGold = Mathf.Max(0, gold);
         QuestRouteNode currentNode = QuestManager.Instance?.GetCurrentRouteNode();
         returnToTownAfterLoot = currentNode != null &&
             (currentNode.type == QuestRouteNodeType.Boss ||
@@ -201,6 +211,14 @@ public class BattleLootPanel : MonoBehaviour
                 SharedInventoryUtility.SaveChanges(target);
                 RefreshPanel();
             },
+            target =>
+            {
+                if (!SharedInventoryUtility.AppraiseMonsterEssence(target, storage, slot))
+                    return;
+
+                SharedInventoryUtility.SaveChanges(target);
+                RefreshPanel();
+            },
             null,
             () =>
             {
@@ -258,10 +276,17 @@ public class BattleLootPanel : MonoBehaviour
             SharedInventoryType.ExpeditionStorage);
         string title = showingExpeditionStorage
             ? $"원정대 보관함 {occupied}/{capacity}  ·  좌클릭 대상 선택  ·  우클릭 메뉴"
-            : $"획득 전리품 {remainingLoot.Count}개  ·  획득할 아이템을 선택하세요";
+            : acquiredGold > 0
+                ? $"획득 전리품 {remainingLoot.Count}개  ·  골드 +{acquiredGold:N0} G"
+                : $"획득 전리품 {remainingLoot.Count}개  ·  획득할 아이템을 선택하세요";
 
         if (preparingReturn && showingExpeditionStorage)
-            title = $"복귀 준비 · 원정대 보관함 {occupied}/{capacity}\n정수를 사용할 수 있습니다. 마을로 복귀하면 남은 정수는 빛을 잃습니다.";
+        {
+            string goldText = acquiredGold > 0
+                ? $" · 이번 전투 골드 +{acquiredGold:N0} G"
+                : string.Empty;
+            title = $"복귀 준비 · 원정대 보관함 {occupied}/{capacity}{goldText}\n정수를 사용할 수 있습니다. 마을로 복귀하면 남은 정수는 빛을 잃습니다.";
+        }
 
         SetTitle(title);
 

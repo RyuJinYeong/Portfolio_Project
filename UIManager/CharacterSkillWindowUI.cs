@@ -18,6 +18,7 @@ public class CharacterSkillWindowUI : MonoBehaviour
 
     private readonly List<SkillListItem> itemViews = new();
     private CharacterManager characterManager;
+    private CharacterData characterData;
     private UnityAction[] filterActions;
     private int selectedFilter;
 
@@ -84,6 +85,15 @@ public class CharacterSkillWindowUI : MonoBehaviour
     public void Open(CharacterManager manager)
     {
         characterManager = manager;
+        characterData = manager != null ? manager.character : null;
+        gameObject.SetActive(true);
+        Refresh();
+    }
+
+    public void Open(CharacterData character)
+    {
+        characterManager = null;
+        characterData = character;
         gameObject.SetActive(true);
         Refresh();
     }
@@ -100,9 +110,7 @@ public class CharacterSkillWindowUI : MonoBehaviour
     {
         ClearItems();
 
-        CharacterData character = characterManager != null
-            ? characterManager.character
-            : null;
+        CharacterData character = characterData;
 
         if (characterNameText != null)
             characterNameText.text = character != null ? character.Name : "";

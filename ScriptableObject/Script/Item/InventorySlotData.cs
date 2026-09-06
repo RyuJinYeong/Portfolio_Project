@@ -8,6 +8,21 @@ public class MonsterEssenceTraitData
     public int point;
 }
 
+public enum MonsterEssenceAppraisalRevealLevel
+{
+    None,
+    Polarity,
+    Grade,
+    Details
+}
+
+[Serializable]
+public class MonsterEssenceTraitAppraisalData
+{
+    public int traitId;
+    public MonsterEssenceAppraisalRevealLevel revealLevel;
+}
+
 [Serializable]
 public class InventorySlotData
 {
@@ -23,6 +38,11 @@ public class InventorySlotData
     public int essenceMonsterRoleId;
     public string essenceMonsterName;
     public List<MonsterEssenceTraitData> essenceTraits = new();
+    public bool essenceAppraised;
+    public bool essenceTraitCountRevealed;
+    public List<MonsterEssenceTraitAppraisalData> essenceTraitAppraisals = new();
+
+    public int skillBookSkillUid;
 
     public bool IsGeneratedEquipment()
     {
@@ -32,5 +52,10 @@ public class InventorySlotData
     public bool IsMonsterEssence()
     {
         return !string.IsNullOrEmpty(essenceQuestId);
+    }
+
+    public bool IsSkillBook()
+    {
+        return skillBookSkillUid > 0;
     }
 }

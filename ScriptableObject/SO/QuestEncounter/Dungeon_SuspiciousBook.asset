@@ -41,6 +41,7 @@ MonoBehaviour:
   choices:
   - text: "\uCC45\uC744 \uC77D\uB294\uB2E4"
     requiresCharacter: 1
+    randomSkillChancePercent: 10
     abilityCheck:
       enabled: 1
       stat: 4

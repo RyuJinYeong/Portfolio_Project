@@ -10,17 +10,37 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c46a4109daa3399428ae4d49c959a989, type: 3}
-  m_Name: "2005_마법사_용병"
+  m_Name: "2005_\uB9C8\uBC95\uC0AC_\uC6A9\uBCD1"
   m_EditorClassIdentifier: 
   id: 2005
-  templateName: 
+  templateName: "\uC9C4\uD638"
   baseOrigin: {fileID: 11400000, guid: 1c3687f7b81bc00dcf86854e39a5580b, type: 2}
-  identityPool: {maleChance: 50, maleNames: [], femaleNames: [], maleFaceTypeIds: [], femaleFaceTypeIds: [], maleHairStyleIds: [], femaleHairStyleIds: [], hairColorIds: [], skinColorIds: [], eyeColorIds: [], facialHairIds: [], bustSizeIds: []}
-  fixedTraitIds: []
-  fixedSkillUids: []
+  identityPool:
+    maleChance: 100
+    maleNames:
+    - "\uC9C4\uD638"
+    femaleNames: []
+    maleFaceTypeIds: 010000000200000003000000
+    femaleFaceTypeIds: 010000000200000003000000
+    maleHairStyleIds: 0100000002000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e000000
+    femaleHairStyleIds: 0100000002000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e000000
+    hairColorIds: 010000000200000003000000040000000500000006000000070000000800000009000000
+    skinColorIds: 010000000200000003000000
+    eyeColorIds: 0100000002000000030000000400000005000000
+    facialHairIds: 000000000100000002000000030000000400000005000000060000000700000008000000
+    bustSizeIds: 010000000200000003000000
+  fixedTraitIds: fd030000
+  fixedSkillUids: 
   fixedEquipments: []
-  traitGeneration: {tier: 1, fixedTraitPool: [1005, 1008, 1010, 1011, 1012], fixedTraitCount: 1, additionalTraitChance: 0, additionalTraitChanceDecrease: 10, maxTraitCount: 1, traitGradeBonus: 0}
-  randomSkillPool: []
+  traitGeneration:
+    tier: 1
+    fixedTraitPool: ed030000f0030000f2030000f3030000f4030000fd0300000204000004040000ba0b0000bb0b0000bd0b0000891300008b1300008e1300009113000096130000981300009b1300009c1300009d130000a0130000a2130000a3130000
+    fixedTraitCount: 1
+    additionalTraitChance: 0
+    additionalTraitChanceDecrease: 10
+    maxTraitCount: 1
+    traitGradeBonus: 0
+  randomSkillPool: 
   randomSkillCount: 0
   randomEquipmentPool: []
   randomEquipmentCount: 0

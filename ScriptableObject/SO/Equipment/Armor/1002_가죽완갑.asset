@@ -15,7 +15,7 @@ MonoBehaviour:
   uid: 1002
   itemName: "\uAC00\uC8FD\uC644\uAC11"
   description: "\uAC04\uB2E8\uD55C \uAC00\uC8FD\uC644\uAC11"
-  icon: {fileID: 2800000, guid: 6cde9c1257779904bba9009b49922c8f, type: 3}
+  icon: {fileID: 2800000, guid: 49bf4453b722955459ef965126bf701b, type: 3}
   category: 0
   price: 50
   weight: 2
@@ -31,6 +31,7 @@ MonoBehaviour:
     Intelligence: 0
     Wisdom: 0
     Health: 0
+    Vitality: 0
     Endurance: 0
     Detection: 0
     Insight: 0
@@ -44,16 +45,14 @@ MonoBehaviour:
     StaminaRecovery: 0
     MentalityRecovery: 0
     FireResistance: 0
-    WaterResistance: 0
-    EarthResistance: 0
-    WindResistance: 0
+    IceResistance: 0
+    LightningResistance: 0
     PierceResistance: 0
     SlashResistance: 0
     SmashResistance: 0
     FireAffinity: 0
-    WaterAffinity: 0
-    EarthAffinity: 0
-    WindAffinity: 0
+    IceAffinity: 0
+    LightningAffinity: 0
     PierceAffinity: 0
     SlashAffinity: 0
     SmashAffinity: 0
@@ -64,14 +63,20 @@ MonoBehaviour:
   specialStatModifiers:
     CriticalChance: 0
     CriticalDamageBonus: 0
+    StatusResistance: 0
     MapDetectionRange: 0
-    TrapDetectionBonus: 0
-    EventInsightBonus: 0
     KillHpRecovery: 0
     KillStaminaRecovery: 0
     KillMentalityRecovery: 0
+    MinLevelUpStatGainBonus: 0
+    MaxLevelUpStatGainBonus: 0
   canGenerateAffix: 1
   isUnique: 0
+  canDrop: 1
   grantedTraitIds: 
   visualKey: Armor_004
+  uncommonVisualKey: 
+  rareVisualKey: 
+  epicVisualKey: 
+  legendaryVisualKey: 
   armorCategory: 1

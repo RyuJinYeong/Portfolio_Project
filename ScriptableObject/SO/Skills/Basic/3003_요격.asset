@@ -39,7 +39,7 @@ MonoBehaviour:
   isRangedSkill: 1
   monsterOnly: 0
   counterActionType: 4
-  successArmorAttackMultiplier: 0.3
+  successArmorAttackMultiplier: 0.15
   minEvadeReductionRate: 0.1
   attackEffects: 
   statusAccuracyBonus: 0

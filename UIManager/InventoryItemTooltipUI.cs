@@ -122,7 +122,7 @@ public class InventoryItemTooltipUI : MonoBehaviour
         }
 
         if (priceText != null)
-            priceText.text = item.price.ToString("N0");
+            priceText.text = SharedInventoryUtility.GetSalePrice(slot).ToString("N0");
 
         if (countText != null)
         {
@@ -147,7 +147,7 @@ public class InventoryItemTooltipUI : MonoBehaviour
         {
             descriptionText.text = equipment != null
                 ? BuildEquipmentDetails(item)
-                : item.description;
+                : GetItemDescription(slot, item);
         }
 
         PopulateStats(
@@ -180,9 +180,47 @@ public class InventoryItemTooltipUI : MonoBehaviour
             return $"{slot.essenceMonsterName}의 정수";
         }
 
+        if (slot != null && slot.IsSkillBook() && GameDataRegistry.Instance != null)
+        {
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(
+                slot.skillBookSkillUid);
+
+            if (skill != null)
+                return $"{skill.skillName} 스킬북";
+        }
+
         return equipment != null && !string.IsNullOrEmpty(equipment.displayName)
             ? equipment.displayName
             : item.itemName;
+    }
+
+    private static string GetItemDescription(
+        InventorySlotData slot,
+        ItemDefinitionSO item)
+    {
+        if (slot != null && slot.IsMonsterEssence())
+        {
+            string appraisal = SharedInventoryUtility.GetMonsterEssenceAppraisalText(slot);
+
+            if (!string.IsNullOrEmpty(appraisal))
+                return string.IsNullOrEmpty(item.description)
+                    ? $"감정 결과\n{appraisal}"
+                    : $"{item.description}\n\n감정 결과\n{appraisal}";
+        }
+
+        if (slot != null && slot.IsSkillBook() && GameDataRegistry.Instance != null)
+        {
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(
+                slot.skillBookSkillUid);
+
+            if (skill != null)
+            {
+                return $"사용하면 선택한 캐릭터가 {skill.skillName} 스킬을 습득합니다.\n\n" +
+                       $"습득 조건: {skill.GetAcquisitionRequirementText()}";
+            }
+        }
+
+        return item.description;
     }
 
     public void Hide()
@@ -212,15 +250,6 @@ public class InventoryItemTooltipUI : MonoBehaviour
         AppendSection(builder, equipped != null ? "장착 장비와 비교" : "능력치");
         AppendStats(builder, equipment.statModifiers, currentStats, equipped != null);
         AppendSpecialStats(builder, equipment.specialStatModifiers, currentSpecial, equipped != null);
-
-        if (equipment.generated != null && equipment.generated.appliedAffixes != null)
-        {
-            foreach (EquipmentAffixRollData affix in equipment.generated.appliedAffixes)
-            {
-                if (affix != null && !string.IsNullOrEmpty(affix.affixName))
-                    AppendTextLine(builder, $"옵션: {affix.affixName}");
-            }
-        }
 
         if (equipment.grantedTraitIds != null)
         {

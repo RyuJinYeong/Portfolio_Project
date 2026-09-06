@@ -21,6 +21,12 @@ public class CombatHandler : MonoBehaviour
 
     public CharacterManager LastResolvedTarget { get; private set; }
     public bool LastSkillWasCancelled { get; private set; }
+    public bool LastProtectionSucceeded { get; private set; }
+    private readonly Dictionary<CharacterManager, SkillDefinitionSO> lastSuccessfulCounters = new();
+    public IReadOnlyDictionary<CharacterManager, SkillDefinitionSO> LastSuccessfulCounters => lastSuccessfulCounters;
+    private SkillQueueData preparedProtectionSkill;
+    private CharacterManager preparedProtectionCharacter;
+    private CounterResolveData preparedProtectionCounter;
 
     public void Awake()
     {
@@ -33,18 +39,25 @@ public class CombatHandler : MonoBehaviour
     public void StartTurn(System.Action onTurnEnd)
     {
         characterManager.isPlayerTurn = true;
+        bool useTurnTimer =
+            TurnManager.Instance != null &&
+            TurnManager.Instance.IsTurnTimeLimitEnabled;
 
         if (characterManager.character.Type != CharacterType.Character)
         {
             Debug.Log("AI 턴 시작");
-            turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd));
+            if (useTurnTimer)
+                turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd));
+
             characterManager.UpdateCharacterUI();
             StartCoroutine(HandleAITurn(onTurnEnd));
         }
         else
         {
             Debug.Log("플레이어 턴 시작");
-            turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd));
+            if (useTurnTimer)
+                turnTimerCoroutine = StartCoroutine(TurnTimer(totalDuration, onTurnEnd));
+
             characterManager.UpdateCharacterUI();
 
             UIManager.Instance.characterTargeting.SelectCharacter(characterManager);
@@ -90,6 +103,15 @@ public class CombatHandler : MonoBehaviour
             return;
         }
 
+        if (characterManager.isInMeleeCombat &&
+            !skill.isRangedSkill &&
+            characterManager.meleeTarget != null &&
+            characterManager.meleeTarget != target)
+        {
+            Debug.Log("경합 상태에서는 확정된 상대에게만 근접 스킬을 사용할 수 있습니다.");
+            return;
+        }
+
         if (!ConsumeResources(skill, isConcealed))
             return;
 
@@ -100,7 +122,13 @@ public class CombatHandler : MonoBehaviour
         }
 
         int order = skillQueue.Count + 1;
-        SkillQueueData data = new SkillQueueData(skill, characterManager, target, isConcealed, order);
+        SkillQueueData data = new SkillQueueData(
+            skill,
+            characterManager,
+            target,
+            isConcealed,
+            order,
+            true);
 
         skillQueue.Add(data);
 
@@ -156,19 +184,33 @@ public class CombatHandler : MonoBehaviour
             return;
         }
 
+        if (skill.counterActionType == CounterActionType.Evade &&
+            TurnManager.Instance != null &&
+            TurnManager.Instance.defenseCharacter == characterManager &&
+            TurnManager.Instance.defenseTarget != characterManager)
+        {
+            Debug.Log("회피는 다른 캐릭터를 보호할 때 사용할 수 없습니다.");
+            return;
+        }
+
         if (!ConsumeResources(skill, false))
             return;
 
         int order = counterSkillQueue.Count + 1;
-        SkillQueueData data = new SkillQueueData(skill, characterManager, target, false, order);
+        SkillQueueData data = new SkillQueueData(
+            skill,
+            characterManager,
+            characterManager,
+            false,
+            order,
+            true);
 
         counterSkillQueue.Add(data);
 
         Debug.Log($"{skill.skillName} 대응 큐 등록");
 
-        RefreshCounterSkillQueueUI(target);
+        RefreshCounterSkillQueueUI(characterManager);
         characterManager.UpdateCharacterUI();
-        target.UpdateCharacterUI();
         UIManager.Instance.UpdateSkillTransparency(characterManager);
     }
 
@@ -179,7 +221,8 @@ public class CombatHandler : MonoBehaviour
 
         SkillQueueData entry = counterSkillQueue[index];
 
-        RefundResources(entry.skill, false, 1f);
+        if (entry.resourcesConsumed)
+            RefundResources(entry.skill, false, 1f);
 
         counterSkillQueue.RemoveAt(index);
 
@@ -200,29 +243,55 @@ public class CombatHandler : MonoBehaviour
             return;
         }
 
+        SkillDefinitionSO finalSkill = newSkill != null ? newSkill : defaultCounter;
+        bool evadeUnavailable =
+            TurnManager.Instance != null &&
+            TurnManager.Instance.defenseCharacter == characterManager &&
+            TurnManager.Instance.defenseTarget != characterManager;
+        bool defaultEvadeUnavailable =
+            defaultCounter.counterActionType == CounterActionType.Evade &&
+            evadeUnavailable;
+
+        if (finalSkill.counterActionType == CounterActionType.Evade &&
+            evadeUnavailable)
+        {
+            Debug.Log("회피는 다른 캐릭터를 보호할 때 사용할 수 없습니다.");
+            return;
+        }
+
         while (idx >= counterSkillQueue.Count)
         {
             counterSkillQueue.Add(new SkillQueueData(
-                defaultCounter,
+                defaultEvadeUnavailable ? null : defaultCounter,
                 characterManager,
                 characterManager,
                 false,
                 counterSkillQueue.Count + 1));
         }
 
-        SkillDefinitionSO oldSkill = counterSkillQueue[idx].skill;
+        SkillQueueData oldEntry = counterSkillQueue[idx];
+        SkillDefinitionSO oldSkill = oldEntry.skill;
 
-        if (oldSkill != null && oldSkill.uid != defaultCounter.uid)
+        if (oldEntry.resourcesConsumed)
             RefundResources(oldSkill, false, 1f);
 
-        SkillDefinitionSO finalSkill = newSkill != null ? newSkill : defaultCounter;
+        bool consumeImmediately = newSkill != null;
+
+        if (consumeImmediately && !ConsumeResources(finalSkill, false))
+        {
+            if (oldEntry.resourcesConsumed)
+                ConsumeResources(oldSkill, false);
+
+            return;
+        }
 
         counterSkillQueue[idx] = new SkillQueueData(
             finalSkill,
             characterManager,
             characterManager,
             false,
-            idx + 1);
+            idx + 1,
+            consumeImmediately);
 
         RefreshCounterSkillQueueUI(characterManager);
         characterManager.UpdateCharacterUI();
@@ -372,16 +441,45 @@ public class CombatHandler : MonoBehaviour
                 characterManager.UpdateCharacterUI();
                 item.target?.UpdateCharacterUI();
 
-                yield return new WaitForSeconds(1.0f);
                 continue;
             }
 
             BattlePresentationDirector presentationDirector = BattlePresentationDirector.Instance;
+            bool repeatsSameSkill =
+                skillQueue.Count > 1 &&
+                skillQueue[1] != null &&
+                skillQueue[1].skill == item.skill &&
+                skillQueue[1].target == item.target;
 
             if (presentationDirector != null)
-                yield return presentationDirector.PlaySkill(item, () => UseSkill(item));
+                yield return presentationDirector.PlaySkill(
+                    item,
+                    () => UseSkill(item),
+                    repeatsSameSkill);
             else
+            {
+                characterManager.battlePresentationHandler?.PlaySkill(item.skill);
                 UseSkill(item);
+
+                foreach (var counter in lastSuccessfulCounters)
+                {
+                    if (counter.Key.character != null && counter.Key.character.IsAlive)
+                    {
+                        counter.Key.battlePresentationHandler?.FaceTarget(characterManager.transform);
+                        counter.Key.battlePresentationHandler?.PlaySkill(counter.Value);
+                    }
+                }
+
+                if (characterManager.battlePresentationHandler != null)
+                    yield return characterManager.battlePresentationHandler.WaitForSkill(
+                        repeatsSameSkill ? 0.2f : 0f);
+
+                foreach (var counter in lastSuccessfulCounters)
+                {
+                    if (counter.Key.battlePresentationHandler != null)
+                        yield return counter.Key.battlePresentationHandler.WaitForSkill();
+                }
+            }
 
             if (item.target != null)
             {
@@ -401,7 +499,6 @@ public class CombatHandler : MonoBehaviour
                 }
             }
 
-            yield return new WaitForSeconds(1.0f);
         }
 
         skillQueue.Clear();
@@ -421,11 +518,51 @@ public class CombatHandler : MonoBehaviour
 
     public void SetDefenseTarget(CharacterManager target)
     {
-        if (!isDefenseCharacter)
+        if (!isDefenseCharacter || target == null)
             return;
+
+        CharacterManager attacker = TurnManager.Instance != null
+            ? TurnManager.Instance.currentCharacter
+            : null;
+        bool isAttackedTarget = attacker != null &&
+                                attacker.GetSkillQueue().Any(entry =>
+                                    entry != null && entry.target == target);
+
+        if (!isAttackedTarget)
+        {
+            Debug.Log("현재 공격받는 캐릭터만 대응 대상으로 지정할 수 있습니다.");
+            return;
+        }
 
         target.combatHandler.isDefenseTarget = true;
         TurnManager.Instance.defenseTarget = target;
+
+        SkillDefinitionSO defaultCounter = GetDefaultCounterSkillDefinition();
+        counterSkillQueue.Clear();
+
+        if (defaultCounter != null && attacker != null)
+        {
+            foreach (SkillQueueData incomingAttack in attacker.GetSkillQueue())
+            {
+                if (incomingAttack == null ||
+                    (incomingAttack.target != characterManager && incomingAttack.target != target))
+                {
+                    continue;
+                }
+
+                bool evadeCannotProtectOther =
+                    incomingAttack.target != characterManager &&
+                    defaultCounter.counterActionType == CounterActionType.Evade;
+                counterSkillQueue.Add(new SkillQueueData(
+                    evadeCannotProtectOther ? null : defaultCounter,
+                    characterManager,
+                    characterManager,
+                    false,
+                    counterSkillQueue.Count + 1));
+            }
+        }
+
+        RefreshCounterSkillQueueUI(characterManager);
 
         Debug.Log($"방어자 : {characterManager.character.Name} - 방어대상 : {target.character.Name}");
 
@@ -438,10 +575,83 @@ public class CombatHandler : MonoBehaviour
         }
     }
 
-    public void UseSkill(SkillQueueData queuedSkill)
+    public void PrepareProtectionForPresentation(SkillQueueData queuedSkill)
     {
+        preparedProtectionSkill = null;
+        preparedProtectionCharacter = null;
+        preparedProtectionCounter = null;
         LastResolvedTarget = null;
         LastSkillWasCancelled = false;
+        LastProtectionSucceeded = false;
+        lastSuccessfulCounters.Clear();
+
+        if (queuedSkill == null || queuedSkill.skill == null || queuedSkill.target == null)
+            return;
+
+        SkillDefinitionSO attackSkill = queuedSkill.skill;
+        CharacterManager originalTarget = queuedSkill.target;
+        LastResolvedTarget = originalTarget;
+
+        if (originalTarget.combatHandler == null ||
+            !originalTarget.combatHandler.isDefenseTarget ||
+            TurnManager.Instance == null)
+        {
+            return;
+        }
+
+        CharacterManager defenseCharacter = TurnManager.Instance.defenseCharacter;
+
+        if (defenseCharacter == null)
+            return;
+
+        preparedProtectionSkill = queuedSkill;
+        preparedProtectionCharacter = defenseCharacter;
+        preparedProtectionCounter = TryUseCounterSkill(
+            attackSkill,
+            defenseCharacter,
+            characterManager,
+            originalTarget,
+            false);
+
+        if (preparedProtectionCounter == null)
+            return;
+
+        LastProtectionSucceeded = preparedProtectionCounter.IsSuccess;
+
+        if (preparedProtectionCounter.cancelCurrentSkill)
+        {
+            LastResolvedTarget = null;
+            LastSkillWasCancelled = true;
+            return;
+        }
+
+        if (preparedProtectionCounter.IsSuccess ||
+            attackSkill.HasAttackEffect(AttackEffectType.Breakthrough))
+        {
+            LastResolvedTarget = defenseCharacter;
+        }
+    }
+
+    public void UseSkill(SkillQueueData queuedSkill)
+    {
+        bool hasPreparedProtection =
+            queuedSkill != null &&
+            ReferenceEquals(preparedProtectionSkill, queuedSkill);
+        CharacterManager cachedProtectionCharacter = preparedProtectionCharacter;
+        CounterResolveData cachedProtectionCounter = preparedProtectionCounter;
+
+        preparedProtectionSkill = null;
+        preparedProtectionCharacter = null;
+        preparedProtectionCounter = null;
+
+        LastResolvedTarget = null;
+        LastSkillWasCancelled = false;
+        LastProtectionSucceeded = hasPreparedProtection &&
+            cachedProtectionCounter != null &&
+            cachedProtectionCounter.IsSuccess;
+
+        if (!hasPreparedProtection)
+            lastSuccessfulCounters.Clear();
 
         if (queuedSkill == null || queuedSkill.skill == null || queuedSkill.target == null)
             return;
@@ -455,24 +665,36 @@ public class CombatHandler : MonoBehaviour
 
         ResolveConceal(queuedSkill, skillQueue.Count(s => s != null && s.isConcealed));
 
-        CounterResolveData defenseCounter = null;
+        CounterResolveData defenseCounter = hasPreparedProtection
+            ? cachedProtectionCounter
+            : null;
         CounterResolveData appliedCounter = null;
 
-        if (originalTarget.combatHandler.isDefenseTarget)
+        if (hasPreparedProtection || originalTarget.combatHandler.isDefenseTarget)
         {
-            CharacterManager defenseCharacter = TurnManager.Instance.defenseCharacter;
+            CharacterManager defenseCharacter = hasPreparedProtection
+                ? cachedProtectionCharacter
+                : TurnManager.Instance.defenseCharacter;
 
             if (defenseCharacter != null)
             {
-                defenseCounter = TryUseCounterSkill(
-                    attackSkill,
-                    defenseCharacter,
-                    characterManager,
-                    originalTarget);
+                if (!hasPreparedProtection)
+                {
+                    defenseCounter = TryUseCounterSkill(
+                        attackSkill,
+                        defenseCharacter,
+                        characterManager,
+                        originalTarget);
+                }
 
                 if (defenseCounter != null)
                 {
+                    LastProtectionSucceeded = defenseCounter.IsSuccess;
                     appliedCounter = defenseCounter;
+
+                    if (hasPreparedProtection)
+                        ShowCounterGreatSuccessResult(defenseCounter, defenseCharacter);
+
                     if (defenseCounter.cancelCurrentSkill)
                     {
                         LastResolvedTarget = null;
@@ -513,7 +735,12 @@ public class CombatHandler : MonoBehaviour
 
         CounterResolveData targetCounter = null;
 
-        if (actualTarget.combatHandler.counterSkillQueue.Count > 0)
+        bool protectionAlreadyCountered =
+            defenseCounter != null &&
+            defenseCounter.IsSuccess;
+
+        if (!protectionAlreadyCountered &&
+            actualTarget.combatHandler.counterSkillQueue.Count > 0)
         {
             targetCounter = TryUseCounterSkill(
                 attackSkill,
@@ -552,6 +779,10 @@ public class CombatHandler : MonoBehaviour
         if (appliedCounter != null &&
             appliedCounter.attackGreatSuccess)
         {
+            UIManager.Instance?.ShowCombatResult(
+                "Critical",
+                actualTarget.transform.position);
+
             Debug.Log(
                 $"{characterManager.character.Name} 공격 대성공. " +
                 $"{attackSkill.skillName} 피해 배율 " +
@@ -561,6 +792,8 @@ public class CombatHandler : MonoBehaviour
         ApplySkillStatusConsumeEffects(attackSkill, actualTarget);
 
         ApplySkillAdditionalEffects(attackSkill, actualTarget, appliedCounter);
+
+        actualTarget.UpdateCharacterUI();
 
         EndSynergyEffects();
     }
@@ -589,6 +822,10 @@ public class CombatHandler : MonoBehaviour
 
         if (protectorCounter.attackGreatSuccess)
         {
+            UIManager.Instance?.ShowCombatResult(
+                "Critical",
+                protector.transform.position);
+
             Debug.Log(
                 $"{characterManager.character.Name} 돌파 공격 대성공. " +
                 $"{attackSkill.skillName} 피해 배율 " +
@@ -598,6 +835,8 @@ public class CombatHandler : MonoBehaviour
         ApplySkillStatusConsumeEffects(attackSkill, protector);
 
         ApplySkillAdditionalEffects(attackSkill, protector, protectorCounter);
+
+        protector.UpdateCharacterUI();
 
         if (stopsBreakthrough)
         {
@@ -620,7 +859,8 @@ public class CombatHandler : MonoBehaviour
     SkillDefinitionSO attackSkill,
     CharacterManager counterUser,
     CharacterManager attacker,
-    CharacterManager protectedTarget)
+    CharacterManager protectedTarget,
+    bool showGreatSuccessResult = true)
     {
         if (counterUser == null || counterUser.combatHandler.counterSkillQueue.Count == 0)
             return null;
@@ -631,6 +871,14 @@ public class CombatHandler : MonoBehaviour
         SkillDefinitionSO counterSkill = counterData.skill;
 
         if (counterSkill == null)
+        {
+            counterUser.combatHandler.RefreshCounterSkillQueueUI(counterUser);
+            counterUser.UpdateCharacterUI();
+            return null;
+        }
+
+        if (!counterData.resourcesConsumed &&
+            !counterUser.combatHandler.ConsumeResources(counterSkill, false))
         {
             counterUser.combatHandler.RefreshCounterSkillQueueUI(counterUser);
             counterUser.UpdateCharacterUI();
@@ -741,6 +989,9 @@ public class CombatHandler : MonoBehaviour
         resolveData.result = result;
         resolveData.effectScale = successEffectScale;
 
+        if (resolveData.IsSuccess)
+            lastSuccessfulCounters[counterUser] = counterSkill;
+
         switch (result)
         {
             case CounterResult.Fail:
@@ -802,6 +1053,9 @@ public class CombatHandler : MonoBehaviour
             case CounterResult.GreatSuccess:
                 ApplyCounterGreatSuccess(resolveData, counterUser, counterSkill, attackSkill);
 
+                if (showGreatSuccessResult)
+                    ShowCounterGreatSuccessResult(resolveData, counterUser);
+
                 Debug.Log(
                     $"{counterUser.character.Name} {counterSkill.skillName} 대응 대성공 " +
                     $"성공률:{chance}% 대성공률:{greatSuccessChance}% 위력비:{counterPowerRatio:F2}");
@@ -812,6 +1066,34 @@ public class CombatHandler : MonoBehaviour
         counterUser.UpdateCharacterUI();
 
         return resolveData;
+    }
+
+    private static void ShowCounterGreatSuccessResult(
+        CounterResolveData resolveData,
+        CharacterManager counterUser)
+    {
+        if (resolveData == null ||
+            resolveData.result != CounterResult.GreatSuccess ||
+            resolveData.counterSkill == null ||
+            counterUser == null)
+        {
+            return;
+        }
+
+        string resultText = resolveData.counterSkill.counterActionType switch
+        {
+            CounterActionType.Parry => "Parry",
+            CounterActionType.Guard => "Guard",
+            CounterActionType.Evade => "Evade",
+            _ => null
+        };
+
+        if (!string.IsNullOrEmpty(resultText))
+        {
+            UIManager.Instance?.ShowCombatResult(
+                resultText,
+                counterUser.transform.position);
+        }
     }
 
     private void ApplyCounterGreatSuccess(
@@ -965,7 +1247,11 @@ public class CombatHandler : MonoBehaviour
                 if (damageType == SkillType.Mixed)
                     damageType = SkillType.Physical;
 
-                int finalDamage = target.TakeDamage(damage, damageType, component.attribute);
+                int finalDamage = target.TakeDamage(
+                    damage,
+                    damageType,
+                    component.attribute,
+                    counterDamageMultiplier <= 0f);
 
                 totalFinalDamage += finalDamage;
 
@@ -1698,10 +1984,19 @@ public class CombatHandler : MonoBehaviour
 
     private void RefreshCounterSkillQueueUI(CharacterManager target)
     {
-        if (target == null || target.characterUIHandler == null)
+        if (target != null &&
+            target != characterManager &&
+            target.characterUIHandler != null)
+        {
+            target.characterUIHandler.ClearCounterSkillQueueUI();
+        }
+
+        if (characterManager == null || characterManager.characterUIHandler == null)
             return;
 
-        target.characterUIHandler.UpdateCounterSkillQueueUI(counterSkillQueue, characterManager);
+        characterManager.characterUIHandler.UpdateCounterSkillQueueUI(
+            counterSkillQueue,
+            characterManager);
     }
 
     public List<SkillQueueData> GetSkillQueue()

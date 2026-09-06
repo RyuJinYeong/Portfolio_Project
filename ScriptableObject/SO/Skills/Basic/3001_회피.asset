@@ -40,7 +40,7 @@ MonoBehaviour:
   monsterOnly: 0
   counterActionType: 1
   successArmorAttackMultiplier: 0
-  minEvadeReductionRate: 0.1
+  minEvadeReductionRate: 0.25
   attackEffects: 
   statusAccuracyBonus: 0
   statusEffects: []

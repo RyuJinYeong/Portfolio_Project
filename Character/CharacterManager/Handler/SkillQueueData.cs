@@ -12,13 +12,15 @@ public class SkillQueueData
     public RevealLevel revealLevel;
 
     public int order;
+    public bool resourcesConsumed;
 
     public SkillQueueData(
         SkillDefinitionSO skill,
         CharacterManager user,
         CharacterManager target,
         bool isConcealed,
-        int order)
+        int order,
+        bool resourcesConsumed = false)
     {
         this.skill = skill;
         this.user = user;
@@ -27,5 +29,6 @@ public class SkillQueueData
         this.concealResolved = false;
         this.revealLevel = RevealLevel.None;
         this.order = order;
+        this.resourcesConsumed = resourcesConsumed;
     }
 }

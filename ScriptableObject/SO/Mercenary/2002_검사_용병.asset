@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: "2002_검사_용병"
   m_EditorClassIdentifier: 
   id: 2002
-  templateName: 
+  templateName: 훈석
   baseOrigin: {fileID: 11400000, guid: 112a080dd3a0ae7bc61896212d147668, type: 2}
-  identityPool: {maleChance: 50, maleNames: [], femaleNames: [], maleFaceTypeIds: [], femaleFaceTypeIds: [], maleHairStyleIds: [], femaleHairStyleIds: [], hairColorIds: [], skinColorIds: [], eyeColorIds: [], facialHairIds: [], bustSizeIds: []}
+  identityPool: {maleChance: 100, maleNames: [훈석], femaleNames: [], maleFaceTypeIds: [1, 2, 3], femaleFaceTypeIds: [1, 2, 3], maleHairStyleIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], femaleHairStyleIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], hairColorIds: [1, 2, 3, 4, 5, 6, 7, 8, 9], skinColorIds: [1, 2, 3], eyeColorIds: [1, 2, 3, 4, 5], facialHairIds: [0, 1, 2, 3, 4, 5, 6, 7, 8], bustSizeIds: [1, 2, 3]}
   fixedTraitIds: []
   fixedSkillUids: []
   fixedEquipments: []
-  traitGeneration: {tier: 1, fixedTraitPool: [1001, 1002, 1006], fixedTraitCount: 1, additionalTraitChance: 0, additionalTraitChanceDecrease: 10, maxTraitCount: 1, traitGradeBonus: 0}
+  traitGeneration: {tier: 1, fixedTraitPool: [1001, 1002, 1003, 1006, 1019, 1020, 1025, 1027, 3001, 3004, 3007, 5000, 5002, 5004, 5005, 5007, 5008, 5012, 5013, 5017, 5018, 5022, 5023, 5025, 5027], fixedTraitCount: 1, additionalTraitChance: 0, additionalTraitChanceDecrease: 10, maxTraitCount: 1, traitGradeBonus: 0}
   randomSkillPool: []
   randomSkillCount: 0
   randomEquipmentPool: []

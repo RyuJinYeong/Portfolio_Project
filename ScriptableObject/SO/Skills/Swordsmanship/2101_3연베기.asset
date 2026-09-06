@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   uid: 2101
   skillName: "3\uC5F0\uBCA0\uAE30"
-  description: "\uC5F0\uC18D\uC73C\uB85C \uC138 \uBC88 \uBCA0\uC5B4 \uB2E4\uD0C0\uACA9
+  description: "\uC5F0\uC18D\uC73C\uB85C \uC138 \uBC88 \uBCA0\uC5B4 3\uBC88\uC758
     \uCC38\uACA9 \uD53C\uD574\uB97C \uC900\uB2E4."
   icon: {fileID: 2800000, guid: 6fc06901055f82142ac78fc943700896, type: 3}
   composer: {fileID: 11400000, guid: f3bb221077c3965e414fa41f82886e33, type: 2}
