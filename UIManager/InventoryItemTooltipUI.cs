@@ -504,6 +504,12 @@ public class InventoryItemTooltipUI : MonoBehaviour
 
         AppendValue(builder, "치명타 확률", candidate.CriticalChance, current.CriticalChance, compare);
         AppendValue(builder, "치명타 피해", candidate.CriticalDamageBonus, current.CriticalDamageBonus, compare);
+        AppendValue(
+            builder,
+            "방어 스킬 성공률",
+            candidate.DefenseSkillSuccessRateBonus,
+            current.DefenseSkillSuccessRateBonus,
+            compare);
         AppendValue(builder, "상태이상 저항", candidate.StatusResistance, current.StatusResistance, compare);
         AppendValue(builder, "지도 탐지 범위", candidate.MapDetectionRange, current.MapDetectionRange, compare);
         AppendValue(builder, "처치 시 체력 회복", candidate.KillHpRecovery, current.KillHpRecovery, compare);

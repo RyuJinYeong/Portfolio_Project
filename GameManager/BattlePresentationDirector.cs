@@ -25,6 +25,20 @@ public class BattlePresentationDirector : MonoBehaviour
     [SerializeField] private float impactShakeDuration = 0.14f;
     [SerializeField] private float impactShakeStrength = 0.08f;
 
+    [Header("Combat Impact Sound")]
+    [SerializeField] private AudioClip[] unarmedImpactSounds;
+    [SerializeField] private AudioClip[] bladeBlockSounds;
+    [SerializeField] private AudioClip[] bladeHitSounds;
+    [SerializeField] private AudioClip[] bluntBlockSounds;
+    [SerializeField] private AudioClip[] bluntHitSounds;
+    [SerializeField] private AudioClip[] arrowBlockSounds;
+    [SerializeField] private AudioClip[] arrowHitSounds;
+    [SerializeField] private AudioClip[] magicBlockSounds;
+    [SerializeField] private AudioClip[] magicHitSounds;
+    [SerializeField, Range(0f, 1f)] private float impactSoundVolume = 0.68f;
+    [SerializeField, Range(0f, 1f)] private float impactSoundSpatialBlend = 0.85f;
+    [SerializeField, Range(0f, 0.2f)] private float impactSoundPitchVariation = 0.04f;
+
     [Header("Movement")]
     [SerializeField] private float meleeStopDistance = 1f;
     [SerializeField] private float protectedTargetRetreatDistance = 0.8f;
@@ -47,8 +61,15 @@ public class BattlePresentationDirector : MonoBehaviour
     private bool sequenceRanged;
     private bool cameraZoomed;
     private readonly List<GameObject> hiddenHudObjects = new();
+    private readonly List<PendingDamagePopup> pendingDamagePopups = new();
     private Coroutine cameraShakeRoutine;
     private Vector3 cameraShakeBaseLocalPosition;
+
+    private struct PendingDamagePopup
+    {
+        public int damage;
+        public Vector3 position;
+    }
 
     private void Awake()
     {
@@ -73,6 +94,7 @@ public class BattlePresentationDirector : MonoBehaviour
         ResetCameraShake();
         StopAllCoroutines();
         StopTrackedMovement();
+        pendingDamagePopups.Clear();
         IsPresenting = false;
         sequenceAttacker = null;
         sequenceTarget = null;
@@ -112,6 +134,7 @@ public class BattlePresentationDirector : MonoBehaviour
         }
 
         IsPresenting = true;
+        pendingDamagePopups.Clear();
 
         ResolveBattleCamera();
 
@@ -143,13 +166,19 @@ public class BattlePresentationDirector : MonoBehaviour
             ? protector.battlePresentationHandler
             : null;
 
-        CharacterManager anticipatedCounterUser = GetAnticipatedCounterUser(
-            originalTarget,
-            protector);
-        SkillDefinitionSO anticipatedCounterSkill = GetFirstCounterSkill(
-            anticipatedCounterUser);
-
         attacker.combatHandler?.PrepareProtectionForPresentation(action);
+
+        List<KeyValuePair<CharacterManager, SkillDefinitionSO>> successfulCounters = new();
+
+        if (attacker.combatHandler != null)
+        {
+            foreach (KeyValuePair<CharacterManager, SkillDefinitionSO> counter in
+                     attacker.combatHandler.LastSuccessfulCounters)
+            {
+                if (counter.Key != null && counter.Value != null)
+                    successfulCounters.Add(counter);
+            }
+        }
 
         bool hasInterception =
             protector != null &&
@@ -158,6 +187,17 @@ public class BattlePresentationDirector : MonoBehaviour
             attacker.combatHandler != null &&
             attacker.combatHandler.LastProtectionSucceeded &&
             attacker.combatHandler.LastResolvedTarget == protector;
+
+        bool protectionFailed =
+            protector != null &&
+            protector != originalTarget &&
+            protectorPresentation != null &&
+            attacker.combatHandler != null &&
+            attacker.combatHandler.LastProtectionAttempted &&
+            !attacker.combatHandler.LastProtectionSucceeded;
+
+        if (protectionFailed)
+            protectorPresentation.FaceTarget(originalTarget.transform);
 
         if (hasInterception)
         {
@@ -222,15 +262,16 @@ public class BattlePresentationDirector : MonoBehaviour
         if (protectorPresentation != null)
             skillHandlers.Add(protectorPresentation);
 
-        attackerPresentation.PlaySkill(action.skill);
-
-        if (anticipatedCounterSkill != null)
-        {
-            anticipatedCounterUser.battlePresentationHandler?.FaceTarget(attacker.transform);
-            anticipatedCounterUser.battlePresentationHandler?.PlaySkill(anticipatedCounterSkill);
-        }
+        CharacterManager effectTarget = attacker.combatHandler != null
+            ? attacker.combatHandler.LastResolvedTarget
+            : null;
+        attackerPresentation.PlaySkill(
+            action.skill,
+            (effectTarget != null ? effectTarget : approachTarget).transform);
 
         yield return attackerPresentation.WaitForSkillImpact();
+
+        float impactWait = 0f;
 
         if (impactDelay > 0f)
         {
@@ -238,11 +279,54 @@ public class BattlePresentationDirector : MonoBehaviour
                 2f - action.skill.activationSpeed,
                 0.25f,
                 2f);
-            yield return new WaitForSeconds(
-                impactDelay /
-                Mathf.Max(0.01f, attackerPresentation.SkillAnimationSpeed) *
-                impactDurationScale);
+            impactWait = impactDelay /
+                         Mathf.Max(0.01f, attackerPresentation.SkillAnimationSpeed) *
+                         impactDurationScale;
         }
+
+        impactWait = Mathf.Max(
+            impactWait,
+            attackerPresentation.GetSkillVisualImpactLeadTime(action.skill));
+
+        foreach (KeyValuePair<CharacterManager, SkillDefinitionSO> counter in successfulCounters)
+        {
+            BattlePresentationHandler counterPresentation =
+                counter.Key != null ? counter.Key.battlePresentationHandler : null;
+
+            if (counterPresentation == null ||
+                counter.Key.character == null ||
+                !counter.Key.character.IsAlive)
+            {
+                continue;
+            }
+
+            impactWait = Mathf.Max(
+                impactWait,
+                counterPresentation.GetSkillContactLeadTime(counter.Value));
+        }
+
+        foreach (KeyValuePair<CharacterManager, SkillDefinitionSO> counter in successfulCounters)
+        {
+            BattlePresentationHandler counterPresentation =
+                counter.Key != null ? counter.Key.battlePresentationHandler : null;
+
+            if (counterPresentation == null ||
+                counter.Key.character == null ||
+                !counter.Key.character.IsAlive)
+            {
+                continue;
+            }
+
+            float contactLeadTime = counterPresentation.GetSkillContactLeadTime(counter.Value);
+            StartCoroutine(PlayCounterForImpact(
+                counter.Key,
+                counter.Value,
+                attacker.transform,
+                Mathf.Max(0f, impactWait - contactLeadTime)));
+        }
+
+        if (impactWait > 0f)
+            yield return new WaitForSeconds(impactWait);
 
         try
         {
@@ -250,6 +334,7 @@ public class BattlePresentationDirector : MonoBehaviour
         }
         catch
         {
+            pendingDamagePopups.Clear();
             foreach (BattlePresentationHandler handler in skillHandlers)
                 handler?.StopSkill();
             skillHandlers.Clear();
@@ -279,51 +364,48 @@ public class BattlePresentationDirector : MonoBehaviour
             StartImpactShake(strengthMultiplier);
         }
 
-        if (attacker.combatHandler != null)
-        {
-            foreach (var counter in attacker.combatHandler.LastSuccessfulCounters)
-            {
-                if (counter.Key.character != null && counter.Key.character.IsAlive)
-                {
-                    counter.Key.battlePresentationHandler?.FaceTarget(attacker.transform);
-
-                    if (counter.Key != anticipatedCounterUser)
-                        counter.Key.battlePresentationHandler?.PlaySkill(counter.Value);
-                }
-            }
-        }
-
-        bool anticipatedCounterSucceeded = anticipatedCounterUser != null &&
-            attacker.combatHandler != null &&
-            attacker.combatHandler.LastSuccessfulCounters.ContainsKey(anticipatedCounterUser);
-
-        if (anticipatedCounterUser != null &&
-            anticipatedCounterUser != resolvedTarget &&
-            !anticipatedCounterSucceeded &&
-            anticipatedCounterUser.character != null &&
-            anticipatedCounterUser.character.IsAlive)
-        {
-            anticipatedCounterUser.battlePresentationHandler?.PlayHit();
-        }
-
         bool counterSucceeded = resolvedTarget != null && attacker.combatHandler != null &&
             attacker.combatHandler.LastSuccessfulCounters.ContainsKey(resolvedTarget);
+
+        if (successfulCounters.Count > 0)
+        {
+            foreach (KeyValuePair<CharacterManager, SkillDefinitionSO> counter in successfulCounters)
+            {
+                if (counter.Key == null || counter.Value == null ||
+                    counter.Value.counterActionType == CounterActionType.Evade)
+                {
+                    continue;
+                }
+
+                PlayImpactSound(action.skill, true, counter.Key.transform.position);
+            }
+        }
 
         if (resolvedTarget != null)
         {
             if (resolvedTarget.character != null && resolvedTarget.character.IsAlive)
             {
                 if (!counterSucceeded)
+                {
+                    PlayImpactSound(action.skill, false, resolvedTarget.transform.position);
                     resolvedTarget.battlePresentationHandler?.PlayHit();
+                }
             }
             else
+            {
+                if (!counterSucceeded)
+                    PlayImpactSound(action.skill, false, resolvedTarget.transform.position);
+
                 resolvedTarget.battlePresentationHandler?.PlayDeath();
+            }
         }
+
+        FlushDamagePopups();
 
         bool blendIntoRepeatedSkill =
             repeatsSameSkill &&
             !hasInterception &&
-            anticipatedCounterSkill == null &&
+            successfulCounters.Count == 0 &&
             !attacker.combatHandler.LastSkillWasCancelled &&
             resolvedTarget != null &&
             resolvedTarget.character != null &&
@@ -339,6 +421,30 @@ public class BattlePresentationDirector : MonoBehaviour
         sequenceAttacker = attacker;
         sequenceTarget = resolvedTarget != null ? resolvedTarget : originalTarget;
         sequenceRanged = isRanged;
+    }
+
+    public bool TryQueueDamagePopup(int damage, Vector3 position)
+    {
+        if (!IsPresenting)
+            return false;
+
+        pendingDamagePopups.Add(new PendingDamagePopup
+        {
+            damage = damage,
+            position = position
+        });
+        return true;
+    }
+
+    private void FlushDamagePopups()
+    {
+        if (UIManager.Instance != null)
+        {
+            foreach (PendingDamagePopup popup in pendingDamagePopups)
+                UIManager.Instance.ShowDamage(popup.damage, popup.position);
+        }
+
+        pendingDamagePopups.Clear();
     }
 
     public IEnumerator ReturnCharactersHome(IList<CharacterManager> characters)
@@ -405,6 +511,131 @@ public class BattlePresentationDirector : MonoBehaviour
         }
 
         return TurnManager.Instance.defenseCharacter;
+    }
+
+    private IEnumerator PlayCounterForImpact(
+        CharacterManager counterUser,
+        SkillDefinitionSO counterSkill,
+        Transform attacker,
+        float delay)
+    {
+        if (delay > 0f)
+            yield return new WaitForSeconds(delay);
+
+        if (counterUser == null || counterUser.character == null ||
+            !counterUser.character.IsAlive || counterSkill == null)
+        {
+            yield break;
+        }
+
+        counterUser.battlePresentationHandler?.FaceTarget(attacker);
+        counterUser.battlePresentationHandler?.PlaySkill(counterSkill, attacker);
+    }
+
+    private void PlayImpactSound(
+        SkillDefinitionSO attackSkill,
+        bool wasBlocked,
+        Vector3 position)
+    {
+        AudioClip[] sounds = GetImpactSounds(attackSkill, wasBlocked);
+
+        if (sounds == null || sounds.Length == 0)
+            return;
+
+        AudioClip clip = sounds[UnityEngine.Random.Range(0, sounds.Length)];
+
+        if (clip == null)
+            return;
+
+        GameObject soundObject = new GameObject("OneShot: " + clip.name);
+        soundObject.transform.position = position;
+
+        AudioSource source = soundObject.AddComponent<AudioSource>();
+        source.clip = clip;
+        source.volume = impactSoundVolume;
+        source.pitch = 1f + UnityEngine.Random.Range(
+            -impactSoundPitchVariation,
+            impactSoundPitchVariation);
+        source.spatialBlend = impactSoundSpatialBlend;
+        source.dopplerLevel = 0f;
+        source.playOnAwake = false;
+        source.Play();
+
+        Destroy(
+            soundObject,
+            clip.length / Mathf.Max(0.01f, Mathf.Abs(source.pitch)) + 0.1f);
+    }
+
+    private AudioClip[] GetImpactSounds(SkillDefinitionSO attackSkill, bool wasBlocked)
+    {
+        switch (GetImpactSoundCategory(attackSkill))
+        {
+            case SkillImpactSoundCategory.Unarmed:
+                return unarmedImpactSounds;
+            case SkillImpactSoundCategory.Blade:
+                return wasBlocked ? bladeBlockSounds : bladeHitSounds;
+            case SkillImpactSoundCategory.Blunt:
+                return wasBlocked ? bluntBlockSounds : bluntHitSounds;
+            case SkillImpactSoundCategory.Arrow:
+                return wasBlocked ? arrowBlockSounds : arrowHitSounds;
+            case SkillImpactSoundCategory.Magic:
+                return wasBlocked ? magicBlockSounds : magicHitSounds;
+            default:
+                return bluntHitSounds;
+        }
+    }
+
+    private static SkillImpactSoundCategory GetImpactSoundCategory(
+        SkillDefinitionSO attackSkill)
+    {
+        if (attackSkill == null)
+            return SkillImpactSoundCategory.Blunt;
+
+        if (attackSkill.impactSoundCategory != SkillImpactSoundCategory.Auto)
+            return attackSkill.impactSoundCategory;
+
+        switch (attackSkill.discipline)
+        {
+            case SkillDiscipline.MartialArt:
+                return SkillImpactSoundCategory.Unarmed;
+            case SkillDiscipline.Swordsmanship:
+            case SkillDiscipline.DaggerArt:
+                return SkillImpactSoundCategory.Blade;
+            case SkillDiscipline.ShieldArt:
+                return SkillImpactSoundCategory.Blunt;
+            case SkillDiscipline.Archery:
+                return SkillImpactSoundCategory.Arrow;
+            case SkillDiscipline.Magic:
+                return SkillImpactSoundCategory.Magic;
+        }
+
+        if (attackSkill.type == SkillType.Magical)
+            return SkillImpactSoundCategory.Magic;
+
+        if (attackSkill.damageComponents != null)
+        {
+            foreach (SkillDamageComponentData component in attackSkill.damageComponents)
+            {
+                if (component == null)
+                    continue;
+
+                switch (component.attribute)
+                {
+                    case SkillAttribute.Fire:
+                    case SkillAttribute.Ice:
+                    case SkillAttribute.Lightning:
+                    case SkillAttribute.Magic:
+                        return SkillImpactSoundCategory.Magic;
+                    case SkillAttribute.Pierce:
+                    case SkillAttribute.Slash:
+                        return SkillImpactSoundCategory.Blade;
+                    case SkillAttribute.Smash:
+                        return SkillImpactSoundCategory.Blunt;
+                }
+            }
+        }
+
+        return SkillImpactSoundCategory.Blunt;
     }
 
     private void ResolveBattleCamera()
@@ -564,31 +795,6 @@ public class BattlePresentationDirector : MonoBehaviour
                 returnJumpDuration / battleSpeedMultiplier,
                 returnJumpHeight);
         StartCoroutine(TrackMovement(handler, movement));
-    }
-
-    private static CharacterManager GetAnticipatedCounterUser(
-        CharacterManager originalTarget,
-        CharacterManager protector)
-    {
-        if (GetFirstCounterSkill(protector) != null)
-            return protector;
-
-        if (GetFirstCounterSkill(originalTarget) != null)
-            return originalTarget;
-
-        return null;
-    }
-
-    private static SkillDefinitionSO GetFirstCounterSkill(CharacterManager character)
-    {
-        if (character == null || character.combatHandler == null)
-            return null;
-
-        List<SkillQueueData> queue = character.combatHandler.GetCounterSkillQueue();
-
-        return queue != null && queue.Count > 0 && queue[0] != null
-            ? queue[0].skill
-            : null;
     }
 
     private IEnumerator FollowTrackedMovement(

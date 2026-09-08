@@ -259,6 +259,20 @@ public static class EquipmentManager
 
         if (subWeapon != null && subWeapon.attributes != null)
             character.AvailableAttributes.AddRange(subWeapon.attributes);
+
+        if (character.monsterRoleId > 0 && GameDataRegistry.Instance != null)
+        {
+            MonsterRoleSO role = GameDataRegistry.Instance.GetMonsterRole(character.monsterRoleId);
+
+            if (role != null && role.availableAttackAttributes != null)
+            {
+                foreach (SkillAttribute attribute in role.availableAttackAttributes)
+                {
+                    if (!character.AvailableAttributes.Contains(attribute))
+                        character.AvailableAttributes.Add(attribute);
+                }
+            }
+        }
     }
 
     public static void UpdateSkillAvailability(CharacterData character)

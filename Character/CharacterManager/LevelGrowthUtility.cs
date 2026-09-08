@@ -112,6 +112,10 @@ public static class LevelGrowthUtility
             return false;
         }
 
+        int previousMaxHp = character.FinalStats != null
+            ? character.FinalStats.MaxHp
+            : character.CurrentHp;
+
         AddStat(character.OriginBaseStats, choice.stat, choice.amount);
         character.OriginBaseStats.ClampNonNegative();
         character.PendingLevelUps--;
@@ -119,6 +123,12 @@ public static class LevelGrowthUtility
         character.RemoveAllTraits(manager);
         character.ApplyAllTraits(manager);
         character.UpdateFinalStats();
+
+        int increasedMaxHp = Math.Max(0, character.FinalStats.MaxHp - previousMaxHp);
+        character.CurrentHp = Math.Min(
+            character.FinalStats.MaxHp,
+            character.CurrentHp + increasedMaxHp);
+        manager.UpdateCharacterUI();
 
         return true;
     }

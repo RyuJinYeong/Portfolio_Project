@@ -27,6 +27,7 @@ public class RecruitPanel : MonoBehaviour
 
     private CharacterData selectedCharacter;
     private bool hireConfirmationPending;
+    private bool reservationPending;
 
     private void Awake()
     {
@@ -64,8 +65,8 @@ public class RecruitPanel : MonoBehaviour
 
         if (insufficientGoldConfirmButton != null)
         {
-            insufficientGoldConfirmButton.onClick.RemoveListener(HideHireDialog);
-            insufficientGoldConfirmButton.onClick.AddListener(HideHireDialog);
+            insufficientGoldConfirmButton.onClick.RemoveListener(OnInsufficientGoldConfirmed);
+            insufficientGoldConfirmButton.onClick.AddListener(OnInsufficientGoldConfirmed);
         }
 
         BuildCandidates();
@@ -86,7 +87,7 @@ public class RecruitPanel : MonoBehaviour
             hireDialogCancelButton.onClick.RemoveListener(HideHireDialog);
 
         if (insufficientGoldConfirmButton != null)
-            insufficientGoldConfirmButton.onClick.RemoveListener(HideHireDialog);
+            insufficientGoldConfirmButton.onClick.RemoveListener(OnInsufficientGoldConfirmed);
     }
 
     private void BuildCandidates()
@@ -96,6 +97,7 @@ public class RecruitPanel : MonoBehaviour
             : null;
 
         SetText(currentGoldText, playerData != null ? $"{playerData.gold:N0}" : "-");
+        UpdateRefreshButton(playerData);
 
         if (playerData == null || characterView == null)
             return;
@@ -143,19 +145,25 @@ public class RecruitPanel : MonoBehaviour
     {
         selectedCharacter = character;
 
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
         int contractFee = MercenaryGenerator.CalculateContractFee(character);
         int sortiePay = MercenaryGenerator.CalculateSortiePay(character);
 
         SetText(
             contractFeeText,
-            character != null ? $"{contractFee:N0}" : "-");
+            character != null
+                ? $"{contractFee:N0}" +
+                  (playerData != null &&
+                   character.ID == playerData.reservedRecruitmentCandidateId
+                      ? "  (예약 중)"
+                      : string.Empty)
+                : "-");
         SetText(
             sortiePayText,
             character != null ? $"{sortiePay:N0}" : "-");
-
-        PlayerData playerData = PlayerManager.Instance != null
-            ? PlayerManager.Instance.GetCurrentPlayerData()
-            : null;
 
         if (hireButton != null)
         {
@@ -175,10 +183,14 @@ public class RecruitPanel : MonoBehaviour
 
         int contractFee = MercenaryGenerator.CalculateContractFee(selectedCharacter);
         hireConfirmationPending = playerData.gold >= contractFee;
+        reservationPending = !hireConfirmationPending;
 
         if (!hireConfirmationPending)
         {
-            SetText(insufficientGoldMessageText, "골드가 부족합니다.");
+            SetText(
+                insufficientGoldMessageText,
+                "골드가 부족합니다.\n이 용병을 예약하시겠습니까?\n예약은 1명만 유지됩니다.");
+            SetButtonText(insufficientGoldConfirmButton, "예약");
 
             if (insufficientGoldDialog != null)
                 insufficientGoldDialog.SetActive(true);
@@ -206,6 +218,23 @@ public class RecruitPanel : MonoBehaviour
             return;
 
         HideHireDialog();
+        int refreshCost = MercenaryGenerator.GetRecruitmentRefreshCost(playerData);
+
+        if (playerData.gold < refreshCost)
+        {
+            SetText(
+                insufficientGoldMessageText,
+                $"새로고침 비용 {refreshCost:N0} G가 필요합니다.");
+            SetButtonText(insufficientGoldConfirmButton, "확인");
+
+            if (insufficientGoldDialog != null)
+                insufficientGoldDialog.SetActive(true);
+
+            return;
+        }
+
+        playerData.gold -= refreshCost;
+        playerData.recruitmentRefreshCount++;
         selectedCharacter = null;
         MercenaryGenerator.RefreshRecruitmentCandidates(playerData);
         PlayerManager.Instance.SavePlayerDataToPlayFab();
@@ -226,12 +255,33 @@ public class RecruitPanel : MonoBehaviour
     private void HideHireDialog()
     {
         hireConfirmationPending = false;
+        reservationPending = false;
 
         if (hireDialog != null)
             hireDialog.SetActive(false);
 
         if (insufficientGoldDialog != null)
             insufficientGoldDialog.SetActive(false);
+    }
+
+    private void OnInsufficientGoldConfirmed()
+    {
+        if (reservationPending && selectedCharacter != null)
+        {
+            PlayerData playerData = PlayerManager.Instance != null
+                ? PlayerManager.Instance.GetCurrentPlayerData()
+                : null;
+
+            if (playerData != null)
+            {
+                playerData.reservedRecruitmentCandidateId = selectedCharacter.ID;
+                PlayerManager.Instance.SavePlayerDataToPlayFab();
+            }
+        }
+
+        HideHireDialog();
+        SelectCharacter(selectedCharacter);
+        characterView?.RefreshAll();
     }
 
     private void HireSelected()
@@ -255,6 +305,9 @@ public class RecruitPanel : MonoBehaviour
         }
 
         playerData.gold -= contractFee;
+        if (playerData.reservedRecruitmentCandidateId == selectedCharacter.ID)
+            playerData.reservedRecruitmentCandidateId = null;
+
         SetText(currentGoldText, $"{playerData.gold:N0}");
         selectedCharacter.IsMine = true;
 
@@ -301,5 +354,22 @@ public class RecruitPanel : MonoBehaviour
     {
         if (target != null)
             target.text = value;
+    }
+
+    private void UpdateRefreshButton(PlayerData playerData)
+    {
+        int cost = MercenaryGenerator.GetRecruitmentRefreshCost(playerData);
+        SetButtonText(refreshButton, $"새로고침  {cost:N0} G");
+    }
+
+    private static void SetButtonText(Button button, string value)
+    {
+        if (button == null)
+            return;
+
+        TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+
+        if (label != null)
+            label.text = value;
     }
 }

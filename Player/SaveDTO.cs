@@ -4,7 +4,7 @@ using System.Collections.Generic;
 [Serializable]
 public class PlayerSaveDTO
 {
-    public int v = 6;
+    public int v = 7;
 
     public string playerName;
     public int level;
@@ -24,6 +24,8 @@ public class PlayerSaveDTO
     public List<string> activeCharacterIds = new();
     public List<CharacterSaveDTO> recruitmentCandidates = new();
     public bool recruitmentCandidatesInitialized;
+    public int recruitmentRefreshCount;
+    public string reservedRecruitmentCandidateId;
 
     public List<PositionEntry> positions = new();
 
@@ -33,7 +35,7 @@ public class PlayerSaveDTO
 [Serializable]
 public class CharacterSaveDTO
 {
-    public int v = 2;
+    public int v = 4;
 
     public string id;
     public string name;

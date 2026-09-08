@@ -131,8 +131,8 @@ public class QuestNodeMapPanel : MonoBehaviour
             if (rect == null)
                 continue;
 
-            rect.anchorMin = new Vector2(0.5f, 0f);
-            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.anchorMin = new Vector2(0f, 0.5f);
+            rect.anchorMax = new Vector2(0f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = GetNodePosition(active.routeNodes, node, maxDepth);
 
@@ -167,9 +167,9 @@ public class QuestNodeMapPanel : MonoBehaviour
 
         float width = Mathf.Max(1f, nodeContainer.rect.width);
         float height = Mathf.Max(1f, nodeContainer.rect.height);
-        float xSpacing = width / (layerCount + 1f);
-        float x = -width * 0.5f + xSpacing * (node.column + 1);
-        float y = height * (node.depth + 0.5f) / (maxDepth + 1f);
+        float x = width * (node.depth + 0.5f) / (maxDepth + 1f);
+        float ySpacing = height / (layerCount + 1f);
+        float y = height * 0.5f - ySpacing * (node.column + 1);
         return new Vector2(x, y);
     }
 
@@ -203,8 +203,8 @@ public class QuestNodeMapPanel : MonoBehaviour
                     line.gameObject.SetActive(true);
                     RectTransform rect = line.rectTransform;
 
-                    rect.anchorMin = new Vector2(0.5f, 0f);
-                    rect.anchorMax = new Vector2(0.5f, 0f);
+                    rect.anchorMin = new Vector2(0f, 0.5f);
+                    rect.anchorMax = new Vector2(0f, 0.5f);
                     rect.pivot = new Vector2(0f, 0.5f);
                     rect.anchoredPosition = start + direction * offset;
                     rect.sizeDelta = new Vector2(dashLength, lineThickness);

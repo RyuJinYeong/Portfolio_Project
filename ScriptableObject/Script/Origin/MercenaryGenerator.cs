@@ -3,6 +3,9 @@ using UnityEngine;
 
 public static class MercenaryGenerator
 {
+    private const int BaseRecruitmentRefreshCost = 500;
+    private const int UnknownOriginId = 1006;
+
     public static float CalculateValue(CharacterData character)
     {
         if (character == null)
@@ -35,7 +38,24 @@ public static class MercenaryGenerator
         return Mathf.RoundToInt(CalculateBaseSortiePay(character) * (1f - belongingRate));
     }
 
-    public static void RefreshRecruitmentCandidates(PlayerData playerData)
+    public static int GetRecruitmentRefreshCost(PlayerData playerData)
+    {
+        int refreshCount = playerData != null
+            ? Mathf.Clamp(playerData.recruitmentRefreshCount, 0, 20)
+            : 0;
+        long cost = (long)BaseRecruitmentRefreshCost << refreshCount;
+        return cost > int.MaxValue ? int.MaxValue : (int)cost;
+    }
+
+    public static void ResetRecruitmentRefreshCost(PlayerData playerData)
+    {
+        if (playerData != null)
+            playerData.recruitmentRefreshCount = 0;
+    }
+
+    public static void RefreshRecruitmentCandidates(
+        PlayerData playerData,
+        bool preserveReserved = true)
     {
         if (playerData == null || GameDataRegistry.Instance == null)
             return;
@@ -57,20 +77,47 @@ public static class MercenaryGenerator
         if (candidates.Count == 0)
             return;
 
+        CharacterData reservedCandidate = null;
+
+        if (preserveReserved &&
+            playerData.recruitmentCandidates != null &&
+            !string.IsNullOrEmpty(playerData.reservedRecruitmentCandidateId))
+        {
+            reservedCandidate = playerData.recruitmentCandidates.Find(candidate =>
+                candidate != null &&
+                candidate.ID == playerData.reservedRecruitmentCandidateId);
+        }
+
+        if (reservedCandidate == null)
+            playerData.reservedRecruitmentCandidateId = null;
+
         if (playerData.recruitmentCandidates == null)
             playerData.recruitmentCandidates = new List<CharacterData>();
         else
         {
-            ReleaseCandidateEquipment(playerData.recruitmentCandidates);
+            ReleaseCandidateEquipment(
+                playerData.recruitmentCandidates,
+                reservedCandidate != null ? reservedCandidate.ID : null);
             playerData.recruitmentCandidates.Clear();
+        }
+
+        if (reservedCandidate != null)
+        {
+            playerData.recruitmentCandidates.Add(reservedCandidate);
+            candidates.RemoveAll(definition =>
+                definition != null &&
+                definition.baseOrigin != null &&
+                definition.baseOrigin.id == reservedCandidate.originId);
         }
 
         playerData.recruitmentCandidatesInitialized = true;
 
         System.Random random = new System.Random(System.Guid.NewGuid().GetHashCode());
-        int offerCount = Mathf.Min(
-            GameDataRegistry.Instance.recruitmentOfferCount,
-            candidates.Count);
+        int remainingOfferCount = Mathf.Max(
+            0,
+            GameDataRegistry.Instance.recruitmentOfferCount -
+            playerData.recruitmentCandidates.Count);
+        int offerCount = Mathf.Min(remainingOfferCount, candidates.Count);
 
         for (int i = 0; i < offerCount; i++)
         {
@@ -163,10 +210,15 @@ public static class MercenaryGenerator
             });
     }
 
-    private static void ReleaseCandidateEquipment(List<CharacterData> candidates)
+    private static void ReleaseCandidateEquipment(
+        List<CharacterData> candidates,
+        string preservedCandidateId)
     {
         foreach (CharacterData candidate in candidates)
         {
+            if (candidate != null && candidate.ID == preservedCandidateId)
+                continue;
+
             EquipmentSlotData slots = candidate != null ? candidate.EquipmentSlots : null;
 
             if (slots == null)
@@ -221,6 +273,8 @@ public static class MercenaryGenerator
         ApplyFixedTraits(character, template.fixedTraitIds);
         ApplyFixedSkills(character, template.fixedSkillUids);
 
+        ApplyGuaranteedUnknownOriginTrait(character, random);
+
         TraitGenerationUtility.Apply(
             character,
             template.traitGeneration,
@@ -255,6 +309,30 @@ public static class MercenaryGenerator
         character.CurrentMentality = character.FinalStats.MaxMentality;
 
         return character;
+    }
+
+    private static void ApplyGuaranteedUnknownOriginTrait(
+        CharacterData character,
+        System.Random random)
+    {
+        if (character == null || character.originId != UnknownOriginId ||
+            GameDataRegistry.Instance == null)
+        {
+            return;
+        }
+
+        List<TraitDefinitionSO> candidates = GameDataRegistry.Instance.GetAllTraits()
+            .FindAll(trait =>
+                trait != null &&
+                trait.polarity == TraitPolarity.Positive &&
+                trait.defaultAcquireGrade == TraitGrade.C &&
+                !character.HasCharacterTrait(trait.id));
+
+        if (candidates.Count == 0)
+            return;
+
+        TraitDefinitionSO selected = candidates[random.Next(0, candidates.Count)];
+        TraitGradeUtility.AddTrait(character.Traits, selected, TraitGrade.C);
     }
 
     private static void ApplyFixedTraits(CharacterData character, List<int> traitIds)

@@ -8,6 +8,7 @@ public class CharacterTargeting : MonoBehaviour
 {
     public LineRenderer lineRenderer;
     [Range(0f, 1f)] public float dottedLineAlpha = 0.45f;
+    [Range(0f, 1f)] public float enemyTargetLineAlpha = 0.45f;
     [Min(0.1f)] public float dottedPatternLength = 1.2f;
 
     private Camera mainCamera;
@@ -27,6 +28,7 @@ public class CharacterTargeting : MonoBehaviour
 
     private Outline currentHoverOutline;
     private Outline selectedCharacterOutline;
+    private CharacterManager portraitHoverCharacter;
     private bool presentationOutlinesSuppressed;
 
     private readonly List<LineRenderer> confirmedLineRenderers = new();
@@ -220,6 +222,38 @@ public class CharacterTargeting : MonoBehaviour
 
     private void HandleHoverOutline()
     {
+        if (portraitHoverCharacter != null &&
+            portraitHoverCharacter.character != null &&
+            portraitHoverCharacter.character.IsAlive)
+        {
+            if (portraitHoverCharacter == selectedCharacter)
+            {
+                if (currentHoverOutline != null &&
+                    currentHoverOutline != selectedCharacterOutline)
+                {
+                    currentHoverOutline.enabled = false;
+                }
+
+                currentHoverOutline = null;
+                return;
+            }
+
+            Outline portraitOutline = portraitHoverCharacter.GetComponentInChildren<Outline>(true);
+
+            if (currentHoverOutline != null && currentHoverOutline != portraitOutline)
+                currentHoverOutline.enabled = false;
+
+            currentHoverOutline = portraitOutline;
+
+            if (currentHoverOutline != null)
+            {
+                currentHoverOutline.OutlineColor = hoverOutlineColor;
+                currentHoverOutline.enabled = true;
+            }
+
+            return;
+        }
+
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
 
         if (Physics.Raycast(ray, out RaycastHit hit))
@@ -378,6 +412,46 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
+    public void PreviewCharacter(CharacterManager characterManager)
+    {
+        if (characterManager == null ||
+            characterManager.character == null ||
+            !characterManager.character.IsAlive ||
+            (BattlePresentationDirector.Instance != null &&
+             BattlePresentationDirector.Instance.IsPresenting))
+        {
+            return;
+        }
+
+        portraitHoverCharacter = characterManager;
+        HandleHoverOutline();
+    }
+
+    public void ClearCharacterPreview(CharacterManager characterManager)
+    {
+        if (portraitHoverCharacter != characterManager)
+            return;
+
+        portraitHoverCharacter = null;
+
+        if (currentHoverOutline != null)
+        {
+            currentHoverOutline.enabled = false;
+            currentHoverOutline = null;
+        }
+
+        if (selectedCharacterOutline != null &&
+            selectedCharacter != null &&
+            selectedCharacter.character != null &&
+            selectedCharacter.character.IsAlive)
+        {
+            selectedCharacterOutline.OutlineColor = selectedOutlineColor;
+            selectedCharacterOutline.enabled =
+                BattlePresentationDirector.Instance == null ||
+                !BattlePresentationDirector.Instance.IsPresenting;
+        }
+    }
+
     void UpdateBezierCurve()
     {
         if (selectedCharacter == null || previewLineRenderer == null || mainCamera == null)
@@ -438,7 +512,7 @@ public class CharacterTargeting : MonoBehaviour
             return;
 
         InitializeLineRenderers();
-        ClearConfirmedTargetLines();
+        RefreshConfirmedTargetLines();
         isDefenseCharacterTargeting = true;
         SetLineRendererVisible(previewLineRenderer, true);
 
@@ -498,9 +572,33 @@ public class CharacterTargeting : MonoBehaviour
         selectedTarget = null;
 
         SetLineRendererVisible(previewLineRenderer, false);
-        ClearConfirmedTargetLines();
+        RefreshConfirmedTargetLines();
 
         ChangeCursor("Basic");
+    }
+
+    public bool TryReplaceQueuedAttack(CharacterManager caster, int queueIndex)
+    {
+        if (!isTargeting || isDefenseSkillTargeting || selectedSkill == null)
+            return false;
+
+        if (selectedSkill.isCounterSkill || selectedCharacter != caster)
+            return true;
+
+        if (caster != null &&
+            caster.combatHandler != null &&
+            caster.combatHandler.ReplaceSkillInQueue(queueIndex, selectedSkill))
+        {
+            StopTargeting();
+        }
+
+        return true;
+    }
+
+    public void StopTargetingAndClearConfirmedLines()
+    {
+        StopTargeting();
+        ClearConfirmedTargetLines();
     }
 
     public bool CancelTargeting()
@@ -521,23 +619,75 @@ public class CharacterTargeting : MonoBehaviour
     {
         InitializeLineRenderers();
 
-        Dictionary<CharacterManager, bool> targetStyles = new();
+        int lineIndex = 0;
 
         if (selectedCharacter != null && selectedCharacter.combatHandler != null)
         {
+            Dictionary<CharacterManager, bool> targetStyles = new();
             AddQueuedTargets(selectedCharacter.combatHandler.GetSkillQueue(), targetStyles);
-            AddQueuedTargets(selectedCharacter.combatHandler.GetCounterSkillQueue(), targetStyles);
+            AddQueuedTargets(
+                selectedCharacter.combatHandler.GetCounterSkillQueue(),
+                targetStyles,
+                true,
+                selectedCharacter);
+            lineIndex = DrawConfirmedTargetLines(
+                selectedCharacter,
+                targetStyles,
+                selectedCharacter.character != null && selectedCharacter.character.IsMine
+                    ? 1f
+                    : enemyTargetLineAlpha,
+                lineIndex);
         }
 
-        int lineIndex = 0;
+        List<CharacterManager> allCharacters = GameManager.Instance != null
+            ? GameManager.Instance.GetAllCharacters()
+            : null;
+
+        if (allCharacters != null)
+        {
+            foreach (CharacterManager enemy in allCharacters)
+            {
+                if (enemy == null || enemy == selectedCharacter ||
+                    enemy.character == null || enemy.character.IsMine ||
+                    !enemy.character.IsAlive || enemy.combatHandler == null)
+                {
+                    continue;
+                }
+
+                Dictionary<CharacterManager, bool> enemyTargetStyles = new();
+                AddQueuedTargets(enemy.combatHandler.GetSkillQueue(), enemyTargetStyles);
+                lineIndex = DrawConfirmedTargetLines(
+                    enemy,
+                    enemyTargetStyles,
+                    enemyTargetLineAlpha,
+                    lineIndex);
+            }
+        }
+
+        for (int i = lineIndex; i < confirmedLineRenderers.Count; i++)
+            SetLineRendererVisible(confirmedLineRenderers[i], false);
+    }
+
+    private int DrawConfirmedTargetLines(
+        CharacterManager source,
+        Dictionary<CharacterManager, bool> targetStyles,
+        float alphaMultiplier,
+        int lineIndex)
+    {
+        if (source == null || targetStyles == null)
+            return lineIndex;
 
         foreach (KeyValuePair<CharacterManager, bool> targetStyle in targetStyles)
         {
-            if (targetStyle.Key == null)
+            if (targetStyle.Key == null ||
+                targetStyle.Key.character == null ||
+                !targetStyle.Key.character.IsAlive)
+            {
                 continue;
+            }
 
             LineRenderer targetLine = GetConfirmedLineRenderer(lineIndex++);
-            Vector3 startPosition = selectedCharacter.transform.position + Vector3.up;
+            Vector3 startPosition = source.transform.position + Vector3.up;
             Vector3 targetPosition = targetStyle.Key.transform.position + Vector3.up;
             Vector3 controlPoint = (startPosition + targetPosition) / 2f;
             controlPoint.y += 2f;
@@ -548,31 +698,40 @@ public class CharacterTargeting : MonoBehaviour
                 startPosition,
                 controlPoint,
                 targetPosition,
-                !targetStyle.Value);
+                !targetStyle.Value,
+                alphaMultiplier);
         }
 
-        for (int i = lineIndex; i < confirmedLineRenderers.Count; i++)
-            SetLineRendererVisible(confirmedLineRenderers[i], false);
+        return lineIndex;
     }
 
     private void AddQueuedTargets(
         List<SkillQueueData> queue,
-        Dictionary<CharacterManager, bool> targetStyles)
+        Dictionary<CharacterManager, bool> targetStyles,
+        bool useProtectedTarget = false,
+        CharacterManager source = null)
     {
         if (queue == null)
             return;
 
         foreach (SkillQueueData queuedSkill in queue)
         {
-            if (queuedSkill == null || queuedSkill.skill == null || queuedSkill.target == null)
+            CharacterManager queuedTarget = useProtectedTarget
+                ? queuedSkill?.protectedTarget
+                : queuedSkill?.target;
+
+            if (queuedSkill == null ||
+                queuedSkill.skill == null ||
+                queuedTarget == null ||
+                (useProtectedTarget && queuedTarget == source))
                 continue;
 
-            bool containsMeleeSkill = !queuedSkill.skill.isRangedSkill;
+            bool containsMeleeSkill = useProtectedTarget || !queuedSkill.skill.isRangedSkill;
 
-            if (targetStyles.TryGetValue(queuedSkill.target, out bool existingContainsMelee))
-                targetStyles[queuedSkill.target] = existingContainsMelee || containsMeleeSkill;
+            if (targetStyles.TryGetValue(queuedTarget, out bool existingContainsMelee))
+                targetStyles[queuedTarget] = existingContainsMelee || containsMeleeSkill;
             else
-                targetStyles.Add(queuedSkill.target, containsMeleeSkill);
+                targetStyles.Add(queuedTarget, containsMeleeSkill);
         }
     }
 
@@ -650,7 +809,8 @@ public class CharacterTargeting : MonoBehaviour
         Vector3 startPosition,
         Vector3 controlPoint,
         Vector3 endPosition,
-        bool dotted)
+        bool dotted,
+        float alphaMultiplier = 1f)
     {
         if (targetLine == null)
             return;
@@ -662,7 +822,7 @@ public class CharacterTargeting : MonoBehaviour
 
         targetLine.colorGradient = CopyGradient(
             solidLineGradient,
-            dotted ? dottedLineAlpha : 1f);
+            (dotted ? dottedLineAlpha : 1f) * alphaMultiplier);
         targetLine.textureMode = dotted
             ? LineTextureMode.Stretch
             : solidLineTextureMode;

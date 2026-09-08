@@ -319,6 +319,9 @@ public class CharacterSpecialStats
     [Tooltip("공격 대성공 피해 배율. 150이면 1.5배")]
     public int CriticalDamageBonus;
 
+    [Tooltip("대응 스킬 성공률 추가 배율. 10이면 기존 성공률에 10%를 곱해 더함")]
+    public int DefenseSkillSuccessRateBonus;
+
     public int StatusResistance; // 공용 상태이상 저항력
 
     [Header("유틸")]
@@ -342,6 +345,8 @@ public class CharacterSpecialStats
         {
             CriticalChance = a.CriticalChance + b.CriticalChance,
             CriticalDamageBonus = a.CriticalDamageBonus + b.CriticalDamageBonus,
+            DefenseSkillSuccessRateBonus =
+                a.DefenseSkillSuccessRateBonus + b.DefenseSkillSuccessRateBonus,
             StatusResistance = a.StatusResistance + b.StatusResistance,
 
             MapDetectionRange = a.MapDetectionRange + b.MapDetectionRange,
@@ -363,6 +368,7 @@ public class CharacterSpecialStats
         {
             CriticalChance = CriticalChance * multiplier,
             CriticalDamageBonus = CriticalDamageBonus * multiplier,
+            DefenseSkillSuccessRateBonus = DefenseSkillSuccessRateBonus * multiplier,
             StatusResistance = StatusResistance * multiplier,
 
             MapDetectionRange = MapDetectionRange * multiplier,
@@ -382,6 +388,7 @@ public class CharacterSpecialStats
         {
             CriticalChance = CriticalChance,
             CriticalDamageBonus = CriticalDamageBonus,
+            DefenseSkillSuccessRateBonus = DefenseSkillSuccessRateBonus,
             StatusResistance = StatusResistance,
 
             MapDetectionRange = MapDetectionRange,
@@ -991,8 +998,8 @@ public class CharacterData
 
         int baseStaminaRecovery = stats.StaminaRecovery + stats.Vitality / 10 + 1;
         int baseMentalityRecovery = stats.MentalityRecovery + stats.Intelligence / 10 + 1;
-        int basePhysicalDefense = stats.PhysicalDefense + baseEndurance / 5;
-        int baseMagicalDefense = stats.MagicalDefense + baseEndurance / 5;
+        int basePhysicalDefense = stats.PhysicalDefense + baseEndurance / 2;
+        int baseMagicalDefense = stats.MagicalDefense + baseEndurance / 2;
         int basePhysicalAttack = stats.PhysicalAttack;
         int baseMagicalAttack = stats.MagicalAttack + stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
         int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));

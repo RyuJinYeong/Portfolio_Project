@@ -16,6 +16,11 @@ public class BattlePresentationHandler : MonoBehaviour
     private const float MovementAnimationSpeed = 2f;
     private const float MinimumSkillPlaybackTimeout = 2f;
     private const float SkillPlaybackTimeoutPadding = 1f;
+    private const string MaleHitComposerPath = "CombatPresentation/AC_HitReaction_Male";
+    private const string FemaleHitComposerPath = "CombatPresentation/AC_HitReaction_Female";
+
+    private static ScriptableObject_AnimComposer maleHitComposer;
+    private static ScriptableObject_AnimComposer femaleHitComposer;
 
     private readonly HashSet<int> animatorParameters = new();
     private AnimCoordinatorComponent animCoordinator;
@@ -28,6 +33,11 @@ public class BattlePresentationHandler : MonoBehaviour
     private Quaternion homeRotation;
     private bool hasHomePose;
     private Coroutine deathPoseCoroutine;
+    private Transform bowString;
+    private Transform bowStringHandTarget;
+    private Vector3 bowStringRestLocalPosition;
+    private float bowStringPullWeight;
+    private bool isAnimatingBowString;
 
     private static readonly int LocomotionHash = Animator.StringToHash("Locomotion");
     private static readonly int LocomotionStateHash = Animator.StringToHash("Base Layer.Blend Tree");
@@ -40,6 +50,9 @@ public class BattlePresentationHandler : MonoBehaviour
     public Animator Animator => animator;
     public float SkillAnimationSpeed => battleAnimationSpeed;
     public bool IsPlayingSkill => isPlayingSkillSequence || IsActiveComposer(activeSkillComposer);
+    public bool CurrentSkillUsesOffHand { get; private set; }
+    public SkillDefinitionSO CurrentSkill { get; private set; }
+    public Transform CurrentSkillTarget { get; private set; }
 
     private void Awake()
     {
@@ -59,6 +72,18 @@ public class BattlePresentationHandler : MonoBehaviour
         }
 
         StopSkill();
+    }
+
+    private void LateUpdate()
+    {
+        if (!isAnimatingBowString || bowString == null || bowStringHandTarget == null)
+            return;
+
+        Vector3 restPosition = bowString.parent.TransformPoint(bowStringRestLocalPosition);
+        bowString.position = Vector3.Lerp(
+            restPosition,
+            bowStringHandTarget.position,
+            Mathf.Clamp01(bowStringPullWeight));
     }
 
     public void BindVisual(
@@ -201,9 +226,22 @@ public class BattlePresentationHandler : MonoBehaviour
 
     public void PlaySkill(SkillDefinitionSO skill)
     {
+        PlaySkill(skill, null);
+    }
+
+    public void PlaySkill(SkillDefinitionSO skill, Transform target)
+    {
         ScriptableObject_AnimComposer composer = skill != null ? skill.composer : null;
 
         StopSkill();
+        CurrentSkill = skill;
+        CurrentSkillTarget = target;
+
+        CharacterManager manager = GetComponentInParent<CharacterManager>();
+        SkillRuntimeData runtime = manager != null && manager.character != null && skill != null
+            ? SkillManager.GetRuntime(manager.character, skill.uid)
+            : null;
+        CurrentSkillUsesOffHand = runtime != null && runtime.useOffHand;
 
         if (composer == null)
         {
@@ -214,7 +252,7 @@ public class BattlePresentationHandler : MonoBehaviour
         if (skill.followUpComposers != null && skill.followUpComposers.Count > 0)
         {
             isPlayingSkillSequence = true;
-            isSkillImpactReady = false;
+            isSkillImpactReady = HasProjectileImpactBlock(composer);
             skillSequenceCoroutine = StartCoroutine(PlayComposerSequence(skill));
             return;
         }
@@ -307,6 +345,128 @@ public class BattlePresentationHandler : MonoBehaviour
         }
     }
 
+    public float GetSkillContactLeadTime(SkillDefinitionSO skill)
+    {
+        ScriptableObject_AnimComposer composer = skill != null ? skill.composer : null;
+
+        if (composer == null || composer.AnimationClip == null)
+            return 0f;
+
+        float contactTime = composer.AnimationClip.length * 0.2f;
+        bool foundContactBlock = false;
+        float projectileContactTime = 0f;
+        bool foundProjectileContact = false;
+
+        if (composer.Tracks != null)
+        {
+            foreach (AnimationTrack track in composer.Tracks)
+            {
+                if (track == null || track.ActionBlocks == null)
+                    continue;
+
+                foreach (ActionBlockData block in track.ActionBlocks)
+                {
+                    if (block == null || block.IsDisabled || block.Action == null)
+                        continue;
+
+                    if (block.Action is ActionBlock_BattleProjectileVfx)
+                    {
+                        projectileContactTime = Mathf.Max(projectileContactTime, block.EndTime);
+                        foundProjectileContact = true;
+                        continue;
+                    }
+
+                    string actionName = block.Action.CustomName;
+                    bool isContactBlock =
+                        !string.IsNullOrEmpty(actionName) &&
+                        (actionName.Contains("Impact") ||
+                         actionName.Contains("Intercept") ||
+                         actionName.Contains("Swish") ||
+                         actionName.Contains("Attack"));
+
+                    if (!isContactBlock)
+                        continue;
+
+                    contactTime = foundContactBlock
+                        ? Mathf.Min(contactTime, block.StartTime)
+                        : block.StartTime;
+                    foundContactBlock = true;
+                }
+            }
+        }
+
+        float playbackRate = GetSkillPlaybackRate(skill, composer);
+        if (foundProjectileContact)
+            contactTime = projectileContactTime;
+
+        return contactTime / Mathf.Max(0.01f, Mathf.Abs(playbackRate));
+    }
+
+    public float GetSkillVisualImpactLeadTime(SkillDefinitionSO skill)
+    {
+        if (skill == null)
+            return 0f;
+
+        ScriptableObject_AnimComposer composer = skill.composer;
+
+        if (!HasProjectileImpactBlock(composer) &&
+            skill.followUpComposers != null && skill.followUpComposers.Count > 0)
+        {
+            composer = skill.followUpComposers[skill.followUpComposers.Count - 1];
+        }
+
+        if (composer == null || composer.AnimationClip == null || composer.Tracks == null)
+            return 0f;
+
+        float impactTime = 0f;
+
+        foreach (AnimationTrack track in composer.Tracks)
+        {
+            if (track == null || track.ActionBlocks == null)
+                continue;
+
+            foreach (ActionBlockData block in track.ActionBlocks)
+            {
+                if (block == null || block.IsDisabled ||
+                    block.Action is not ActionBlock_BattleProjectileVfx)
+                {
+                    continue;
+                }
+
+                impactTime = Mathf.Max(impactTime, block.EndTime);
+            }
+        }
+
+        if (impactTime <= 0f)
+            return 0f;
+
+        float playbackRate = GetSkillPlaybackRate(skill, composer);
+        return impactTime / Mathf.Max(0.01f, Mathf.Abs(playbackRate));
+    }
+
+    private static bool HasProjectileImpactBlock(ScriptableObject_AnimComposer composer)
+    {
+        if (composer == null || composer.Tracks == null)
+            return false;
+
+        foreach (AnimationTrack track in composer.Tracks)
+        {
+            if (track == null || track.ActionBlocks == null)
+                continue;
+
+            foreach (ActionBlockData block in track.ActionBlocks)
+            {
+                if (block != null && !block.IsDisabled &&
+                    block.Action is ActionBlock_BattleProjectileVfx)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public void StopSkill()
     {
         if (skillSequenceCoroutine != null)
@@ -323,6 +483,10 @@ public class BattlePresentationHandler : MonoBehaviour
 
         activeSkillComposer = null;
         skillPlaybackDeadline = 0f;
+        CurrentSkillUsesOffHand = false;
+        CurrentSkill = null;
+        CurrentSkillTarget = null;
+        ResetBowString();
     }
 
     private IEnumerator PlayComposerSequence(SkillDefinitionSO skill)
@@ -332,6 +496,9 @@ public class BattlePresentationHandler : MonoBehaviour
             skill.composer
         };
         sequence.AddRange(skill.followUpComposers);
+
+        bool animateBowString = skill.discipline == SkillDiscipline.Archery &&
+                                BeginBowStringAnimation();
 
         for (int i = 0; i < sequence.Count; i++)
         {
@@ -344,6 +511,9 @@ public class BattlePresentationHandler : MonoBehaviour
 
             if (isLastComposer)
                 isSkillImpactReady = true;
+
+            if (animateBowString && i > 0 && !isLastComposer)
+                bowStringPullWeight = 1f;
 
             while (IsActiveComposer(activeSkillComposer))
             {
@@ -358,8 +528,12 @@ public class BattlePresentationHandler : MonoBehaviour
                     isPlayingSkillSequence = false;
                     isSkillImpactReady = true;
                     skillSequenceCoroutine = null;
+                    ResetBowString();
                     yield break;
                 }
+
+                if (animateBowString)
+                    UpdateBowStringPull(i, sequence.Count, activeSkillComposer);
 
                 if (!isLastComposer)
                 {
@@ -387,6 +561,99 @@ public class BattlePresentationHandler : MonoBehaviour
         activeSkillComposer = null;
         skillPlaybackDeadline = 0f;
         skillSequenceCoroutine = null;
+        ResetBowString();
+    }
+
+    private bool BeginBowStringAnimation()
+    {
+        ResetBowString();
+
+        if (animator == null || animator.avatar == null || !animator.avatar.isHuman)
+            return false;
+
+        Transform[] transforms = GetComponentsInChildren<Transform>(false);
+        foreach (Transform candidate in transforms)
+        {
+            if (candidate.name != "String" && candidate.name != "WB.string")
+                continue;
+
+            if (!IsBowTransform(candidate))
+                continue;
+
+            bowString = candidate;
+            break;
+        }
+
+        if (bowString == null || bowString.parent == null)
+            return false;
+
+        bowStringHandTarget = animator.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
+        if (bowStringHandTarget == null)
+            bowStringHandTarget = animator.GetBoneTransform(HumanBodyBones.RightHand);
+
+        if (bowStringHandTarget == null)
+        {
+            bowString = null;
+            return false;
+        }
+
+        bowStringRestLocalPosition = bowString.localPosition;
+        bowStringPullWeight = 0f;
+        isAnimatingBowString = true;
+        return true;
+    }
+
+    private void UpdateBowStringPull(
+        int sequenceIndex,
+        int sequenceCount,
+        RuntimeAnimComposer composer)
+    {
+        if (!isAnimatingBowString || composer == null)
+            return;
+
+        float normalizedTime = composer.AnimationLength > 0f
+            ? Mathf.Clamp01(composer.ElapsedTime / composer.AnimationLength)
+            : 1f;
+
+        if (sequenceIndex == 0)
+        {
+            bowStringPullWeight = Mathf.SmoothStep(0f, 1f, normalizedTime);
+            return;
+        }
+
+        if (sequenceIndex == sequenceCount - 1)
+        {
+            bowStringPullWeight = 1f - Mathf.SmoothStep(0f, 1f, normalizedTime * 5f);
+            return;
+        }
+
+        bowStringPullWeight = 1f;
+    }
+
+    private void ResetBowString()
+    {
+        if (bowString != null && bowString.parent != null)
+            bowString.localPosition = bowStringRestLocalPosition;
+
+        bowString = null;
+        bowStringHandTarget = null;
+        bowStringPullWeight = 0f;
+        isAnimatingBowString = false;
+    }
+
+    private static bool IsBowTransform(Transform transformToCheck)
+    {
+        Transform current = transformToCheck;
+
+        while (current != null)
+        {
+            if (current.name.ToLowerInvariant().Contains("bow"))
+                return true;
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private bool HasSkillPlaybackTimedOut()
@@ -414,6 +681,17 @@ public class BattlePresentationHandler : MonoBehaviour
 
     public void PlayHit()
     {
+        ScriptableObject_AnimComposer hitComposer = GetHitComposer();
+
+        if (hitComposer != null &&
+            animator != null &&
+            animator.avatar != null &&
+            animator.avatar.isHuman &&
+            PlayComposer(hitComposer, hitComposer.PlayRate * hitReactionAnimationSpeed))
+        {
+            return;
+        }
+
         SetAnimatorPlaybackSpeed(hitReactionAnimationSpeed);
         SetTrigger(GotHitHash);
     }
@@ -579,6 +857,28 @@ public class BattlePresentationHandler : MonoBehaviour
             animator.speed = speed;
     }
 
+    private ScriptableObject_AnimComposer GetHitComposer()
+    {
+        CharacterManager manager = GetComponentInParent<CharacterManager>();
+        bool useFemaleComposer = manager != null &&
+                                 manager.character != null &&
+                                 manager.character.customizationData != null &&
+                                 !manager.character.customizationData.IsMale;
+
+        if (useFemaleComposer)
+        {
+            if (femaleHitComposer == null)
+                femaleHitComposer = Resources.Load<ScriptableObject_AnimComposer>(FemaleHitComposerPath);
+
+            return femaleHitComposer;
+        }
+
+        if (maleHitComposer == null)
+            maleHitComposer = Resources.Load<ScriptableObject_AnimComposer>(MaleHitComposerPath);
+
+        return maleHitComposer;
+    }
+
     private float GetSkillPlaybackRate(
         SkillDefinitionSO skill,
         ScriptableObject_AnimComposer composer)
@@ -606,7 +906,7 @@ public class BattlePresentationHandler : MonoBehaviour
                                Mathf.Max(0.01f, battleAnimationSpeed) *
                                durationScale;
 
-        return clip.length / Mathf.Max(0.01f, targetDuration);
+        return clip.length / Mathf.Max(0.01f, targetDuration) * composer.PlayRate;
     }
 
     private static bool IsSingleHitMeleeAttack(SkillDefinitionSO skill)

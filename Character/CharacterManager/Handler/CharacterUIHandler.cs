@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,6 +19,7 @@ public class CharacterUIHandler : MonoBehaviour
     public GameObject skillQueuePanel;
     public GameObject counterSkillQueuePanel;
     public GameObject skillIconPrefab;
+    public GameObject pairedSkillQueuePrefab;
 
     [Header("Optional Icons")]
     public Texture2D concealedSkillIcon;
@@ -74,6 +76,9 @@ public class CharacterUIHandler : MonoBehaviour
 
         Debug.Log(caster.character.Name + "의 SkillQueue를 기준으로 " + characterManager.character.Name + " UI 갱신");
 
+        if (TryUpdatePairedSkillQueueUI(queue, caster))
+            return;
+
         ClearChildren(skillQueuePanel.transform);
 
         for (int i = 0; i < queue.Count; i++)
@@ -104,6 +109,17 @@ public class CharacterUIHandler : MonoBehaviour
                     button.onClick.AddListener(() =>
                     {
                         TooltipManager.Instance?.HideTooltip();
+
+                        CharacterTargeting targeting = UIManager.Instance != null
+                            ? UIManager.Instance.characterTargeting
+                            : null;
+
+                        if (targeting != null &&
+                            targeting.TryReplaceQueuedAttack(caster, capturedIndex))
+                        {
+                            return;
+                        }
+
                         caster.combatHandler.RemoveSkillFromQueue(capturedIndex);
                     });
                 }
@@ -113,25 +129,58 @@ public class CharacterUIHandler : MonoBehaviour
 
     public void UpdateCounterSkillQueueUI(List<SkillQueueData> queue, CharacterManager caster)
     {
-        if (queue == null || caster == null || counterSkillQueuePanel == null || skillIconPrefab == null)
+        if (queue == null || caster == null || skillQueuePanel == null || skillIconPrefab == null)
             return;
 
         Debug.Log(caster.character.Name + "의 CounterSkillQueue를 기준으로 " + characterManager.character.Name + " UI 갱신");
 
-        ClearChildren(counterSkillQueuePanel.transform);
+        CharacterManager attacker = TurnManager.Instance != null
+            ? TurnManager.Instance.currentCharacter
+            : null;
+
+        if (attacker != null &&
+            attacker.combatHandler != null &&
+            TryUpdatePairedSkillQueueUI(attacker.combatHandler.GetSkillQueue(), attacker))
+        {
+            return;
+        }
+
+        ClearChildren(skillQueuePanel.transform);
 
         for (int i = 0; i < queue.Count; i++)
         {
             SkillQueueData data = queue[i];
 
-            if (data == null || data.skill == null)
+            if (data == null)
                 continue;
 
-            GameObject skillIconInstance = Instantiate(skillIconPrefab, counterSkillQueuePanel.transform);
+            GameObject skillIconInstance = Instantiate(skillIconPrefab, skillQueuePanel.transform);
 
             ApplySkillIcon(skillIconInstance, data);
             ApplySkillButtonData(skillIconInstance, data, i, true);
             ApplyQueueText(skillIconInstance, data, i);
+
+            SkillButton skillButton = skillIconInstance.GetComponent<SkillButton>();
+            CharacterManager protectedTarget = data.protectedTarget ?? data.target;
+
+            if (skillButton != null &&
+                data.incomingSkill != null &&
+                attacker != null &&
+                protectedTarget != null)
+            {
+                SkillQueueData incomingAttack = new SkillQueueData(
+                    data.incomingSkill,
+                    attacker,
+                    protectedTarget,
+                    false,
+                    data.order);
+                incomingAttack.revealLevel = data.revealLevel;
+
+                skillButton.pairedAttackQueueData = incomingAttack;
+                skillButton.pairedCounterSkill = data.skill;
+                skillButton.counterUser = caster;
+                skillButton.protectedTarget = protectedTarget;
+            }
 
             if (caster.character.IsMine)
             {
@@ -140,8 +189,7 @@ public class CharacterUIHandler : MonoBehaviour
                 if (button != null)
                 {
                     int capturedIndex = i;
-                    SkillDefinitionSO capturedSkill = data.skill;
-
+                    SkillButton capturedSkillButton = skillButton;
                     button.onClick.RemoveAllListeners();
                     button.onClick.AddListener(() =>
                     {
@@ -165,24 +213,213 @@ public class CharacterUIHandler : MonoBehaviour
                             return;
                         }
 
-                        if (caster.character.DefaultCounterSkill > 0 &&
-                            capturedSkill.uid == caster.character.DefaultCounterSkill)
-                        {
-                            Debug.Log("기본 대응 스킬은 제거할 수 없습니다: " + capturedSkill.skillName);
-                            return;
-                        }
-
-                        caster.combatHandler.RemoveCounterSkillFromQueue(capturedIndex);
+                        caster.combatHandler.CycleBasicCounterSkill(capturedIndex);
                     });
+
+                    if (capturedSkillButton != null)
+                        capturedSkillButton.onRightClick = null;
                 }
             }
         }
     }
 
+    private bool TryUpdatePairedSkillQueueUI(
+        List<SkillQueueData> attackQueue,
+        CharacterManager attacker)
+    {
+        if (attackQueue == null ||
+            attacker == null ||
+            characterManager == null ||
+            characterManager.combatHandler == null ||
+            pairedSkillQueuePrefab == null ||
+            skillQueuePanel == null)
+        {
+            return false;
+        }
+
+        TurnManager turnManager = TurnManager.Instance;
+        bool isProtectingOther =
+            turnManager != null &&
+            turnManager.defenseCharacter == characterManager &&
+            turnManager.defenseTarget != null &&
+            turnManager.defenseTarget != characterManager;
+
+        if (isProtectingOther)
+            return false;
+
+        List<(SkillQueueData data, int index)> targetedAttacks = attackQueue
+            .Select((data, index) => (data, index))
+            .Where(entry =>
+                entry.data != null &&
+                entry.data.skill != null &&
+                entry.data.target == characterManager)
+            .ToList();
+
+        if (targetedAttacks.Count == 0)
+            return false;
+
+        CharacterManager counterUser = characterManager;
+        List<SkillQueueData> counterQueue = characterManager.combatHandler
+            .GetCounterSkillQueue()
+            .Where(entry =>
+                entry != null &&
+                (entry.protectedTarget ?? entry.target) == characterManager)
+            .ToList();
+
+        if (counterQueue == null ||
+            counterQueue.Count != targetedAttacks.Count ||
+            counterQueue.Any(entry =>
+                entry == null ||
+                (entry.protectedTarget ?? entry.target) != characterManager))
+        {
+            return false;
+        }
+
+        ClearChildren(skillQueuePanel.transform);
+
+        for (int localIndex = 0; localIndex < targetedAttacks.Count; localIndex++)
+        {
+            SkillQueueData attackData = targetedAttacks[localIndex].data;
+            int attackIndex = targetedAttacks[localIndex].index;
+            SkillQueueData counterData = counterQueue[localIndex];
+            GameObject pair = Instantiate(pairedSkillQueuePrefab, skillQueuePanel.transform);
+            FitPairedQueueToHead(pair);
+
+            if (pair.transform.childCount < 3)
+            {
+                Destroy(pair);
+                continue;
+            }
+
+            GameObject attackIcon = pair.transform.GetChild(0).gameObject;
+            GameObject counterIcon = pair.transform.GetChild(2).gameObject;
+
+            ApplySkillIcon(attackIcon, attackData);
+            ApplySkillButtonData(attackIcon, attackData, attackIndex, false);
+            ApplyQueueText(attackIcon, attackData, attackIndex);
+
+            ApplySkillIcon(counterIcon, counterData);
+            ApplySkillButtonData(counterIcon, counterData, localIndex, true);
+            ApplyQueueText(counterIcon, counterData, localIndex);
+
+            if (counterData.skill == null)
+            {
+                RawImage counterImage = counterIcon.GetComponent<RawImage>();
+
+                if (counterImage != null && UIManager.Instance != null)
+                    counterImage.texture = UIManager.Instance.emptyCounterSlotBackground;
+            }
+
+            SkillButton counterSkillButton = counterIcon.GetComponent<SkillButton>();
+
+            if (counterSkillButton != null)
+            {
+                counterSkillButton.pairedAttackQueueData = attackData;
+                counterSkillButton.pairedCounterSkill = counterData.skill;
+                counterSkillButton.counterUser = counterUser;
+                counterSkillButton.protectedTarget = characterManager;
+                counterSkillButton.onRightClick = null;
+            }
+
+            Button attackButton = attackIcon.GetComponent<Button>();
+
+            if (attackButton != null)
+            {
+                attackButton.onClick.RemoveAllListeners();
+
+                if (attacker.character.IsMine)
+                {
+                    int capturedAttackIndex = attackIndex;
+                    attackButton.onClick.AddListener(() =>
+                    {
+                        TooltipManager.Instance?.HideTooltip();
+
+                        CharacterTargeting targeting = UIManager.Instance != null
+                            ? UIManager.Instance.characterTargeting
+                            : null;
+
+                        if (targeting != null &&
+                            targeting.TryReplaceQueuedAttack(attacker, capturedAttackIndex))
+                        {
+                            return;
+                        }
+
+                        attacker.combatHandler.RemoveSkillFromQueue(capturedAttackIndex);
+                    });
+                }
+            }
+
+            Button counterButton = counterIcon.GetComponent<Button>();
+
+            if (counterButton != null)
+            {
+                counterButton.onClick.RemoveAllListeners();
+
+                if (counterUser == characterManager && characterManager.character.IsMine)
+                {
+                    int capturedCounterIndex = localIndex;
+                    counterButton.onClick.AddListener(() =>
+                    {
+                        TooltipManager.Instance?.HideTooltip();
+
+                        CharacterTargeting targeting = UIManager.Instance != null
+                            ? UIManager.Instance.characterTargeting
+                            : null;
+
+                        if (targeting != null && targeting.isDefenseSkillTargeting)
+                        {
+                            if (TurnManager.Instance != null &&
+                                TurnManager.Instance.defenseCharacter == characterManager)
+                            {
+                                characterManager.combatHandler.SetOrResetCounterSkill(
+                                    capturedCounterIndex,
+                                    targeting.selectedSkill);
+                                targeting.StopTargeting();
+                            }
+
+                            return;
+                        }
+
+                        characterManager.combatHandler.CycleBasicCounterSkill(
+                            capturedCounterIndex);
+                    });
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void FitPairedQueueToHead(GameObject pair)
+    {
+        if (pair == null || pair.transform.childCount == 0 || skillIconPrefab == null)
+            return;
+
+        RectTransform pairRect = pair.GetComponent<RectTransform>();
+        RectTransform attackRect = pair.transform.GetChild(0) as RectTransform;
+        RectTransform singleIconRect = skillIconPrefab.GetComponent<RectTransform>();
+
+        if (pairRect == null ||
+            attackRect == null ||
+            singleIconRect == null ||
+            attackRect.rect.width <= 0f)
+        {
+            return;
+        }
+
+        float iconScale = singleIconRect.localScale.x *
+                          singleIconRect.rect.width /
+                          attackRect.rect.width;
+        pairRect.localScale = new Vector3(iconScale, iconScale, 1f);
+        pairRect.sizeDelta = new Vector2(
+            singleIconRect.rect.width,
+            singleIconRect.rect.height * 2.2f);
+    }
+
     public void ClearCounterSkillQueueUI()
     {
-        if (counterSkillQueuePanel != null)
-            ClearChildren(counterSkillQueuePanel.transform);
+        if (skillQueuePanel != null)
+            ClearChildren(skillQueuePanel.transform);
     }
 
     private void ClearChildren(Transform parent)
@@ -198,13 +435,19 @@ public class CharacterUIHandler : MonoBehaviour
 
     private void ApplySkillIcon(GameObject skillIconInstance, SkillQueueData data)
     {
-        if (skillIconInstance == null || data == null || data.skill == null)
+        if (skillIconInstance == null || data == null)
             return;
 
         RawImage rawImage = skillIconInstance.GetComponent<RawImage>();
 
         if (rawImage == null)
             return;
+
+        if (data.skill == null)
+        {
+            rawImage.texture = null;
+            return;
+        }
 
         if (ShouldShowConcealedIcon(data))
         {

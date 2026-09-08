@@ -20,14 +20,20 @@ public class TooltipManager : MonoBehaviour
     public GameObject simpleTooltipObject;
 
     public TextMeshProUGUI tooltipText;
+    public TextMeshProUGUI counterChanceText;
 
     public Vector3 tooltipOffset = new Vector3(40, -25, 0);
+    public Vector2 counterChanceOffset = new Vector2(22f, -18f);
+    public Color counterChanceAdvantageColor = new Color(0.45f, 0.92f, 0.78f, 1f);
+    public Color counterChanceDisadvantageColor = new Color(1f, 0.55f, 0.55f, 1f);
+    public Color counterChanceNeutralColor = new Color(1f, 0.84f, 0.35f, 1f);
     public Vector2 minimumSimpleTooltipSize = new Vector2(80f, 50f);
     public float maximumSimpleTooltipWidth = 160f;
     public Vector2 simpleTooltipPadding = new Vector2(8f, 8f);
     private bool isTooltipActive = false;
     private string lastSizedTooltipText;
     private GameObject activeTooltipObject;
+    private bool isCounterChanceActive;
 
     public Dictionary<string, string> keywordTooltips = new Dictionary<string, string>
     {
@@ -104,12 +110,21 @@ public class TooltipManager : MonoBehaviour
                 tooltipCanvas.sortingOrder = short.MaxValue;
             }
         }
+
+        if (counterChanceText != null)
+        {
+            counterChanceText.gameObject.SetActive(false);
+            counterChanceText.transform.SetAsLastSibling();
+        }
     }
 
     private void Update()
     {
         if (isTooltipActive)
             UpdateTooltipPosition(Input.mousePosition);
+
+        if (isCounterChanceActive)
+            UpdateCounterChancePosition(Input.mousePosition);
     }
 
     public void ShowTooltip(SkillQueueData queueData, Vector3 position)
@@ -358,6 +373,49 @@ public class TooltipManager : MonoBehaviour
 
         activeTooltipObject = null;
         isTooltipActive = false;
+        HideCounterSuccessChance();
+    }
+
+    public void ShowCounterSuccessChance(
+        int chance,
+        SkillStyle counterStyle,
+        SkillStyle attackStyle)
+    {
+        if (counterChanceText == null)
+            return;
+
+        counterChanceText.text = $"{Mathf.Clamp(chance, 0, 100)}%";
+        counterChanceText.color = SkillStyleUtility.Beats(counterStyle, attackStyle)
+            ? counterChanceAdvantageColor
+            : SkillStyleUtility.Beats(attackStyle, counterStyle)
+                ? counterChanceDisadvantageColor
+                : counterChanceNeutralColor;
+        counterChanceText.gameObject.SetActive(true);
+        counterChanceText.transform.SetAsLastSibling();
+        isCounterChanceActive = true;
+        UpdateCounterChancePosition(Input.mousePosition);
+    }
+
+    public void HideCounterSuccessChance()
+    {
+        if (counterChanceText != null)
+            counterChanceText.gameObject.SetActive(false);
+
+        isCounterChanceActive = false;
+    }
+
+    private void UpdateCounterChancePosition(Vector2 cursorPosition)
+    {
+        if (counterChanceText == null)
+            return;
+
+        RectTransform chanceRect = counterChanceText.rectTransform;
+        Vector2 size = chanceRect.rect.size;
+        Vector2 position = cursorPosition + counterChanceOffset;
+
+        position.x = Mathf.Clamp(position.x, 0f, Mathf.Max(0f, Screen.width - size.x));
+        position.y = Mathf.Clamp(position.y, 0f, Mathf.Max(0f, Screen.height - size.y));
+        chanceRect.position = position;
     }
 
     public void UpdateTooltipPosition(Vector3 position)
@@ -548,6 +606,7 @@ public class TooltipManager : MonoBehaviour
 
         AppendStat(builder, "치명타 확률", stats.CriticalChance);
         AppendStat(builder, "치명타 피해", stats.CriticalDamageBonus);
+        AppendStat(builder, "방어 스킬 성공률", stats.DefenseSkillSuccessRateBonus);
         AppendStat(builder, "상태이상 저항", stats.StatusResistance);
         AppendStat(builder, "지도 탐지 범위", stats.MapDetectionRange);
         AppendStat(builder, "처치 시 HP 회복", stats.KillHpRecovery);

@@ -43,6 +43,8 @@ public static class SaveMapper
 
             recruitmentCandidates = ToCharacterDtos(src.recruitmentCandidates),
             recruitmentCandidatesInitialized = src.recruitmentCandidatesInitialized,
+            recruitmentRefreshCount = src.recruitmentRefreshCount,
+            reservedRecruitmentCandidateId = src.reservedRecruitmentCandidateId,
 
             positions = ClonePositions(src.positions),
 
@@ -91,6 +93,8 @@ public static class SaveMapper
 
             recruitmentCandidates = FromCharacterDtos(dto.recruitmentCandidates),
             recruitmentCandidatesInitialized = dto.recruitmentCandidatesInitialized,
+            recruitmentRefreshCount = Mathf.Max(0, dto.recruitmentRefreshCount),
+            reservedRecruitmentCandidateId = dto.reservedRecruitmentCandidateId,
 
             positions = ClonePositions(dto.positions)
         };
@@ -611,6 +615,9 @@ public static class SaveMapper
             }
         }
 
+        if (dto.v < 4 && c.originId != 1001)
+            c.Skills.RemoveAll(skill => skill != null && skill.skillUid == 3003);
+
         if (dto.traits != null)
         {
             foreach (TraitSaveDTO t in dto.traits)
@@ -625,6 +632,45 @@ public static class SaveMapper
                     traitId = t.id,
                     point = Mathf.Clamp(t.point <= 0 ? 1 : t.point, 1, TraitGradeUtility.MaxPoint)
                 });
+            }
+        }
+
+        if (dto.v < 3 && GameDataRegistry.Instance != null)
+        {
+            int advancedCounterSkillUid = c.originId switch
+            {
+                1001 => 3101,
+                1002 => 3102,
+                1003 => 3103,
+                1004 => 3104,
+                _ => 0
+            };
+
+            if (advancedCounterSkillUid > 0 &&
+                !c.Skills.Exists(skill => skill != null &&
+                                          skill.skillUid == advancedCounterSkillUid))
+            {
+                SkillDefinitionSO advancedCounterSkill =
+                    GameDataRegistry.Instance.GetSkill(advancedCounterSkillUid);
+
+                if (advancedCounterSkill != null)
+                    c.Skills.Add(SkillRuntimeFactory.Create(advancedCounterSkill));
+            }
+
+            if (c.originId == 1000)
+            {
+                c.Traits.RemoveAll(trait => trait != null && trait.traitId == 1000);
+
+                TraitDefinitionSO additionalDefenseTrait =
+                    GameDataRegistry.Instance.GetTrait(1029);
+
+                if (additionalDefenseTrait != null)
+                {
+                    TraitGradeUtility.AddTrait(
+                        c.Traits,
+                        additionalDefenseTrait,
+                        additionalDefenseTrait.defaultAcquireGrade);
+                }
             }
         }
 

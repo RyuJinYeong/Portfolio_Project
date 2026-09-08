@@ -14,6 +14,10 @@ public class SkillQueueData
     public int order;
     public bool resourcesConsumed;
 
+    // 대응 큐에서 어떤 공격을 자동으로 상대하는지 추적한다.
+    public SkillDefinitionSO incomingSkill;
+    public CharacterManager protectedTarget;
+
     public SkillQueueData(
         SkillDefinitionSO skill,
         CharacterManager user,

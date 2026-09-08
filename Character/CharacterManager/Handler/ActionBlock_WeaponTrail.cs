@@ -83,7 +83,8 @@ public class ActionBlock_WeaponTrail : ActionBlock_Base
             customization == null || customization.weaponRoot == null)
             return;
 
-        EquipmentRuntimeData equipment = useOffHand
+        bool bindOffHand = useOffHand || presentation.CurrentSkillUsesOffHand;
+        EquipmentRuntimeData equipment = bindOffHand
             ? manager.character.GetSubWeaponRuntime()
             : manager.character.GetMainWeaponRuntime();
 

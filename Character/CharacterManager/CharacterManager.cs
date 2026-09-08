@@ -168,7 +168,15 @@ public class CharacterManager : MonoBehaviour
         int finalDamage = damageHandler.TakeDamage(character, damage, damageType, damageAttribute);
 
         if (!suppressZeroDamagePopup || finalDamage > 0)
-            UIManager.Instance.ShowDamage(finalDamage, transform.position);
+        {
+            BattlePresentationDirector director = BattlePresentationDirector.Instance;
+
+            if (director == null ||
+                !director.TryQueueDamagePopup(finalDamage, transform.position))
+            {
+                UIManager.Instance?.ShowDamage(finalDamage, transform.position);
+            }
+        }
 
         UpdateCharacterUI();
         return finalDamage;

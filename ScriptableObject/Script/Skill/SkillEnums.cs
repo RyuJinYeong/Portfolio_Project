@@ -59,6 +59,16 @@ public enum SkillAttribute // 스킬 세부 속성
     None // 물리 버프 스킬용 무속성 타입 추가
 }
 
+public enum SkillImpactSoundCategory
+{
+    Auto,
+    Unarmed,
+    Blade,
+    Blunt,
+    Arrow,
+    Magic
+}
+
 public enum SkillDiscipline // ui 표현용 스킬 필요 무기 열거형
 {
     Basic = 0,          // 기본기

@@ -50,6 +50,8 @@ public class PlayerData
     // 현재 계정에 제시된 고용 가능 용병 목록
     public List<CharacterData> recruitmentCandidates = new List<CharacterData>();
     public bool recruitmentCandidatesInitialized;
+    public int recruitmentRefreshCount;
+    public string reservedRecruitmentCandidateId;
 
     // 진행 중인 스테이지와 해당 스테이지를 진행 중인 캐릭터 ID 목록
     public string currentStage = "Town";

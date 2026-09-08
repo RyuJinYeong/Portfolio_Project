@@ -16,6 +16,8 @@ public class SkillDefinitionSO : ScriptableObject
     [Header("Presentation")]
     public ScriptableObject_AnimComposer composer;
     public List<ScriptableObject_AnimComposer> followUpComposers = new();
+    [Tooltip("Auto는 스킬 계열과 공격 속성으로 충돌음을 정합니다. 몬스터나 예외 스킬만 직접 지정합니다.")]
+    public SkillImpactSoundCategory impactSoundCategory = SkillImpactSoundCategory.Auto;
 
     [Header("Skill Value")]
     public float activationSpeed = 1f;
@@ -52,7 +54,7 @@ public class SkillDefinitionSO : ScriptableObject
     [Header("Counter")]
     public CounterActionType counterActionType = CounterActionType.None;
 
-    [Tooltip("일반 대응 성공 시 공격력에 비례해 얻는 방어도 계수. 회피는 사용하지 않음")]
+    [Tooltip("가드/패링은 성공 시 방어도 계수와 대응 위력으로, 파훼는 일반 성공 피해 감소율로 사용. 회피는 사용하지 않음")]
     public float successArmorAttackMultiplier = 1f;
 
     [Tooltip("회피 일반 성공 시 최소 피해 감소율")]
@@ -289,18 +291,45 @@ public class SkillDefinitionSO : ScriptableObject
 
     public bool ShouldUseOffHand(CharacterData character)
     {
-        if (character == null || damageComponents == null)
+        if (character == null)
             return false;
+
+        WeaponDefinitionSO mainWeapon = character.GetMainWeapon();
+        WeaponDefinitionSO subWeapon = character.GetSubWeapon();
+
+        if (discipline == SkillDiscipline.DaggerArt)
+            return subWeapon != null && subWeapon.weaponType == WeaponType.Dagger;
+
+        if (discipline == SkillDiscipline.ShieldArt)
+            return subWeapon != null && subWeapon.weaponType == WeaponType.Shield;
 
         bool hasExplicitEquipmentRequirement =
             equipmentRequirement != null &&
             equipmentRequirement.HasAnyRequirement();
 
         if (hasExplicitEquipmentRequirement)
-            return false;
+        {
+            if (subWeapon == null)
+                return false;
 
-        WeaponDefinitionSO mainWeapon = character.GetMainWeapon();
-        WeaponDefinitionSO subWeapon = character.GetSubWeapon();
+            if (equipmentRequirement.requireShield)
+                return subWeapon.weaponType == WeaponType.Shield;
+
+            bool mainAllowed =
+                mainWeapon != null &&
+                equipmentRequirement.allowedAnyWeaponTypes != null &&
+                equipmentRequirement.allowedAnyWeaponTypes.Contains(mainWeapon.weaponType);
+            bool subAllowed =
+                (equipmentRequirement.allowedSubWeaponTypes != null &&
+                 equipmentRequirement.allowedSubWeaponTypes.Contains(subWeapon.weaponType)) ||
+                (equipmentRequirement.allowedAnyWeaponTypes != null &&
+                 equipmentRequirement.allowedAnyWeaponTypes.Contains(subWeapon.weaponType));
+
+            return !mainAllowed && subAllowed;
+        }
+
+        if (damageComponents == null)
+            return false;
 
         if (subWeapon == null || subWeapon.attributes == null)
             return false;
@@ -440,7 +469,11 @@ public class SkillDefinitionSO : ScriptableObject
                 subWeapon.attributes != null &&
                 subWeapon.attributes.Contains(component.attribute);
 
-            if (!mainSupports && !subSupports)
+            bool innateSupports =
+                character.AvailableAttributes != null &&
+                character.AvailableAttributes.Contains(component.attribute);
+
+            if (!mainSupports && !subSupports && !innateSupports)
                 return false;
         }
 

@@ -130,6 +130,7 @@ public class GameManager : MonoBehaviour
             if (claimCompletedQuestRewards)
                 QuestManager.Instance?.ClaimCompletedRewards(pd);
 
+            MercenaryGenerator.ResetRecruitmentRefreshCost(pd);
             MercenaryGenerator.RefreshRecruitmentCandidates(pd);
 
             PlayerManager.Instance?.SavePlayerDataToPlayFab();
@@ -756,6 +757,11 @@ public class GameManager : MonoBehaviour
                     visual.transform,
                     humanoidCombatController,
                     true);
+
+                CharacterPoolManager.Instance?.CaptureMonsterPortrait(
+                    enemyData,
+                    modelPrefab,
+                    () => TurnManager.Instance?.RefreshTurnOrderUI());
             }
             else
             {

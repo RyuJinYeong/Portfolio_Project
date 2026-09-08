@@ -73,6 +73,7 @@ public class UIManager : MonoBehaviour
 
     public GameObject skillQueueFramePrefab; // 스킬 큐를 표시할 프레임 Prefab
     public GameObject skillIconPrefab; // 스킬 아이콘 Prefab
+    public Texture2D emptyCounterSlotBackground;
     public Transform counterSkillPanel; // 하단부의 방어자, 방어 대상 스킬 정보 패널    
 
     public RawImage characterPortrait;
@@ -211,6 +212,8 @@ public class UIManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            TooltipManager.Instance?.HideTooltip();
+
             if (characterTargeting != null && characterTargeting.CancelTargeting())
                 return;
 
@@ -395,6 +398,8 @@ public class UIManager : MonoBehaviour
 
     public void CloseTopWindow()
     {
+        TooltipManager.Instance?.HideTooltip();
+
         if (inventoryItemActionMenu != null &&
             inventoryItemActionMenu.gameObject.activeInHierarchy)
         {
@@ -465,6 +470,8 @@ public class UIManager : MonoBehaviour
 
     public void CloseManagedWindows()
     {
+        TooltipManager.Instance?.HideTooltip();
+
         inventoryItemActionMenu?.Close();
 
         if (inventoryUIController != null)
@@ -686,7 +693,7 @@ public class UIManager : MonoBehaviour
         if (counterTurnEndButton != null)
             counterTurnEndButton.gameObject.SetActive(false);
 
-        characterTargeting?.StopTargeting();
+        characterTargeting?.StopTargetingAndClearConfirmedLines();
         ClearHotbarButtons();
 
         continueButton.onClick.RemoveAllListeners();
@@ -1322,9 +1329,22 @@ public class UIManager : MonoBehaviour
         // 턴 큐에 있는 모든 캐릭터의 초상화 추가
         foreach (var characterManager in turnQueue)
         {
+            if (characterManager == null ||
+                characterManager.character == null ||
+                !characterManager.character.IsAlive)
+            {
+                continue;
+            }
+
             GameObject portraitObj = Instantiate(characterPortraitPrefab, turnOrderPanel.transform);
             RawImage portraitImage = portraitObj.GetComponent<RawImage>();
             portraitImage.texture = characterManager.character.Portrait;
+
+            TurnOrderPortraitUI portraitUI = portraitObj.GetComponent<TurnOrderPortraitUI>();
+            if (portraitUI == null)
+                portraitUI = portraitObj.AddComponent<TurnOrderPortraitUI>();
+
+            portraitUI.Bind(characterManager, characterTargeting);
 
             // 현재 턴인 캐릭터 강조 표시
             if (characterManager == currentCharacter)
@@ -1662,14 +1682,24 @@ public class UIManager : MonoBehaviour
 
         List<SkillQueueData> counterQueue = defenseCharacter.combatHandler.GetCounterSkillQueue();
 
-        SkillDefinitionSO counterToShow = GetDefaultCounterSkill(defenseCharacter);
-
-        if (idx0 >= 0 && idx0 < counterQueue.Count && counterQueue[idx0].skill != null)
-        {
-            counterToShow = counterQueue[idx0].skill;
-        }
+        SkillDefinitionSO counterToShow = idx0 >= 0 && idx0 < counterQueue.Count
+            ? counterQueue[idx0].skill
+            : GetDefaultCounterSkill(defenseCharacter);
 
         ApplyCounterSkillIcon(defSkillIcon, counterToShow, idx0);
+
+        BindCounterChanceContext(
+            atkSkillIcon,
+            attackQueueData,
+            counterToShow,
+            defenseCharacter,
+            owner);
+        BindCounterChanceContext(
+            defSkillIcon,
+            attackQueueData,
+            counterToShow,
+            defenseCharacter,
+            owner);
 
         TextMeshProUGUI orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
         if (orderText != null)
@@ -1678,6 +1708,17 @@ public class UIManager : MonoBehaviour
         }
 
         Button button = defSkillIcon.GetComponent<Button>();
+        SkillButton counterSkillButton = defSkillIcon.GetComponent<SkillButton>();
+
+        if (counterSkillButton != null)
+        {
+            counterSkillButton.onRightClick = () =>
+            {
+                TooltipManager.Instance?.HideTooltip();
+                defenseCharacter.combatHandler.ClearCounterSkillAt(counterQueueIndex);
+            };
+        }
+
         if (button != null)
         {
             button.onClick.RemoveAllListeners();
@@ -1693,7 +1734,7 @@ public class UIManager : MonoBehaviour
                 }
                 else
                 {
-                    defenseCharacter.combatHandler.SetOrResetCounterSkill(idx0Local, null);
+                    defenseCharacter.combatHandler.CycleBasicCounterSkill(idx0Local);
                 }
             });
         }
@@ -1740,8 +1781,28 @@ public class UIManager : MonoBehaviour
         RawImage rawImage = iconObj.GetComponent<RawImage>();
         if (rawImage != null)
         {
-            rawImage.texture = skill != null ? skill.icon : null;
+            rawImage.texture = skill != null ? skill.icon : emptyCounterSlotBackground;
         }
+    }
+
+    private void BindCounterChanceContext(
+        GameObject iconObj,
+        SkillQueueData attackQueueData,
+        SkillDefinitionSO counterSkill,
+        CharacterManager counterUser,
+        CharacterManager protectedTarget)
+    {
+        if (iconObj == null)
+            return;
+
+        SkillButton skillButton = iconObj.GetComponent<SkillButton>();
+        if (skillButton == null)
+            return;
+
+        skillButton.pairedAttackQueueData = attackQueueData;
+        skillButton.pairedCounterSkill = counterSkill;
+        skillButton.counterUser = counterUser;
+        skillButton.protectedTarget = protectedTarget;
     }
     private SkillDefinitionSO GetDefaultCounterSkill(CharacterManager characterManager)
     {

@@ -193,6 +193,119 @@ public class CharacterPoolManager : MonoBehaviour
         StartCoroutine(CapturePortraitRoutine(character, onDone));
     }
 
+    public void CaptureMonsterPortrait(
+        CharacterData character,
+        GameObject modelPrefab,
+        Action onDone = null)
+    {
+        if (character == null || modelPrefab == null)
+        {
+            onDone?.Invoke();
+            return;
+        }
+
+        StartCoroutine(CaptureMonsterPortraitRoutine(character, modelPrefab, onDone));
+    }
+
+    private IEnumerator CaptureMonsterPortraitRoutine(
+        CharacterData character,
+        GameObject modelPrefab,
+        Action onDone)
+    {
+        while (_portraitCaptureInProgress)
+            yield return null;
+
+        _portraitCaptureInProgress = true;
+
+        if (malePortraitDummy != null)
+            malePortraitDummy.gameObject.SetActive(false);
+
+        if (femalePortraitDummy != null)
+            femalePortraitDummy.gameObject.SetActive(false);
+
+        CharacterCustomization anchor = malePortraitDummy != null
+            ? malePortraitDummy
+            : femalePortraitDummy;
+
+        if (anchor == null || portraitCamera == null || portraitRenderTexture == null)
+        {
+            _portraitCaptureInProgress = false;
+            onDone?.Invoke();
+            yield break;
+        }
+
+        GameObject preview = Instantiate(modelPrefab);
+        preview.name = $"PortraitPreview_{character.monsterRoleId}";
+        preview.transform.SetPositionAndRotation(
+            anchor.transform.position,
+            anchor.transform.rotation);
+        preview.transform.localScale = anchor.transform.lossyScale;
+
+        foreach (Collider collider in preview.GetComponentsInChildren<Collider>(true))
+            collider.enabled = false;
+
+        FitPreviewToAnchor(preview, anchor.gameObject);
+
+        yield return null;
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        Texture2D portrait = anchor.CapturePortrait(portraitCamera, portraitRenderTexture);
+
+        if (portrait != null)
+        {
+            character.Portrait = portrait;
+            character.Portrait.name = $"Portrait_{character.ID}";
+        }
+
+        Destroy(preview);
+        yield return null;
+
+        _portraitCaptureInProgress = false;
+        onDone?.Invoke();
+    }
+
+    private static void FitPreviewToAnchor(GameObject preview, GameObject anchor)
+    {
+        if (!TryGetRendererBounds(preview, out Bounds previewBounds) ||
+            !TryGetRendererBounds(anchor, out Bounds anchorBounds) ||
+            previewBounds.size.y <= 0.001f)
+        {
+            return;
+        }
+
+        float scale = anchorBounds.size.y / previewBounds.size.y;
+        preview.transform.localScale *= scale;
+
+        if (TryGetRendererBounds(preview, out previewBounds))
+            preview.transform.position += anchorBounds.center - previewBounds.center;
+    }
+
+    private static bool TryGetRendererBounds(GameObject target, out Bounds bounds)
+    {
+        Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
+        bounds = default;
+        bool found = false;
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null)
+                continue;
+
+            if (!found)
+            {
+                bounds = renderer.bounds;
+                found = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        return found;
+    }
+
     private IEnumerator CapturePortraitRoutine(CharacterData character, Action onDone)
     {
         Texture2D portrait = null;

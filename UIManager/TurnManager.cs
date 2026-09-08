@@ -174,6 +174,16 @@ public class TurnManager : MonoBehaviour
     {
         DisableDefenseButtons(allCharacters);
 
+        // 추가 턴은 같은 라운드 안에서 이어지므로 라운드 종료 회복보다 먼저 처리한다.
+        if (currentCharacter != null && currentCharacter.hasExtraTurn)
+        {
+            currentCharacter.hasExtraTurn = false;
+            Debug.Log($"{currentCharacter.character.Name}이 추가 턴을 획득했습니다.");
+
+            StartCoroutine(StartExtraTurnAfterNotification(currentCharacter));
+            return;
+        }
+
         if (turnQueue.Count == 0)
         {
             // 상태이상 처리, 리소스 회복
@@ -193,20 +203,7 @@ public class TurnManager : MonoBehaviour
             UpdateTurnQueue(); // 큐 갱신
         }
 
-
-        // 기존의 턴을 가지고 있는 캐릭터가 추가 턴이 있는 경우, 다시 턴을 부여
-        if (currentCharacter != null && currentCharacter.hasExtraTurn)
-        {
-            currentCharacter.hasExtraTurn = false; // 추가 턴 사용 완료
-            Debug.Log($"{currentCharacter.character.Name}이 추가 턴을 획득했습니다.");
-
-            StartCoroutine(StartExtraTurnAfterNotification(currentCharacter));
-            return;
-        }
-        else
-        {
-            currentCharacter = turnQueue.Dequeue(); // 추가 턴이 없으면 다음 캐릭터로 넘어감
-        }
+        currentCharacter = turnQueue.Dequeue();
 
         BeginCurrentTurn();
     }
@@ -314,6 +311,11 @@ public class TurnManager : MonoBehaviour
         }
     }
 
+    public void RefreshTurnOrderUI()
+    {
+        UIManager.Instance?.UpdateTurnOrder(turnOrderList, currentCharacter);
+    }
+
     private void EnableDefenseCharacterButtons()
     {
         if (currentCharacter == null || allCharacters == null)
@@ -380,7 +382,7 @@ public class TurnManager : MonoBehaviour
             return;
 
         DisableDefenseButtons(allCharacters);
-        UIManager.Instance.characterTargeting.StopTargeting();
+        UIManager.Instance.characterTargeting.StopTargetingAndClearConfirmedLines();
         UIManager.Instance.ClearCounterSkillPanel(); // 카운터 스킬 패널 초기화
         CombatHandler combatHandler = null;
         bool hasQueuedSkills = false;

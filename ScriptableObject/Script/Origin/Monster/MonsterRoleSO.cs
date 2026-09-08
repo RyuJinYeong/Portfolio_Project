@@ -23,6 +23,10 @@ public class MonsterRoleSO : ScriptableObject
     [Tooltip("비워두면 Base Monster의 가중치를 사용합니다.")]
     public List<StatGrowthWeightData> levelUpStatWeights = new();
 
+    [Header("Usable Physical Attack Attributes")]
+    [Tooltip("장비 데이터가 없는 몬스터가 외형상 사용하는 무기에 맞춘 물리 공격 속성입니다.")]
+    public List<SkillAttribute> availableAttackAttributes = new();
+
     public List<int> skillUids = new();
 
     [Header("Default Counter Skill Pool")]

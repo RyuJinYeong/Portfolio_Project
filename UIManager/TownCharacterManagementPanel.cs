@@ -20,6 +20,8 @@ public class TownCharacterManagementPanel : MonoBehaviour
     public TMP_Text selectedStatsText;
     public TMP_Text selectedTraitsText;
     public TMP_Text selectedSkillsText;
+    public TMP_InputField renameInput;
+    public Button renameButton;
 
     [Header("Roster Summary")]
     public TMP_Text skillSummaryText;
@@ -100,6 +102,7 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
     private void OnDisable()
     {
+        TooltipManager.Instance?.HideTooltip();
         WireButtons(false);
         Clear();
     }
@@ -472,6 +475,24 @@ public class TownCharacterManagementPanel : MonoBehaviour
         }
 
         SetText(selectedNameText, character != null ? character.Name : "캐릭터를 선택하세요");
+
+        bool canRename = character != null && character.IsMine && !showingExternalCharacters;
+
+        if (selectedNameText != null)
+            selectedNameText.gameObject.SetActive(!canRename || renameInput == null);
+
+        if (renameInput != null)
+        {
+            renameInput.gameObject.SetActive(canRename);
+            renameInput.SetTextWithoutNotify(canRename ? character.Name : string.Empty);
+        }
+
+        if (renameButton != null)
+        {
+            renameButton.gameObject.SetActive(canRename);
+            renameButton.interactable = canRename;
+        }
+
         SetText(selectedOriginText, character != null ? character.originName : "");
         SetText(selectedLevelText, character != null ? $"레벨 {character.Level}" : "");
 
@@ -562,6 +583,33 @@ public class TownCharacterManagementPanel : MonoBehaviour
         WireButton(traitSummaryButton, SelectTraitsDetail, add);
         WireButton(skillSummaryButton, SelectSkillsDetail, add);
         WireButton(closeButton, ClosePanel, add);
+        WireButton(renameButton, RenameSelectedCharacter, add);
+    }
+
+    public void RenameSelectedCharacter()
+    {
+        CharacterData character = SelectedCharacterData;
+
+        if (character == null || !character.IsMine || showingExternalCharacters ||
+            renameInput == null)
+        {
+            return;
+        }
+
+        string newName = renameInput.text.Trim();
+
+        if (string.IsNullOrEmpty(newName))
+        {
+            renameInput.SetTextWithoutNotify(character.Name);
+            return;
+        }
+
+        character.Name = newName;
+        RefreshAll();
+        PlayerManager.Instance?.SaveCharacter(character);
+
+        if (SelectedCharacter != null)
+            SelectedCharacter.UpdateCharacterUI();
     }
 
     public void SelectStatsDetail()

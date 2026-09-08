@@ -30,7 +30,6 @@ public class CharacterCustomization : MonoBehaviour
     public Transform daggerRoot;
     public Transform swordRoot;
     public Transform axeRoot;
-    public Transform hammerRoot;
     public Transform twoHandedRoot;
 
     [Header("Weapon Models")]
@@ -40,7 +39,6 @@ public class CharacterCustomization : MonoBehaviour
     public GameObject[] daggers;
     public GameObject[] swords;
     public GameObject[] axes;
-    public GameObject[] hammers;
     public GameObject[] twoHandedWeapons;
 
     [Header("Weapon Draw")]
@@ -51,6 +49,9 @@ public class CharacterCustomization : MonoBehaviour
 
     [Header("Runtime")]
     public bool isMale = true;
+
+    [Header("Monster Visual")]
+    [SerializeField] private bool usePrefabArmorAppearance;
 
     private const int MaleGenderId = 1;
     private const int FemaleGenderId = 2;
@@ -97,8 +98,8 @@ public class CharacterCustomization : MonoBehaviour
             if (staffRoot == null) staffRoot = FindDirectChild(weaponRoot, "Staff");
             if (daggerRoot == null) daggerRoot = FindDirectChild(weaponRoot, "Dagger");
             if (swordRoot == null) swordRoot = FindDirectChild(weaponRoot, "Sword");
-            if (axeRoot == null) axeRoot = FindDirectChild(weaponRoot, "Axe");
-            if (hammerRoot == null) hammerRoot = FindDirectChild(weaponRoot, "Hammer");
+            if (axeRoot == null)
+                axeRoot = FindDirectChild(weaponRoot, "OneHandAxe") ?? FindDirectChild(weaponRoot, "Axe");
             if (twoHandedRoot == null) twoHandedRoot = FindDirectChild(weaponRoot, "TwoHanded");
         }
 
@@ -119,9 +120,6 @@ public class CharacterCustomization : MonoBehaviour
 
         if (axeRoot != null && (axes == null || axes.Length == 0))
             axes = GetDirectChildObjectsByPrefix(axeRoot, "Axe_");
-
-        if (hammerRoot != null && (hammers == null || hammers.Length == 0))
-            hammers = GetDirectChildObjectsByPrefix(hammerRoot, "Hammer_");
 
         if (twoHandedRoot != null && (twoHandedWeapons == null || twoHandedWeapons.Length == 0))
             twoHandedWeapons = GetAllDirectChildObjects(twoHandedRoot);
@@ -587,6 +585,9 @@ public class CharacterCustomization : MonoBehaviour
 
     private void UpdateArmorAppearance(CharacterData characterData)
     {
+        if (usePrefabArmorAppearance)
+            return;
+
         DeactivateAllArmorVisuals();
 
         if (characterData == null)
@@ -777,10 +778,6 @@ public class CharacterCustomization : MonoBehaviour
                 ActivateArrayIndex(axes, 0);
                 break;
 
-            case WeaponType.Hammer:
-                ActivateArrayIndex(hammers, 0);
-                break;
-
             case WeaponType.Two_HandedSword:
                 ActivateArrayIndex(swords, 4);
                 break;
@@ -871,7 +868,6 @@ public class CharacterCustomization : MonoBehaviour
         SetAllActive(daggers, false);
         SetAllActive(swords, false);
         SetAllActive(axes, false);
-        SetAllActive(hammers, false);
         SetAllActive(twoHandedWeapons, false);
     }
 
