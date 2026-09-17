@@ -4,41 +4,51 @@ using System.Collections.Generic;
 [Serializable]
 public class PlayerSaveDTO
 {
-    public int v = 1;                       // 스키마 버전
+    public int v = 7;
+
     public string playerName;
     public int level;
     public int gold;
 
     public string currentStage;
+
+    public List<InventorySlotData> accountStorage = new();
+    public List<InventorySlotData> expeditionStorage = new();
+    public List<LostExpeditionInventoryData> lostExpeditionInventories = new();
+
+    public List<GeneratedEquipmentData> generatedEquipments = new();
+
     public List<string> characterIds = new();
+    public List<string> missingCharacterIds = new();
+    public List<string> revivalRequiredCharacterIds = new();
     public List<string> activeCharacterIds = new();
+    public List<CharacterSaveDTO> recruitmentCandidates = new();
+    public bool recruitmentCandidatesInitialized;
+    public int recruitmentRefreshCount;
+    public string reservedRecruitmentCandidateId;
 
-    // Dictionary 대체
-    public List<PositionEntry> positions = new(); // { characterId, isFront }
+    public List<PositionEntry> positions = new();
 
-    public QuestStateDTO questState; // 퀘스트 보드, 진행 상태
+    public QuestStateDTO questState;
 }
 
 [Serializable]
 public class CharacterSaveDTO
 {
-    public int v = 1;                       // 스키마 버전
+    public int v = 4;
 
-    // 기본 식별
     public string id;
     public string name;
-    public int type;                  // CharacterType (int 저장)
+    public int type;
 
-    // 출신
-    public int origin;                // Origin (int 저장)
+    // OriginDefinitionSO.id
+    public int originId;
     public string originName;
 
-    // 성향/심리
-    public int personality;           // Personality (int 저장)
+    public int personality;
     public int belonging;
     public int morale;
 
-    // 커스터마이징 - P09 ContentId 기준
     public bool isMale;
     public int genderId;
     public int faceTypeId;
@@ -49,71 +59,64 @@ public class CharacterSaveDTO
     public int facialHairId;
     public int bustSizeId;
 
-    // 진행/상태
     public int level;
     public int exp;
+    public int pendingLevelUps;
     public int currentHp;
     public int currentStamina;
     public int currentMentality;
 
-    // 원천 스탯(계산 결과는 저장 X)
-    public CharacterStats baseStats;
+    public CharacterStats originBaseStats;
+    public CharacterSpecialStats originSpecialStats;
     public CharacterStats modifiedStats;
+    public CharacterSpecialStats modifiedSpecialStats;
 
-    // 장비 슬롯 - UID만
-    public int helmetUid, armorUid, glovesUid, shoesUid, capeUid, ring1Uid, ring2Uid, necklaceUid, weaponUid, subWeaponUid;
+    public EquipmentSlotData equipmentSlots = new();
 
-    // 배율/속도 (상태이상/특성 등으로 변동되는 런타임계수)
     public float physicalDamageMultiplier;
     public float magicalDamageMultiplier;
     public float attackSpeedMultiplier;
     public float castSpeedMultiplier;
 
-    // 생존여부 / 진영
     public bool isAlive;
     public bool isMine;
 
-    // 방어도
     public int physicalArmor;
     public int magicalArmor;
 
-    // 인벤토리 에셋 JSON 페이로드(그 에셋이 제공하는 JSON 문자열)
-    public string inventoryJson;
-    public string equipmentJson;
-
-    // 스킬 UID + 진화 카운트
     public List<SkillSaveDTO> skills = new();
     public int defaultCounterSkillUid;
 
     public List<TraitSaveDTO> traits = new();
-    public List<SkillSaveDTO> equipmentSkills = new();
-    public List<TraitSaveDTO> equipmentTraits = new();
-
-    // 장착 무기 세부 속성(아트리뷰트)
-    public List<int> availableAttributes = new();
 }
 
 [Serializable]
 public class SkillSaveDTO
 {
     public int uid;
+
     public int useCount;
     public int killCount;
     public int damageCount;
+
     public bool quickSlot;
+    public bool canUse;
+    public bool useOffHand;
 }
 
 [Serializable]
 public class TraitSaveDTO
 {
-    public int id;      // 정수 식별자
-    public int level;   // 중복 스택(최소 1)
+    public int id;
+    public int point;
 }
 
 [Serializable]
 public class QuestStateDTO
 {
     public List<QuestBoardEntry> board = new();
+    public List<QuestIssuer> preferredIssuers = new();
+    public List<int> preferredQuestTiers = new();
     public ActiveQuestRuntime active;
     public List<CompletedQuestEntry> completed = new();
 }

@@ -6,31 +6,65 @@ using UnityEngine.UI;
 public class QuestPanel : MonoBehaviour
 {
     [Header("Wiring")]
-    public Transform cardContainer;         // Ä«µå°¡ µé¾î°¥ ºÎ¸ğ(Grid/Vertical Layout)
-    public QuestPanelItem cardPrefab;            // Ä«µå ÇÁ¸®ÆÕ
+    public Transform cardContainer;         // ì¹´ë“œê°€ ë“¤ì–´ê°ˆ ë¶€ëª¨(Grid/Vertical Layout)
+    public QuestPanelItem cardPrefab;            // ì¹´ë“œ í”„ë¦¬íŒ¹
 
     [Header("Toolbar")]
-    public Button refreshButton;            // ±ÍÈ¯ ÈÄ ¼öµ¿ »õ·Î°íÄ§ ¿ë(Å×½ºÆ®)
+    public Button refreshButton;            // ê·€í™˜ í›„ ìˆ˜ë™ ìƒˆë¡œê³ ì¹¨ ìš©(í…ŒìŠ¤íŠ¸)
+    public Button previousPageButton;
+    public Button nextPageButton;
+    public TextMeshProUGUI pageText;
+    public Button preferenceButton;
+    public Button abandonButton;
+    public GameObject preferencePanel;
 
-    // ¿ÜºÎ·Î ´øÁö´Â ÀÌº¥Æ®(ÆÄÆ¼ ±¸¼ºÃ¢À¸·Î ÀüÈ¯)
+    [Header("Detail")]
+    public QuestPanelItem detailView;
+
+    // ì™¸ë¶€ë¡œ ë˜ì§€ëŠ” ì´ë²¤íŠ¸(íŒŒí‹° êµ¬ì„±ì°½ìœ¼ë¡œ ì „í™˜)
     public System.Action<QuestDef> OnAcceptRequest;
 
-    // Ä³½Ì
+    // ìºì‹±
     private readonly List<QuestPanelItem> _cards = new();
+    private int currentPage;
+    private string selectedQuestId;
 
     void OnEnable()
     {
-        // ÀÌº¥Æ® ±¸µ¶
+        if (abandonButton == null)
+        {
+            Transform abandonButtonTransform =
+                transform.Find("QuestBoardLayout/AbandonQuestButton");
+
+            if (abandonButtonTransform != null)
+                abandonButton = abandonButtonTransform.GetComponent<Button>();
+        }
+
+        // ì´ë²¤íŠ¸ êµ¬ë…
         if (QuestManager.Instance != null)
         {
             QuestManager.Instance.OnBoardChanged += Rebuild;
+            QuestManager.Instance.OnActiveChanged += UpdateAbandonButton;
         }
 
         if (refreshButton != null)
             refreshButton.onClick.AddListener(OnClickRefresh);
 
-        // ÃÊ±â ºôµå
+        if (previousPageButton != null)
+            previousPageButton.onClick.AddListener(OnClickPreviousPage);
+
+        if (nextPageButton != null)
+            nextPageButton.onClick.AddListener(OnClickNextPage);
+
+        if (preferenceButton != null)
+            preferenceButton.onClick.AddListener(OnClickPreference);
+
+        if (abandonButton != null)
+            abandonButton.onClick.AddListener(OnClickAbandon);
+
+        // ì´ˆê¸° ë¹Œë“œ
         Rebuild();
+        UpdateAbandonButton();
     }
 
     void OnDisable()
@@ -38,18 +72,31 @@ public class QuestPanel : MonoBehaviour
         if (QuestManager.Instance != null)
         {
             QuestManager.Instance.OnBoardChanged -= Rebuild;
+            QuestManager.Instance.OnActiveChanged -= UpdateAbandonButton;
         }
         if (refreshButton != null)
             refreshButton.onClick.RemoveListener(OnClickRefresh);
+
+        if (previousPageButton != null)
+            previousPageButton.onClick.RemoveListener(OnClickPreviousPage);
+
+        if (nextPageButton != null)
+            nextPageButton.onClick.RemoveListener(OnClickNextPage);
+
+        if (preferenceButton != null)
+            preferenceButton.onClick.RemoveListener(OnClickPreference);
+
+        if (abandonButton != null)
+            abandonButton.onClick.RemoveListener(OnClickAbandon);
     }
 
     void OnClickRefresh()
     {
-        // Å×½ºÆ®¿ë ¼öµ¿ °»½Å(½ÇÁ¦ °ÔÀÓ¿¡¼­´Â ±ÍÈ¯ ½Ã GameManager¿¡¼­ È£Ãâ)
+        // í…ŒìŠ¤íŠ¸ìš© ìˆ˜ë™ ê°±ì‹ (ì‹¤ì œ ê²Œì„ì—ì„œëŠ” ê·€í™˜ ì‹œ GameManagerì—ì„œ í˜¸ì¶œ)
         QuestManager.Instance.RefreshBoard(
-            targetCount: 8
+            targetCount: QuestManager.BoardQuestCount
         );
-        // Save È£ÃâÀº »óÃş(ÇÃ·¹ÀÌ¾î ¸Å´ÏÀú)¿¡¼­ ÀÏ°ı·Î ÇØµµ µÊ
+        // Save í˜¸ì¶œì€ ìƒì¸µ(í”Œë ˆì´ì–´ ë§¤ë‹ˆì €)ì—ì„œ ì¼ê´„ë¡œ í•´ë„ ë¨
     }
 
     void ClearCards()
@@ -69,31 +116,155 @@ public class QuestPanel : MonoBehaviour
 
         var list = QuestManager.Instance.board;
 
-        foreach (var entry in list)
+        int pageCount = GetPageCount();
+        currentPage = Mathf.Clamp(currentPage, 0, pageCount - 1);
+
+        int startIndex = currentPage * QuestManager.BoardPageSize;
+        int endIndex = Mathf.Min(
+            startIndex + QuestManager.BoardPageSize,
+            list.Count);
+
+        for (int i = startIndex; i < endIndex; i++)
         {
+            var entry = list[i];
             var card = Instantiate(cardPrefab, cardContainer);
             card.Bind(entry,
                 onToggleReserve: HandleToggleReserve,
-                onAccept: HandleAccept
+                onAccept: HandleAccept,
+                onSelect: HandleSelect
             );
             _cards.Add(card);
         }
+
+        if (pageText != null)
+            pageText.text = $"{currentPage + 1} / {pageCount}";
+
+        if (previousPageButton != null)
+            previousPageButton.interactable = currentPage > 0;
+
+        if (nextPageButton != null)
+            nextPageButton.interactable = currentPage < pageCount - 1;
+
+        QuestBoardEntry selectedEntry = list.Find(
+            entry =>
+                entry != null &&
+                entry.def != null &&
+                entry.def.id == selectedQuestId);
+
+        if (selectedEntry == null && list.Count > 0)
+        {
+            selectedEntry = list[0];
+            selectedQuestId = selectedEntry.def.id;
+        }
+
+        BindDetail(selectedEntry);
+    }
+
+    int GetPageCount()
+    {
+        int count = QuestManager.Instance != null &&
+                    QuestManager.Instance.board != null
+            ? QuestManager.Instance.board.Count
+            : 0;
+
+        return Mathf.Max(
+            1,
+            Mathf.CeilToInt(
+                count / (float)QuestManager.BoardPageSize));
     }
 
     void HandleToggleReserve(QuestBoardEntry entry)
     {
         QuestManager.Instance.ReserveToggle(entry.def.id);
 
-        // ÀüÃ¼ Rebuild
-        Rebuild();
+        if (PlayerManager.Instance != null)
+            PlayerManager.Instance.SavePlayerDataToPlayFab();
+    }
 
-        // ÇÊ¿ä ½Ã ÀúÀå(»óÃş ÇÃ·¹ÀÌ¾î ¸Å´ÏÀú¿¡¼­ SavePlayerDataToPlayFab È£Ãâ)
+    void OnClickPreviousPage()
+    {
+        if (currentPage <= 0)
+            return;
+
+        currentPage--;
+        Rebuild();
+    }
+
+    void OnClickNextPage()
+    {
+        int pageCount = GetPageCount();
+
+        if (currentPage >= pageCount - 1)
+            return;
+
+        currentPage++;
+        Rebuild();
+    }
+
+    void OnClickPreference()
+    {
+        if (preferencePanel != null)
+            preferencePanel.SetActive(true);
+    }
+
+    void OnClickAbandon()
+    {
+        if (QuestManager.Instance == null ||
+            !QuestManager.Instance.AbandonActive())
+        {
+            return;
+        }
+
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        if (playerData != null)
+            playerData.currentStage = "Town";
+
+        PlayerManager.Instance?.SavePlayerDataToPlayFab();
+    }
+
+    void UpdateAbandonButton()
+    {
+        if (abandonButton != null)
+        {
+            abandonButton.gameObject.SetActive(
+                QuestManager.Instance != null &&
+                QuestManager.Instance.active != null);
+        }
     }
 
     void HandleAccept(QuestBoardEntry entry)
     {
-        // ÆÄÆ¼ ±¸¼º È­¸éÀ¸·Î ³Ñ°Ü »óÃş¿¡¼­
-        // QuestManager.Instance.Accept(questId, leaderId, partyIds) È£ÃâÇÏµµ·Ï À§ÀÓ
+        // íŒŒí‹° êµ¬ì„± í™”ë©´ìœ¼ë¡œ ë„˜ê²¨ ìƒì¸µì—ì„œ
+        // QuestManager.Instance.Accept(questId, leaderId, partyIds) í˜¸ì¶œí•˜ë„ë¡ ìœ„ì„
         OnAcceptRequest?.Invoke(entry.def);
+    }
+
+    void HandleSelect(QuestBoardEntry entry)
+    {
+        if (entry == null || entry.def == null)
+            return;
+
+        selectedQuestId = entry.def.id;
+        BindDetail(entry);
+    }
+
+    void BindDetail(QuestBoardEntry entry)
+    {
+        if (detailView == null)
+            return;
+
+        detailView.gameObject.SetActive(entry != null);
+
+        if (entry == null)
+            return;
+
+        detailView.Bind(
+            entry,
+            HandleToggleReserve,
+            HandleAccept,
+            null);
     }
 }

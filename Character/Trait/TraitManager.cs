@@ -1,55 +1,102 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public static class TraitManager
 {
-    public static void AddTrait(CharacterManager manager, TraitBase trait)
+    public static void AddTrait(CharacterManager manager, int traitId)
     {
-        var exist = manager.character.Traits.FirstOrDefault(t => t.Id == trait.Id);
+        TraitDefinitionSO def = GameDataRegistry.Instance != null
+            ? GameDataRegistry.Instance.GetTrait(traitId)
+            : null;
 
-
-        manager.character.RemoveAllTraits(manager);//Æ¯¼º È¿°ú ÀüÃ¼ Á¦°Å
-
-        if (exist != null)
+        if (def == null)
         {
-            // ÀÌ¹Ì Á¸ÀçÇÏ´Â Æ¯¼ºÀÎ °æ¿ì ·¹º§¾÷
-            exist.Level += 1;
-        }
-        else
-        {
-            // »õ·Î¿î Æ¯¼ºÀÎ °æ¿ì Ãß°¡
-            manager.character.Traits.Add(trait);
+            Debug.LogWarning($"ì¡´ìž¬í•˜ì§€ ì•ŠëŠ” íŠ¹ì„± IDìž…ë‹ˆë‹¤: {traitId}");
+            return;
         }
 
-        manager.character.ApplyAllTraits(manager);// Æ¯¼º Ãß°¡ ÈÄ ¹Ù·Î Àû¿ë
-
-        manager.character.UpdateFinalStats(); // Æ¯¼º Àû¿ë °á°ú·Î º¯È­ÇÑ ½ºÅÈÀ» ÃÖÁ¾ ½ºÅÈ¿¡ Àû¿ë
+        AddTrait(manager, traitId, def.defaultAcquireGrade);
     }
 
-    public static void RemoveTrait(CharacterManager manager, TraitBase trait)
+    public static void AddTrait(
+        CharacterManager manager,
+        int traitId,
+        TraitGrade acquiredGrade)
     {
-        var exist = manager.character.Traits.FirstOrDefault(t => t.Id == trait.Id);
+        if (manager == null || manager.character == null)
+            return;
 
-        manager.character.RemoveAllTraits(manager); // Ä³¸¯ÅÍ¿¡ Àû¿ëµÈ Æ¯¼º ÇØÁ¦
+        CharacterData character = manager.character;
+        TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(traitId);
 
-        if (exist != null)
+        if (def == null)
         {
-            if(exist.Level <= 1)
-            {
-                // ·¹º§ÀÌ 1 ÀÌÇÏÀÎ °æ¿ì Æ¯¼º Á¦°Å
-                manager.character.Traits.Remove(trait);
-            }
-            else
-            {
-                // ·¹º§ÀÌ 1 ÃÊ°úÀÎ °æ¿ì ·¹º§´Ù¿î
-                exist.Level -= 1;
-            }                
+            Debug.LogWarning($"ì¡´ìž¬í•˜ì§€ ì•ŠëŠ” íŠ¹ì„± IDìž…ë‹ˆë‹¤: {traitId}");
+            return;
         }
 
-        manager.character.ApplyAllTraits(manager);  // Æ¯¼º Á¦°Å È¤Àº ·¹º§ ´Ù¿î ÈÄ ¸ðµç Æ¯¼º »õ·Î Àû¿ë
+        character.RemoveAllTraits(manager);
 
-        manager.character.UpdateFinalStats(); // Æ¯¼º Á¦°Å ÈÄ º¯È­ÇÑ ½ºÅÈÀ» ÃÖÁ¾ ½ºÅÈ¿¡ Àû¿ë
+        TraitGradeUtility.AddTrait(
+            character.Traits,
+            def,
+            acquiredGrade);
+
+        ValidateEquipmentsAfterTraitChanged(manager);
+
+        EquipmentManager.RebuildEquipmentStats(character);
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
+
+        character.ApplyAllTraits(manager);
+        character.UpdateFinalStats();
+    }
+
+    public static void RemoveTrait(CharacterManager manager, int traitId)
+    {
+        if (manager == null || manager.character == null)
+            return;
+
+        CharacterData character = manager.character;
+        TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(traitId);
+
+        if (def == null)
+        {
+            Debug.LogWarning($"ì¡´ìž¬í•˜ì§€ ì•ŠëŠ” íŠ¹ì„± IDìž…ë‹ˆë‹¤: {traitId}");
+            return;
+        }
+
+        character.RemoveAllTraits(manager);
+
+        TraitGradeUtility.RemoveTrait(
+            character.Traits,
+            def,
+            def.defaultAcquireGrade);
+
+        ValidateEquipmentsAfterTraitChanged(manager);
+
+        EquipmentManager.RebuildEquipmentStats(character);
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
+
+        character.ApplyAllTraits(manager);
+        character.UpdateFinalStats();
+    }
+
+    static void ValidateEquipmentsAfterTraitChanged(CharacterManager manager)
+    {
+        if (manager == null || manager.character == null)
+            return;
+
+        CharacterData character = manager.character;
+
+        WeaponDefinitionSO mainWeapon = character.GetMainWeapon();
+
+        if (mainWeapon != null && !character.CanEquipMainWeapon(mainWeapon))
+            EquipmentManager.Unequip(manager, EquipmentType.Weapon, 1);
+
+        WeaponDefinitionSO subWeapon = character.GetSubWeapon();
+
+        if (subWeapon != null && !character.CanEquipSubWeapon())
+            EquipmentManager.Unequip(manager, EquipmentType.SubWeapon, 1);
     }
 }

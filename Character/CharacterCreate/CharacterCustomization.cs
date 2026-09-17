@@ -1,7 +1,10 @@
 using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Jorjouto.AnimComposerSystem;
 using UnityEngine;
-using SoftKitty.InventoryEngine;
+using UnityEngine.Animations;
 using P09.Modular.Humanoid.Data;
 
 public class CharacterCustomization : MonoBehaviour
@@ -24,26 +27,31 @@ public class CharacterCustomization : MonoBehaviour
     public Transform bowRoot;
     public Transform shieldRoot;
     public Transform staffRoot;
+    public Transform daggerRoot;
     public Transform swordRoot;
     public Transform axeRoot;
-    public Transform hammerRoot;
     public Transform twoHandedRoot;
 
     [Header("Weapon Models")]
     public GameObject[] bows;
     public GameObject[] shields;
     public GameObject[] staffs;
+    public GameObject[] daggers;
     public GameObject[] swords;
     public GameObject[] axes;
-    public GameObject[] hammers;
     public GameObject[] twoHandedWeapons;
 
-    [Header("Portrait - √ﬂ»ƒ ±∏«ˆ")]
-    public RenderTexture portraitRenderTexture;
-    public Camera portraitCamera;
+    [Header("Weapon Draw")]
+    [SerializeField] private ScriptableObject_AnimComposer drawWeaponRight;
+    [SerializeField] private ScriptableObject_AnimComposer drawWeaponLeft;
+    [SerializeField] private ScriptableObject_AnimComposer drawDaggerRight;
+    [SerializeField] private ScriptableObject_AnimComposer drawDaggerLeft;
 
     [Header("Runtime")]
     public bool isMale = true;
+
+    [Header("Monster Visual")]
+    [SerializeField] private bool usePrefabArmorAppearance;
 
     private const int MaleGenderId = 1;
     private const int FemaleGenderId = 2;
@@ -88,9 +96,10 @@ public class CharacterCustomization : MonoBehaviour
             if (bowRoot == null) bowRoot = FindDirectChild(weaponRoot, "Bow");
             if (shieldRoot == null) shieldRoot = FindDirectChild(weaponRoot, "Shield");
             if (staffRoot == null) staffRoot = FindDirectChild(weaponRoot, "Staff");
+            if (daggerRoot == null) daggerRoot = FindDirectChild(weaponRoot, "Dagger");
             if (swordRoot == null) swordRoot = FindDirectChild(weaponRoot, "Sword");
-            if (axeRoot == null) axeRoot = FindDirectChild(weaponRoot, "Axe");
-            if (hammerRoot == null) hammerRoot = FindDirectChild(weaponRoot, "Hammer");
+            if (axeRoot == null)
+                axeRoot = FindDirectChild(weaponRoot, "OneHandAxe") ?? FindDirectChild(weaponRoot, "Axe");
             if (twoHandedRoot == null) twoHandedRoot = FindDirectChild(weaponRoot, "TwoHanded");
         }
 
@@ -103,14 +112,14 @@ public class CharacterCustomization : MonoBehaviour
         if (staffRoot != null && (staffs == null || staffs.Length == 0))
             staffs = GetDirectChildObjectsByPrefix(staffRoot, "Staff_");
 
+        if (daggerRoot != null && (daggers == null || daggers.Length == 0))
+            daggers = GetDirectChildObjectsByPrefix(daggerRoot, "Dagger_");
+
         if (swordRoot != null && (swords == null || swords.Length == 0))
             swords = GetDirectChildObjectsByPrefix(swordRoot, "Sword_");
 
         if (axeRoot != null && (axes == null || axes.Length == 0))
             axes = GetDirectChildObjectsByPrefix(axeRoot, "Axe_");
-
-        if (hammerRoot != null && (hammers == null || hammers.Length == 0))
-            hammers = GetDirectChildObjectsByPrefix(hammerRoot, "Hammer_");
 
         if (twoHandedRoot != null && (twoHandedWeapons == null || twoHandedWeapons.Length == 0))
             twoHandedWeapons = GetAllDirectChildObjects(twoHandedRoot);
@@ -153,7 +162,7 @@ public class CharacterCustomization : MonoBehaviour
             .ToArray();
     }
 
-    #region ƒøΩ∫≈Õ∏∂¿Ã¬° ¿˚øÎ
+    #region Ïª§Ïä§ÌÑ∞ÎßàÏù¥Ïßï Ï†ÅÏö©
 
     public void ApplyCustomization(CharacterData characterData)
     {
@@ -201,7 +210,7 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region ±‚¡∏ ƒ⁄µÂ »£»ØøÎ Setter
+    #region Í∏∞Ï°¥ ÏΩîÎìú Ìò∏ÌôòÏö© Setter
 
     public void SetGender(int genderId)
     {
@@ -267,7 +276,7 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region P09 ø‹«¸ ¿˚øÎ ∑Œ¡˜
+    #region P09 Ïô∏Ìòï Ï†ÅÏö© Î°úÏßÅ
 
     private void ApplyRendererPart(int currentId, EditPartDataContainer container)
     {
@@ -453,15 +462,12 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region π´±‚ / ∫∏¡∂π´±‚ ø‹«¸ ∑Œ¡˜
+    #region Î¨¥Í∏∞ / Î≥¥Ï°∞Î¨¥Í∏∞ Ïô∏Ìòï Î°úÏßÅ
 
     public void UpdateEquipmentAppearance(CharacterData characterData)
     {
         UpdateWeaponAppearance(characterData);
-
-        // πÊæÓ±∏/«Ô∏‰¿∫ √ﬂ»ƒ ±∏«ˆ
-        // UpdateArmorAppearance(characterData);
-        // UpdateHelmetAppearance(characterData);
+        UpdateArmorAppearance(characterData);
     }
 
     public void UpdateWeaponAppearance(CharacterData characterData)
@@ -471,24 +477,276 @@ public class CharacterCustomization : MonoBehaviour
         if (characterData == null)
             return;
 
+        EquipmentRuntimeData mainEquipment = characterData.GetMainWeaponRuntime();
+        EquipmentRuntimeData subEquipment = characterData.GetSubWeaponRuntime();
+
+        WeaponDefinitionSO mainWeapon = mainEquipment != null
+            ? mainEquipment.definition as WeaponDefinitionSO
+            : null;
+
+        WeaponDefinitionSO subWeapon = subEquipment != null
+            ? subEquipment.definition as WeaponDefinitionSO
+            : null;
+
         bool mainWeaponIsTwoHanded = false;
 
-        if (characterData.Weapon is Weapon mainWeapon)
+        if (mainWeapon != null)
         {
-            mainWeaponIsTwoHanded = mainWeapon.WeaponTags.Contains(WeaponTag.TwoHanded);
+            mainWeaponIsTwoHanded =
+                mainWeapon.weaponTags != null &&
+                mainWeapon.weaponTags.Contains(WeaponTag.TwoHanded);
 
-            if (mainWeaponIsTwoHanded)
-                ActivateTwoHandedWeapon(mainWeapon.WeaponType);
-            else
-                ActivateMainWeapon(mainWeapon.WeaponType);
+            bool activatedByVisualKey = ActivateWeaponByVisualKey(mainEquipment);
+
+            if (!activatedByVisualKey)
+            {
+                if (mainWeaponIsTwoHanded)
+                    ActivateTwoHandedWeapon(mainWeapon.weaponType);
+                else
+                    ActivateMainWeapon(mainWeapon.weaponType);
+            }
         }
 
         if (mainWeaponIsTwoHanded)
             return;
 
-        if (characterData.SubWeapon is Weapon subWeapon)
+        if (subWeapon != null)
         {
-            ActivateSubWeapon(subWeapon.WeaponType);
+            bool activatedByVisualKey = ActivateWeaponByVisualKey(subEquipment);
+
+            if (!activatedByVisualKey)
+                ActivateSubWeapon(subWeapon.weaponType);
+        }
+    }
+
+    public IEnumerator DrawWeapons(CharacterData characterData, BattlePresentationHandler presentation)
+    {
+        if (weaponRoot == null || characterData == null || presentation == null)
+            yield break;
+
+        ParentConstraint[] constraints = weaponRoot.GetComponentsInChildren<ParentConstraint>(true);
+        WeaponDefinitionSO mainWeapon = characterData.GetMainWeapon();
+        WeaponDefinitionSO subWeapon = characterData.GetSubWeapon();
+
+        foreach (bool leftHand in new[] { false, true })
+        {
+            Dictionary<ParentConstraint, int> handConstraints = new();
+            foreach (ParentConstraint constraint in constraints)
+            {
+                if (!constraint.gameObject.activeInHierarchy || constraint.GetComponentInChildren<Renderer>() == null)
+                    continue;
+
+                int rightIndex = -1;
+                int leftIndex = -1;
+                for (int i = 0; i < constraint.sourceCount; i++)
+                {
+                    Transform source = constraint.GetSource(i).sourceTransform;
+                    if (source == null)
+                        continue;
+                    if (source.name.EndsWith("_Hand_R")) rightIndex = i;
+                    if (source.name.EndsWith("_Hand_L")) leftIndex = i;
+                }
+
+                int handIndex = leftHand ? (rightIndex < 0 ? leftIndex : -1) : rightIndex;
+                if (handIndex >= 0 && constraint.GetSource(handIndex).weight < 1f)
+                    handConstraints.Add(constraint, handIndex);
+            }
+
+            if (handConstraints.Count == 0)
+                continue;
+
+            WeaponDefinitionSO weapon = leftHand && (mainWeapon == null || mainWeapon.weaponType != WeaponType.Bow)
+                ? subWeapon : mainWeapon;
+            bool dagger = weapon != null && weapon.weaponType == WeaponType.Dagger;
+            ScriptableObject_AnimComposer composer = leftHand
+                ? (dagger ? drawDaggerLeft : drawWeaponLeft)
+                : (dagger ? drawDaggerRight : drawWeaponRight);
+
+            bool playing = presentation.PlayComposer(composer);
+            if (playing)
+                yield return new WaitForSeconds(composer.AnimationClip.length / composer.PlayRate * 0.5f);
+
+            foreach (var pair in handConstraints)
+            {
+                for (int i = 0; i < pair.Key.sourceCount; i++)
+                {
+                    ConstraintSource source = pair.Key.GetSource(i);
+                    source.weight = i == pair.Value ? 1f : 0f;
+                    pair.Key.SetSource(i, source);
+                }
+                pair.Key.weight = 1f;
+                pair.Key.constraintActive = true;
+            }
+
+            if (playing)
+                yield return presentation.WaitForSkill();
+        }
+    }
+
+    private void UpdateArmorAppearance(CharacterData characterData)
+    {
+        if (usePrefabArmorAppearance)
+            return;
+
+        DeactivateAllArmorVisuals();
+
+        if (characterData == null)
+            return;
+
+        ActivateArmorPart(characterData.GetHelmet(), "Head");
+
+        ActivateArmorPart(characterData.GetArmor(), "Chest");
+        ActivateArmorPart(characterData.GetArmor(), "Waist");
+
+        ActivateArmorPart(characterData.GetGloves(), "Arm");
+
+        ActivateArmorPart(characterData.GetShoes(), "Leg");
+    }
+
+    private void ActivateArmorPart(EquipmentDefinitionSO equipment, string partSuffix)
+    {
+        if (equipment == null && partSuffix == "Head")
+            return;
+
+        string visualKey = equipment != null
+            ? equipment.visualKey
+            : "Armor_001";
+
+        if (string.IsNullOrEmpty(visualKey))
+            return;
+
+        string parentName = NormalizeArmorVisualKey(visualKey);
+
+        Transform armorRoot = FindChildRecursive(modelRoot, parentName);
+
+        if (armorRoot == null)
+        {
+            Debug.LogWarning($"Î∞©Ïñ¥Íµ¨ Ïô∏Ìòï Î∂ÄÎ™®Î•º Ï∞æÏßÄ Î™ªÌñàÏäµÎãàÎã§: {parentName}");
+            return;
+        }
+
+        armorRoot.gameObject.SetActive(true);
+
+        for (int i = 0; i < armorRoot.childCount; i++)
+        {
+            Transform child = armorRoot.GetChild(i);
+
+            if (child == null)
+                continue;
+
+            if (child.name.EndsWith("_" + partSuffix))
+            {
+                child.gameObject.SetActive(true);
+                return;
+            }
+        }
+
+        Debug.LogWarning($"Î∞©Ïñ¥Íµ¨ ÌååÏ∏†Î•º Ï∞æÏßÄ Î™ªÌñàÏäµÎãàÎã§: {parentName} / {partSuffix}");
+    }
+
+    private void DeactivateAllArmorVisuals()
+    {
+        if (modelRoot == null)
+            return;
+
+        Transform[] allChildren = modelRoot.GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform child in allChildren)
+        {
+            if (child == null)
+                continue;
+
+            if (IsArmorPartObject(child.name))
+                child.gameObject.SetActive(false);
+        }
+    }
+
+    private bool IsArmorPartObject(string objectName)
+    {
+        if (string.IsNullOrEmpty(objectName))
+            return false;
+
+        return objectName.Contains("_Armor_") &&
+               (objectName.EndsWith("_Arm") ||
+                objectName.EndsWith("_Chest") ||
+                objectName.EndsWith("_Head") ||
+                objectName.EndsWith("_Leg") ||
+                objectName.EndsWith("_Waist"));
+    }
+
+    private string NormalizeArmorVisualKey(string visualKey)
+    {
+        if (string.IsNullOrEmpty(visualKey))
+            return "";
+
+        if (visualKey.StartsWith("Armor_"))
+            return visualKey;
+
+        if (visualKey.StartsWith("armor_"))
+            return "Armor_" + visualKey.Substring("armor_".Length);
+
+        return visualKey;
+    }
+
+    private Transform FindChildRecursive(Transform root, string targetName)
+    {
+        if (root == null)
+            return null;
+
+        if (root.name == targetName)
+            return root;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindChildRecursive(root.GetChild(i), targetName);
+
+            if (found != null)
+                return found;
+        }
+
+        return null;
+    }
+
+    private bool ActivateWeaponByVisualKey(EquipmentRuntimeData equipment)
+    {
+        if (equipment == null)
+            return false;
+
+        if (string.IsNullOrEmpty(equipment.visualKey))
+            return false;
+
+        if (weaponRoot == null)
+            return false;
+
+        Transform weaponVisual = FindChildRecursive(weaponRoot, equipment.visualKey);
+
+        if (weaponVisual == null)
+        {
+            Debug.LogWarning($"Î¨¥Í∏∞ Ïô∏ÌòïÏùÑ Ï∞æÏßÄ Î™ªÌñàÏäµÎãàÎã§: {equipment.visualKey}");
+            return false;
+        }
+
+        ActivateSelfAndParentsUntil(weaponVisual, weaponRoot);
+        weaponVisual.gameObject.SetActive(true);
+
+        return true;
+    }
+
+    private void ActivateSelfAndParentsUntil(Transform target, Transform stopRoot)
+    {
+        if (target == null)
+            return;
+
+        Transform current = target;
+
+        while (current != null)
+        {
+            current.gameObject.SetActive(true);
+
+            if (current == stopRoot)
+                break;
+
+            current = current.parent;
         }
     }
 
@@ -509,7 +767,7 @@ public class CharacterCustomization : MonoBehaviour
                 break;
 
             case WeaponType.Dagger:
-                ActivateArrayIndex(swords, 1);
+                ActivateArrayIndex(daggers, 0);
                 break;
 
             case WeaponType.Greatsword:
@@ -520,16 +778,12 @@ public class CharacterCustomization : MonoBehaviour
                 ActivateArrayIndex(axes, 0);
                 break;
 
-            case WeaponType.Hammer:
-                ActivateArrayIndex(hammers, 0);
-                break;
-
             case WeaponType.Two_HandedSword:
                 ActivateArrayIndex(swords, 4);
                 break;
 
             case WeaponType.Spear:
-                // «ˆ¿Á ∏µ® æ¯¿Ω
+                // ÌòÑÏû¨ Î™®Îç∏ ÏóÜÏùå
                 break;
         }
     }
@@ -543,15 +797,15 @@ public class CharacterCustomization : MonoBehaviour
                 break;
 
             case WeaponType.Dagger:
-                ActivateArrayIndex(swords, 1);
+                ActivateArrayIndex(daggers, 0);
                 break;
 
             case WeaponType.Orb:
-                // «ˆ¿Á ∏µ® æ¯¿Ω
+                // ÌòÑÏû¨ Î™®Îç∏ ÏóÜÏùå
                 break;
 
             case WeaponType.Book:
-                // «ˆ¿Á ∏µ® æ¯¿Ω
+                // ÌòÑÏû¨ Î™®Îç∏ ÏóÜÏùå
                 break;
         }
     }
@@ -611,9 +865,9 @@ public class CharacterCustomization : MonoBehaviour
         SetAllActive(bows, false);
         SetAllActive(shields, false);
         SetAllActive(staffs, false);
+        SetAllActive(daggers, false);
         SetAllActive(swords, false);
         SetAllActive(axes, false);
-        SetAllActive(hammers, false);
         SetAllActive(twoHandedWeapons, false);
     }
 
@@ -639,7 +893,7 @@ public class CharacterCustomization : MonoBehaviour
 
     #endregion
 
-    #region ƒ≥∏Ø≈Õ √ ªÛ»≠ √‘øµ
+    #region Ï∫êÎ¶≠ÌÑ∞ Ï¥àÏÉÅÌôî Ï¥¨ÏòÅ
 
     public Texture2D CapturePortrait(Camera camera, RenderTexture renderTexture)
     {

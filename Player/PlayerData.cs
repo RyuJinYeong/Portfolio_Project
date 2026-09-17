@@ -1,32 +1,115 @@
-using SoftKitty.InventoryEngine;
 using System;
 using System.Collections.Generic;
 
 [Serializable]
-public class PositionEntry { public string characterId; public bool isFront; }
-
-public class PlayerData // ÇÃ·¹ÀÌ¾î °èÁ¤ Á¤º¸
+public class PositionEntry
 {
-    // ÇÃ·¹ÀÌ¾îÀÇ ´Ğ³×ÀÓ
+    public string characterId;
+    public bool isFront;
+}
+
+[Serializable]
+public class LostExpeditionInventoryData
+{
+    public string sourceQuestId;
+    public List<string> characterIds = new();
+    public List<InventorySlotData> items = new();
+}
+
+public class PlayerData
+{
+    // í”Œë ˆì´ì–´ì˜ ë‹‰ë„¤ì„ - ìš©ë³‘ë‹¨ ì´ë¦„
     public string playerName;
-    // °èÁ¤ ·¹º§ - ·¹º§¿¡ µû¶ó ÆÄÆ¼ ±¸¼º ÀÎ¿ø¼ö°¡ È®ÀåµÇ°í Ãß°¡ ±â´ÉÀÌ ÇØ±İµÊ
+
+    // ê³„ì • ë ˆë²¨ - ë ˆë²¨ì— ë”°ë¼ íŒŒí‹° êµ¬ì„± ì¸ì›ìˆ˜ê°€ í™•ì¥ë˜ê³  ì¶”ê°€ ê¸°ëŠ¥ì´ í•´ê¸ˆë¨
     public int level;
-    // ÇÃ·¹ÀÌ¾îÀÇ °ñµå
+
     public int gold;
-    // ÇÃ·¹ÀÌ¾îÀÇ Ã¢°í ¾ÆÀÌÅÛ ¸ñ·Ï
-    public InventoryHolder storage = new InventoryHolder();
-    // º¸À¯ÇÑ Ä³¸¯ÅÍ ID ¸ñ·Ï
+
+    // ê³„ì • ì „ì²´ ê³µìœ  ì°½ê³ 
+    public List<InventorySlotData> accountStorage = new();
+
+    // í˜„ì¬ ì›ì •ëŒ€/íŒŒí‹° ë‹¨ìœ„ ì°½ê³ 
+    public List<InventorySlotData> expeditionStorage = new();
+
+    // ì „ë©¸í•œ ì›ì •ëŒ€ê°€ í˜„ì¥ì— ë‚¨ê¸´ ì°½ê³ . êµ¬ì¶œ ì˜ë¢° ì„±ê³µ ì‹œ êµ¬ì¡°ëŒ€ ì°½ê³ ë¡œ íšŒìˆ˜ëœë‹¤.
+    public List<LostExpeditionInventoryData> lostExpeditionInventories = new();
+
+    // ìƒì„± ì¥ë¹„ ì¸ìŠ¤í„´ìŠ¤ ì €ì¥ì†Œ
+    public List<GeneratedEquipmentData> generatedEquipments = new();
+
+    // ë³´ìœ í•œ ìºë¦­í„° ID ëª©ë¡
     public List<string> characterIds = new List<string>();
 
-    // ÁøÇà ÁßÀÎ ½ºÅ×ÀÌÁö¿Í ÇØ´ç ½ºÅ×ÀÌÁö¸¦ ÁøÇà ÁßÀÎ Ä³¸¯ÅÍ ID ¸ñ·Ï
+    // ì›ì •ëŒ€ ì „ë©¸ í›„ ë§ˆì„ ë¡œìŠ¤í„°ì—ì„œ ì œì™¸ëœ ì‹¤ì¢… ìºë¦­í„° ID ëª©ë¡
+    public List<string> missingCharacterIds = new List<string>();
+
+    // êµ¬ì¶œë˜ì—ˆì§€ë§Œ ì•„ì§ ë¶€í™œí•˜ì§€ ì•Šì•„ ì¶œì „í•  ìˆ˜ ì—†ëŠ” ìºë¦­í„° ID ëª©ë¡
+    public List<string> revivalRequiredCharacterIds = new List<string>();
+
+    // í˜„ì¬ ê³„ì •ì— ì œì‹œëœ ê³ ìš© ê°€ëŠ¥ ìš©ë³‘ ëª©ë¡
+    public List<CharacterData> recruitmentCandidates = new List<CharacterData>();
+    public bool recruitmentCandidatesInitialized;
+    public int recruitmentRefreshCount;
+    public string reservedRecruitmentCandidateId;
+
+    // ì§„í–‰ ì¤‘ì¸ ìŠ¤í…Œì´ì§€ì™€ í•´ë‹¹ ìŠ¤í…Œì´ì§€ë¥¼ ì§„í–‰ ì¤‘ì¸ ìºë¦­í„° ID ëª©ë¡
     public string currentStage = "Town";
     public List<string> activeCharacterIds = new List<string>();
 
-    // ÀúÀå¿ë(³×ÀÌÆ¼ºê Dictionary´ë½Å)
+    // í¬ì§€ì…˜ ì €ì¥ìš©
     public List<PositionEntry> positions = new();
 
-    // ·±Å¸ÀÓ Ä³½Ã
-    [Newtonsoft.Json.JsonIgnore]
-    // Ä³¸¯ÅÍ À§Ä¡ Á¤º¸
-    public Dictionary<string, bool> characterPositionMapping = new Dictionary<string, bool>(); // true for front row, false for back row
+    public bool TryGetPosition(string characterId, out bool isFront)
+    {
+        isFront = false;
+
+        if (string.IsNullOrEmpty(characterId) || positions == null)
+            return false;
+
+        PositionEntry entry = positions.Find(p => p != null && p.characterId == characterId);
+
+        if (entry == null)
+            return false;
+
+        isFront = entry.isFront;
+        return true;
+    }
+
+    public bool IsFrontPosition(string characterId)
+    {
+        return TryGetPosition(characterId, out bool isFront) && isFront;
+    }
+
+    public void SetPosition(string characterId, bool isFront)
+    {
+        if (string.IsNullOrEmpty(characterId))
+            return;
+
+        if (positions == null)
+            positions = new List<PositionEntry>();
+
+        PositionEntry entry = positions.Find(p => p != null && p.characterId == characterId);
+
+        if (entry == null)
+        {
+            positions.Add(new PositionEntry
+            {
+                characterId = characterId,
+                isFront = isFront
+            });
+
+            return;
+        }
+
+        entry.isFront = isFront;
+    }
+
+    public void RemovePosition(string characterId)
+    {
+        if (string.IsNullOrEmpty(characterId) || positions == null)
+            return;
+
+        positions.RemoveAll(p => p == null || p.characterId == characterId);
+    }
 }

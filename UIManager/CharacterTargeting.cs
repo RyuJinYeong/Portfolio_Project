@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using SoftKitty.InventoryEngine;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -6,91 +7,143 @@ using static SoftKitty.InventoryEngine.InventoryHolder;
 public class CharacterTargeting : MonoBehaviour
 {
     public LineRenderer lineRenderer;
+    [Range(0f, 1f)] public float dottedLineAlpha = 0.45f;
+    [Range(0f, 1f)] public float enemyTargetLineAlpha = 0.45f;
+    [Min(0.1f)] public float dottedPatternLength = 1.2f;
+
     private Camera mainCamera;
     private CharacterManager selectedCharacter;
     private CharacterManager selectedTarget;
-    public SkillBase selectedSkill;
+
+    public SkillDefinitionSO selectedSkill;
+
     private bool isTargeting = false;
     public bool isDefenseSkillTargeting = false;
-    private bool isDefenseCharacterTargeting = false;  // πÊæÓ ≈∏∞Ÿ∆√ ªÛ≈¬ «√∑°±◊
+    private bool isDefenseCharacterTargeting = false;
 
-    public int curveResolution = 50;  // ∞Óº±¿« ∫Ø∞Ó¡° ºˆ
+    public int curveResolution = 50;
 
     public Color hoverOutlineColor = Color.red;
     public Color selectedOutlineColor = Color.white;
 
-    private Outline currentHoverOutline;  // ∏∂øÏΩ∫ ƒøº≠∞° ∞°∏Æ≈∞¥¬ ƒ≥∏Ø≈Õ¿« ø‹∞˚º±
-    private Outline selectedCharacterOutline;  // «ˆ¿Á º±≈√µ» ƒ≥∏Ø≈Õ¿« ø‹∞˚º±
+    private Outline currentHoverOutline;
+    private Outline selectedCharacterOutline;
+    private CharacterManager portraitHoverCharacter;
+    private bool presentationOutlinesSuppressed;
+
+    private readonly List<LineRenderer> confirmedLineRenderers = new();
+    private LineRenderer previewLineRenderer;
+    private Material dottedLineMaterial;
+    private Texture2D dottedLineTexture;
+    private Gradient solidLineGradient;
+    private Material[] solidLineMaterials;
+    private LineTextureMode solidLineTextureMode;
+    private Vector2 solidLineTextureScale;
 
     void Start()
     {
         mainCamera = Camera.main;
-        lineRenderer.enabled = false;
+        InitializeLineRenderers();
     }
 
     void Update()
     {
-        //if (PlayerManager.Instance.GetCurrentPlayerData().currentStage != "Town" || PlayerManager.Instance.GetCurrentPlayerData().currentStage != null)
-        //{
-            // ∏∂øÏΩ∫ ƒøº≠∞° ø√∂Û∞£ ƒ≥∏Ø≈Õø° ø‹∞˚º± ¿˚øÎ
-            HandleHoverOutline();
+        bool selectedCharacterIsAlive = selectedCharacter != null &&
+                                        selectedCharacter.character != null &&
+                                        selectedCharacter.character.IsAlive;
 
+        if (!selectedCharacterIsAlive && selectedCharacterOutline != null)
+            selectedCharacterOutline.enabled = false;
 
-            if (!isTargeting && !isDefenseCharacterTargeting && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        bool isPresenting = BattlePresentationDirector.Instance != null &&
+            BattlePresentationDirector.Instance.IsPresenting;
+
+        if (isPresenting)
+        {
+            if (!presentationOutlinesSuppressed)
             {
-                Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-                if (Physics.Raycast(ray, out RaycastHit hit))
+                if (currentHoverOutline != null)
                 {
-                    if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
-                    {
-                        SelectCharacter(characterManager);
-                    }
+                    currentHoverOutline.enabled = false;
+                    currentHoverOutline = null;
+                }
+
+                if (selectedCharacterOutline != null)
+                    selectedCharacterOutline.enabled = false;
+
+                presentationOutlinesSuppressed = true;
+            }
+
+            return;
+        }
+
+        if (presentationOutlinesSuppressed)
+        {
+            presentationOutlinesSuppressed = false;
+
+            if (selectedCharacterOutline != null && selectedCharacterIsAlive)
+            {
+                selectedCharacterOutline.OutlineColor = selectedOutlineColor;
+                selectedCharacterOutline.enabled = true;
+            }
+        }
+
+        if (mainCamera == null || !mainCamera.isActiveAndEnabled)
+        {
+            GameObject mainCameraObject = GameObject.Find("MainCamera");
+            mainCamera = mainCameraObject != null
+                ? mainCameraObject.GetComponent<Camera>()
+                : Camera.main;
+        }
+
+        if (mainCamera == null)
+            return;
+
+        HandleHoverOutline();
+
+        if (!isTargeting &&
+            !isDefenseCharacterTargeting &&
+            Input.GetMouseButtonDown(0) &&
+            !EventSystem.current.IsPointerOverGameObject())
+        {
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(ray, out RaycastHit hit))
+            {
+                CharacterManager characterManager = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (characterManager != null)
+                {
+                    SelectCharacter(characterManager);
                 }
             }
+        }
 
-            if (isTargeting)
-            {
-                if (isDefenseSkillTargeting)
-                    HandleDefenseSkillTargeting();
-                else
-                    HandleSkillTargeting();
-            }
+        if (isTargeting)
+        {
+            if (isDefenseSkillTargeting)
+                HandleDefenseSkillTargeting();
+            else
+                HandleSkillTargeting();
+        }
 
-            if (isDefenseCharacterTargeting)
-            {
-                HandleDefenseTargeting();
-            }
-        //}
+        if (isDefenseCharacterTargeting)
+        {
+            HandleDefenseTargeting();
+        }
     }
 
-    // ±‚¡∏ ≈∏∞Ÿ∆√ ∑Œ¡˜ - ∞¯∞› Ω∫≈≥
     private void HandleSkillTargeting()
     {
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
-                {
-                    SelectTarget(targetCharacter);
-                }
-            }
-        }
-        else
-        {
-            UpdateBezierCurve();
-        }
-    }
-    // πÊæÓΩ∫≈≥ ≈∏∞Ÿ∆√
-    private void HandleDefenseSkillTargeting()
-    {
-        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
-        {
-            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit))
-            {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
+                CharacterManager targetCharacter = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (targetCharacter != null)
                 {
                     SelectTarget(targetCharacter);
                 }
@@ -102,15 +155,39 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
-    // πÊæÓƒ≥∏Ø≈Õ ≈∏∞Ÿ∆√ ∑Œ¡˜
+    private void HandleDefenseSkillTargeting()
+    {
+        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        {
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(ray, out RaycastHit hit))
+            {
+                CharacterManager targetCharacter = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (targetCharacter != null)
+                {
+                    SelectTarget(targetCharacter);
+                }
+            }
+        }
+        else
+        {
+            UpdateBezierCurve();
+        }
+    }
+
     private void HandleDefenseTargeting()
     {
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                if (hit.transform.TryGetComponent<CharacterManager>(out var targetCharacter))
+                CharacterManager targetCharacter = hit.transform.GetComponentInParent<CharacterManager>();
+
+                if (targetCharacter != null)
                 {
                     SelectDefenseTarget(targetCharacter);
                 }
@@ -122,45 +199,92 @@ public class CharacterTargeting : MonoBehaviour
         }
     }
 
-    //¿Œ∫•≈‰∏Æ ø≠∂˜
     public void OpenPlayerInventory()
     {
-        if (selectedCharacter.character.IsMine)
-            selectedCharacter.character.CharacterInventory.OpenWindow();
-        Debug.Log(selectedCharacter.character.CharacterInventory);
-                //ItemManager.PlayerInventoryHolder.OpenWindow();
+        //CharacterInventory.OpenWindow();
+
+        Debug.Log("ÏõêÏ†ïÎåÄ Ï∞ΩÍ≥† Ïó¥Îûå");
     }
 
     public void OpenPlayerEquipment()
     {
-        if (selectedCharacter.character.IsMine)
+        /*
+        if (selectedCharacter != null && selectedCharacter.character.IsMine)
             selectedCharacter.character.CharacterEquipment.OpenWindow();
-        //ItemManager.PlayerEquipmentHolder.OpenWindow();
+        */
     }
+
     public void OpenSkills()
     {
-        if (selectedCharacter.character.IsMine)
-            ItemManager.PlayerInventoryHolder.OpenWindowByName("Skills", "Skills"); //An example to use "Hidden Items" to achive "Skills" management.
+        if (selectedCharacter != null && selectedCharacter.character.IsMine)
+            ItemManager.PlayerInventoryHolder.OpenWindowByName("Skills", "Skills");
     }
 
     private void HandleHoverOutline()
     {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit))
+        if (portraitHoverCharacter != null &&
+            portraitHoverCharacter.character != null &&
+            portraitHoverCharacter.character.IsAlive)
         {
-            if (hit.transform.TryGetComponent<CharacterManager>(out var characterManager))
+            if (portraitHoverCharacter == selectedCharacter)
             {
-                // «ˆ¿Á º±≈√µ» ƒ≥∏Ø≈ÕøÕ µø¿œ«— ƒ≥∏Ø≈Õø° ƒøº≠∞° ¿÷¿ª ∞ÊøÏø°¥¬ ø‹∞˚º±¿ª æ˜µ•¿Ã∆Æ«œ¡ˆ æ ¿Ω
-                if (selectedCharacter == characterManager)
-                    return;
-
-                // ±‚¡∏ ƒøº≠ ø‹∞˚º±¿ª ¡ˆøˆ¡ÿ¥Ÿ
-                if (currentHoverOutline != null && currentHoverOutline != characterManager.GetComponent<Outline>())
+                if (currentHoverOutline != null &&
+                    currentHoverOutline != selectedCharacterOutline)
                 {
                     currentHoverOutline.enabled = false;
                 }
 
-                currentHoverOutline = characterManager.GetComponent<Outline>();
+                currentHoverOutline = null;
+                return;
+            }
+
+            Outline portraitOutline = portraitHoverCharacter.GetComponentInChildren<Outline>(true);
+
+            if (currentHoverOutline != null && currentHoverOutline != portraitOutline)
+                currentHoverOutline.enabled = false;
+
+            currentHoverOutline = portraitOutline;
+
+            if (currentHoverOutline != null)
+            {
+                currentHoverOutline.OutlineColor = hoverOutlineColor;
+                currentHoverOutline.enabled = true;
+            }
+
+            return;
+        }
+
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+        if (Physics.Raycast(ray, out RaycastHit hit))
+        {
+            CharacterManager characterManager = hit.transform.GetComponentInParent<CharacterManager>();
+
+            if (characterManager != null &&
+                characterManager.character != null &&
+                characterManager.character.IsAlive)
+            {
+                if (selectedCharacter == characterManager)
+                {
+                    if (currentHoverOutline != null)
+                    {
+                        currentHoverOutline.enabled = false;
+                        currentHoverOutline = null;
+                    }
+
+                    return;
+                }
+
+                Outline hoveredOutline = characterManager.GetComponentInChildren<Outline>(true);
+
+                if (currentHoverOutline != null &&
+                    currentHoverOutline != hoveredOutline)
+                {
+                    currentHoverOutline.enabled = false;
+                }
+
+                currentHoverOutline = hoveredOutline;
+
                 if (currentHoverOutline != null)
                 {
                     currentHoverOutline.OutlineColor = hoverOutlineColor;
@@ -169,7 +293,6 @@ public class CharacterTargeting : MonoBehaviour
             }
             else
             {
-                // ƒøº≠∞° ¥Ÿ∏• ∞˜¿ª ∞°∏Æ≈∞∏È ø‹∞˚º±¿ª ¡¶∞≈
                 if (currentHoverOutline != null)
                 {
                     currentHoverOutline.enabled = false;
@@ -177,25 +300,39 @@ public class CharacterTargeting : MonoBehaviour
                 }
             }
         }
+        else if (currentHoverOutline != null)
+        {
+            currentHoverOutline.enabled = false;
+            currentHoverOutline = null;
+        }
     }
 
     private void ChangeCursor(string cursorType)
     {
         Texture2D cursorTexture = Resources.Load<Texture2D>($"Cursor/Cursor_{cursorType}");
+
+        if (cursorTexture == null)
+            return;
+
         Vector2 cursorHotspot = new Vector2(cursorTexture.width * 0.3f, 0);
-        Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);        
+        Cursor.SetCursor(cursorTexture, cursorHotspot, CursorMode.Auto);
     }
 
     public void SelectCharacter(CharacterManager characterManager)
     {
-        // ≈∏∞Ÿ∆√ ªÛ≈¬ø°º≠¥¬ º±≈√µ» ƒ≥∏Ø≈Õ∏¶ ∫Ø∞Ê«œ¡ˆ æ ¿Ω
+        if (characterManager == null ||
+            characterManager.character == null ||
+            !characterManager.character.IsAlive)
+        {
+            return;
+        }
+
         if (isTargeting || isDefenseCharacterTargeting)
         {
             ChangeCursor("Basic");
             return;
         }
 
-        // ±‚¡∏ º±≈√µ» ƒ≥∏Ø≈Õ ø‹∞˚º± «ÿ¡¶
         if (selectedCharacterOutline != null)
         {
             selectedCharacterOutline.enabled = false;
@@ -206,149 +343,544 @@ public class CharacterTargeting : MonoBehaviour
 
         if (selectedCharacter.character.IsMine)
         {
-            // Player Inventory Holder º±≈√µ» æ∆±∫ ƒ≥∏Ø≈Õ∑Œ ±≥√º
-            ItemManager.PlayerInventoryHolder = selectedCharacter.character.CharacterInventory;
+            /*
             ItemManager.PlayerEquipmentHolder = selectedCharacter.character.CharacterEquipment;
             HoverInformation.SetCompareHolder(selectedCharacter.character.CharacterEquipment);
+            */
         }
 
-        // º±≈√µ» ƒ≥∏Ø≈Õ ø‹∞˚º± ¿˚øÎ
-        selectedCharacterOutline = selectedCharacter.GetComponent<Outline>();
+        selectedCharacterOutline = selectedCharacter.GetComponentInChildren<Outline>(true);
+
         if (selectedCharacterOutline != null)
         {
             selectedCharacterOutline.OutlineColor = selectedOutlineColor;
-            selectedCharacterOutline.enabled = true;
+            selectedCharacterOutline.enabled =
+                BattlePresentationDirector.Instance == null ||
+                !BattlePresentationDirector.Instance.IsPresenting;
         }
 
-        // ƒøº≠ ø‹∞˚º±¿Ã µø¿œ«— ƒ≥∏Ø≈Õ∏¶ ∞°∏Æ≈∞∞Ì ¿÷¿∏∏È ¡¶∞≈
+        RefreshConfirmedTargetLines();
+
         if (currentHoverOutline == selectedCharacterOutline)
         {
             currentHoverOutline = null;
         }
     }
 
-    public void StartTargeting(SkillBase skill)
+    public void StartTargeting(SkillDefinitionSO skill)
     {
-        if (selectedCharacter == null) return;
+        if (selectedCharacter == null ||
+            selectedCharacter.character == null ||
+            !selectedCharacter.character.IsAlive ||
+            skill == null)
+            return;
+
+        bool isDefenseTurn = TurnManager.Instance != null &&
+                             TurnManager.Instance.defenseCharacter == selectedCharacter;
+
+        if (!selectedCharacter.isPlayerTurn && !(skill.isCounterSkill && isDefenseTurn))
+            return;
+
+        if (isDefenseTurn &&
+            skill.counterActionType == CounterActionType.Evade &&
+            TurnManager.Instance.defenseTarget != selectedCharacter)
+        {
+            return;
+        }
 
         selectedSkill = skill;
+        RefreshConfirmedTargetLines();
+        SetLineRendererVisible(previewLineRenderer, true);
 
-        if (selectedSkill.IsCounterSkill)
+        if (selectedSkill.isCounterSkill)
         {
-            // ƒøº≠∏¶ πÊæÓ Ω∫≈≥øÎ¿∏∑Œ ∫Ø∞Ê
             ChangeCursor("Deff");
             isTargeting = true;
             isDefenseSkillTargeting = true;
-            // πÊæÓ≈∏∞Ÿ∆√ ∑Œ¡˜ ±∏«ˆ « ø‰. - 0225 ±∏«ˆ¡ﬂ
         }
-        else if (selectedSkill.IsRangedSkill)
+        else if (selectedSkill.isRangedSkill)
         {
-            // ƒøº≠∏¶ ø¯∞≈∏Æ Ω∫≈≥øÎ¿∏∑Œ ∫Ø∞Ê
             ChangeCursor("Shoot");
             isTargeting = true;
-            // ø¯∞≈∏Æ ≈∏∞Ÿ∆√ ∑Œ¡˜ ±∏«ˆ « ø‰
+            isDefenseSkillTargeting = false;
         }
-        else if (!selectedSkill.IsRangedSkill)
-        {            
+        else
+        {
             ChangeCursor("Attack");
             isTargeting = true;
-            lineRenderer.enabled = true;
-        }        
+            isDefenseSkillTargeting = false;
+        }
+    }
+
+    public void PreviewCharacter(CharacterManager characterManager)
+    {
+        if (characterManager == null ||
+            characterManager.character == null ||
+            !characterManager.character.IsAlive ||
+            (BattlePresentationDirector.Instance != null &&
+             BattlePresentationDirector.Instance.IsPresenting))
+        {
+            return;
+        }
+
+        portraitHoverCharacter = characterManager;
+        HandleHoverOutline();
+    }
+
+    public void ClearCharacterPreview(CharacterManager characterManager)
+    {
+        if (portraitHoverCharacter != characterManager)
+            return;
+
+        portraitHoverCharacter = null;
+
+        if (currentHoverOutline != null)
+        {
+            currentHoverOutline.enabled = false;
+            currentHoverOutline = null;
+        }
+
+        if (selectedCharacterOutline != null &&
+            selectedCharacter != null &&
+            selectedCharacter.character != null &&
+            selectedCharacter.character.IsAlive)
+        {
+            selectedCharacterOutline.OutlineColor = selectedOutlineColor;
+            selectedCharacterOutline.enabled =
+                BattlePresentationDirector.Instance == null ||
+                !BattlePresentationDirector.Instance.IsPresenting;
+        }
     }
 
     void UpdateBezierCurve()
     {
-        if (selectedCharacter == null)
+        if (selectedCharacter == null || previewLineRenderer == null || mainCamera == null)
             return;
 
         Vector3 startPosition = selectedCharacter.transform.position + Vector3.up * 1;
-        // ∏∂øÏΩ∫ ¿ßƒ°∏¶ ø˘µÂ ¡¬«•∑Œ ∫Ø»Ø
-        Vector3 mousePosition = mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, mainCamera.transform.position.y - selectedCharacter.transform.position.y));
+
+        Vector3 mousePosition = mainCamera.ScreenToWorldPoint(
+            new Vector3(
+                Input.mousePosition.x,
+                Input.mousePosition.y,
+                mainCamera.transform.position.y - selectedCharacter.transform.position.y));
 
         Vector3 controlPoint = (startPosition + mousePosition) / 2;
         controlPoint.y += 2.0f;
 
-        lineRenderer.positionCount = curveResolution;
-
-        for (int i = 0; i < curveResolution; i++)
-        {
-            float t = i / (float)(curveResolution - 1);
-            Vector3 curvePoint = CalculateBezierPoint(t, startPosition, controlPoint, mousePosition);
-            lineRenderer.SetPosition(i, curvePoint);
-        }
+        DrawBezierCurve(previewLineRenderer, startPosition, controlPoint, mousePosition, true);
     }
 
     public void SelectTarget(CharacterManager target)
     {
-        selectedTarget = target;
-        isTargeting = false;
+        if (selectedCharacter == null ||
+            selectedSkill == null ||
+            target == null ||
+            target.character == null ||
+            !target.character.IsAlive)
+            return;
 
-        // ∫£¡ˆæÓ ∞Óº± æ˜µ•¿Ã∆Æ
-        Vector3 startPosition = selectedCharacter.transform.position + Vector3.up * 1;
-        Vector3 targetPosition = target.transform.position + Vector3.up * 1;
-        Vector3 controlPoint = (startPosition + targetPosition) / 2;
-        controlPoint.y += 2.0f;
-
-        lineRenderer.positionCount = curveResolution;
-        for (int i = 0; i < curveResolution; i++)
+        if (!selectedSkill.isCounterSkill &&
+            !selectedSkill.isRangedSkill &&
+            selectedCharacter.isInMeleeCombat &&
+            selectedCharacter.meleeTarget != null &&
+            selectedCharacter.meleeTarget != target)
         {
-            float t = i / (float)(curveResolution - 1);
-            Vector3 curvePoint = CalculateBezierPoint(t, startPosition, controlPoint, targetPosition);
-            lineRenderer.SetPosition(i, curvePoint);
+            Debug.Log("Í≤ΩÌï© ÏÉÅÌÉúÏóêÏÑúÎäî ÌôïÏ†ïÎêú ÏÉÅÎåÄÏóêÍ≤åÎßå Í∑ºÏ†ë Ïä§ÌÇ¨ÏùÑ ÏÇ¨Ïö©Ìï† Ïàò ÏûàÏäµÎãàÎã§.");
+            return;
         }
 
-        // Ω∫≈≥ Ω««‡ ≈•ø° √ﬂ∞°
-        if(selectedSkill.IsCounterSkill)
+        selectedTarget = target;
+        isTargeting = false;
+        SetLineRendererVisible(previewLineRenderer, false);
+
+        if (selectedSkill.isCounterSkill)
             selectedCharacter.SelectCounterSkill(selectedSkill, target);
         else
             selectedCharacter.SelectSkill(selectedSkill, target);
+
+        RefreshConfirmedTargetLines();
+
         ChangeCursor("Basic");
     }
 
     public void StartDefenseCharacterTargeting(CharacterManager defenseCharacter)
     {
-        if (defenseCharacter == null) return;
+        if (defenseCharacter == null ||
+            defenseCharacter.character == null ||
+            !defenseCharacter.character.IsAlive)
+            return;
 
+        InitializeLineRenderers();
+        RefreshConfirmedTargetLines();
         isDefenseCharacterTargeting = true;
-        lineRenderer.enabled = true;
+        SetLineRendererVisible(previewLineRenderer, true);
 
-        selectedCharacter = defenseCharacter;  // πÊæÓ ƒ≥∏Ø≈Õ ¡ˆ¡§
-        ChangeCursor("Deff");  // πÊæÓ ƒøº≠∑Œ ∫Ø∞Ê
-        Debug.Log($"{defenseCharacter.character.Name}¿« πÊæÓ ¥ÎªÛ ≈∏∞Ÿ∆√¿ª Ω√¿€«’¥œ¥Ÿ.");
+        selectedCharacter = defenseCharacter;
+        ChangeCursor("Deff");
 
-        // ∂Û¿Œ ∑ª¥ı∑Ø √ ±‚»≠
+        Debug.Log($"{defenseCharacter.character.Name}Ïùò Î∞©Ïñ¥ ÎåÄÏÉÅ ÌÉÄÍ≤üÌåÖÏùÑ ÏãúÏûëÌï©ÎãàÎã§.");
+
         UpdateBezierCurve();
     }
 
     private void SelectDefenseTarget(CharacterManager target)
     {
-        // πÊæÓ ƒ≥∏Ø≈ÕøÕ πÊæÓ ¥ÎªÛ¿∫ ∞∞¿∫ ¡¯øµ¿ÃæÓæﬂ «‘
+        if (target == null ||
+            target.character == null ||
+            !target.character.IsAlive ||
+            selectedCharacter == null ||
+            selectedCharacter.character == null ||
+            !selectedCharacter.character.IsAlive)
+            return;
+
+        CharacterManager attacker = TurnManager.Instance != null
+            ? TurnManager.Instance.currentCharacter
+            : null;
+        bool isAttackedTarget = attacker != null &&
+                                attacker.GetSkillQueue().Exists(entry =>
+                                    entry != null && entry.target == target);
+
+        if (!isAttackedTarget)
+        {
+            Debug.Log("ÌòÑÏû¨ Í≥µÍ≤©Î∞õÎäî Ï∫êÎ¶≠ÌÑ∞Îßå ÎåÄÏùë ÎåÄÏÉÅÏúºÎ°ú ÏßÄÏ†ïÌï† Ïàò ÏûàÏäµÎãàÎã§.");
+            return;
+        }
+
         if (target.character.IsMine == selectedCharacter.character.IsMine)
         {
             selectedTarget = target;
             isDefenseCharacterTargeting = false;
 
-            // ∫£¡ˆæÓ ∞Óº±¿∏∑Œ πÊæÓ ∞¸∞Ë «•Ω√
             UpdateBezierCurve();
-            Debug.Log($"{selectedCharacter.character.Name}∞° {target.character.Name}¿ª πÊæÓ«’¥œ¥Ÿ.");
 
-            // πÊæÓ ƒ≥∏Ø≈Õø° πÊæÓ ¥ÎªÛ¿ª º≥¡§
+            Debug.Log($"{selectedCharacter.character.Name}Í∞Ä {target.character.Name}ÏùÑ Î∞©Ïñ¥Ìï©ÎãàÎã§.");
+
             selectedCharacter.combatHandler.SetDefenseTarget(target);
             StopTargeting();
 
-            // πÊæÓ Ω∫≈≥ UI √‚∑¬
             UIManager.Instance.UpdateHotbarSkills(selectedCharacter);
         }
     }
 
-
-    // ≈∏∞Ÿ∆√ ¡æ∑· ∏ﬁº≠µÂ
     public void StopTargeting()
     {
         isTargeting = false;
-        isDefenseCharacterTargeting = false;  // πÊæÓƒ≥∏Ø≈Õ ≈∏∞Ÿ∆√µµ ¡æ∑·
-        lineRenderer.enabled = false;
+        isDefenseSkillTargeting = false;
+        isDefenseCharacterTargeting = false;
+        selectedSkill = null;
+        selectedTarget = null;
+
+        SetLineRendererVisible(previewLineRenderer, false);
+        RefreshConfirmedTargetLines();
+
         ChangeCursor("Basic");
+    }
+
+    public bool TryReplaceQueuedAttack(CharacterManager caster, int queueIndex)
+    {
+        if (!isTargeting || isDefenseSkillTargeting || selectedSkill == null)
+            return false;
+
+        if (selectedSkill.isCounterSkill || selectedCharacter != caster)
+            return true;
+
+        if (caster != null &&
+            caster.combatHandler != null &&
+            caster.combatHandler.ReplaceSkillInQueue(queueIndex, selectedSkill))
+        {
+            StopTargeting();
+        }
+
+        return true;
+    }
+
+    public void StopTargetingAndClearConfirmedLines()
+    {
+        StopTargeting();
+        ClearConfirmedTargetLines();
+    }
+
+    public bool CancelTargeting()
+    {
+        if (!isTargeting && !isDefenseCharacterTargeting)
+            return false;
+
+        bool cancelDefenseCharacterSelection = isDefenseCharacterTargeting;
+        StopTargeting();
+
+        if (cancelDefenseCharacterSelection)
+            TurnManager.Instance?.CancelDefenseCharacterSelection();
+
+        return true;
+    }
+
+    public void RefreshConfirmedTargetLines()
+    {
+        InitializeLineRenderers();
+
+        int lineIndex = 0;
+
+        if (selectedCharacter != null && selectedCharacter.combatHandler != null)
+        {
+            Dictionary<CharacterManager, bool> targetStyles = new();
+            AddQueuedTargets(selectedCharacter.combatHandler.GetSkillQueue(), targetStyles);
+            AddQueuedTargets(
+                selectedCharacter.combatHandler.GetCounterSkillQueue(),
+                targetStyles,
+                true,
+                selectedCharacter);
+            lineIndex = DrawConfirmedTargetLines(
+                selectedCharacter,
+                targetStyles,
+                selectedCharacter.character != null && selectedCharacter.character.IsMine
+                    ? 1f
+                    : enemyTargetLineAlpha,
+                lineIndex);
+        }
+
+        List<CharacterManager> allCharacters = GameManager.Instance != null
+            ? GameManager.Instance.GetAllCharacters()
+            : null;
+
+        if (allCharacters != null)
+        {
+            foreach (CharacterManager enemy in allCharacters)
+            {
+                if (enemy == null || enemy == selectedCharacter ||
+                    enemy.character == null || enemy.character.IsMine ||
+                    !enemy.character.IsAlive || enemy.combatHandler == null)
+                {
+                    continue;
+                }
+
+                Dictionary<CharacterManager, bool> enemyTargetStyles = new();
+                AddQueuedTargets(enemy.combatHandler.GetSkillQueue(), enemyTargetStyles);
+                lineIndex = DrawConfirmedTargetLines(
+                    enemy,
+                    enemyTargetStyles,
+                    enemyTargetLineAlpha,
+                    lineIndex);
+            }
+        }
+
+        for (int i = lineIndex; i < confirmedLineRenderers.Count; i++)
+            SetLineRendererVisible(confirmedLineRenderers[i], false);
+    }
+
+    private int DrawConfirmedTargetLines(
+        CharacterManager source,
+        Dictionary<CharacterManager, bool> targetStyles,
+        float alphaMultiplier,
+        int lineIndex)
+    {
+        if (source == null || targetStyles == null)
+            return lineIndex;
+
+        foreach (KeyValuePair<CharacterManager, bool> targetStyle in targetStyles)
+        {
+            if (targetStyle.Key == null ||
+                targetStyle.Key.character == null ||
+                !targetStyle.Key.character.IsAlive)
+            {
+                continue;
+            }
+
+            LineRenderer targetLine = GetConfirmedLineRenderer(lineIndex++);
+            Vector3 startPosition = source.transform.position + Vector3.up;
+            Vector3 targetPosition = targetStyle.Key.transform.position + Vector3.up;
+            Vector3 controlPoint = (startPosition + targetPosition) / 2f;
+            controlPoint.y += 2f;
+
+            SetLineRendererVisible(targetLine, true);
+            DrawBezierCurve(
+                targetLine,
+                startPosition,
+                controlPoint,
+                targetPosition,
+                !targetStyle.Value,
+                alphaMultiplier);
+        }
+
+        return lineIndex;
+    }
+
+    private void AddQueuedTargets(
+        List<SkillQueueData> queue,
+        Dictionary<CharacterManager, bool> targetStyles,
+        bool useProtectedTarget = false,
+        CharacterManager source = null)
+    {
+        if (queue == null)
+            return;
+
+        foreach (SkillQueueData queuedSkill in queue)
+        {
+            CharacterManager queuedTarget = useProtectedTarget
+                ? queuedSkill?.protectedTarget
+                : queuedSkill?.target;
+
+            if (queuedSkill == null ||
+                queuedSkill.skill == null ||
+                queuedTarget == null ||
+                (useProtectedTarget && queuedTarget == source))
+                continue;
+
+            bool containsMeleeSkill = useProtectedTarget || !queuedSkill.skill.isRangedSkill;
+
+            if (targetStyles.TryGetValue(queuedTarget, out bool existingContainsMelee))
+                targetStyles[queuedTarget] = existingContainsMelee || containsMeleeSkill;
+            else
+                targetStyles.Add(queuedTarget, containsMeleeSkill);
+        }
+    }
+
+    private void InitializeLineRenderers()
+    {
+        if (lineRenderer == null || previewLineRenderer != null)
+            return;
+
+        solidLineGradient = CopyGradient(lineRenderer.colorGradient, 1f);
+        solidLineMaterials = lineRenderer.sharedMaterials;
+        solidLineTextureMode = lineRenderer.textureMode;
+        solidLineTextureScale = lineRenderer.textureScale;
+        lineRenderer.enabled = false;
+        confirmedLineRenderers.Add(lineRenderer);
+
+        dottedLineTexture = new Texture2D(16, 1, TextureFormat.RGBA32, false, true)
+        {
+            name = "TargetingDottedLineTexture",
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Bilinear
+        };
+
+        Color[] pixels = new Color[16];
+        for (int i = 0; i < pixels.Length; i++)
+            pixels[i] = i < 9 ? Color.white : Color.clear;
+
+        dottedLineTexture.SetPixels(pixels);
+        dottedLineTexture.Apply();
+
+        if (solidLineMaterials.Length > 0 && solidLineMaterials[0] != null)
+        {
+            dottedLineMaterial = new Material(solidLineMaterials[0])
+            {
+                name = "TargetingDottedLineMaterial",
+                mainTexture = dottedLineTexture
+            };
+        }
+
+        previewLineRenderer = CreateLineRenderer("TargetingPreviewLine");
+        SetLineRendererVisible(previewLineRenderer, false);
+    }
+
+    private LineRenderer GetConfirmedLineRenderer(int index)
+    {
+        while (confirmedLineRenderers.Count <= index)
+            confirmedLineRenderers.Add(CreateLineRenderer($"ConfirmedTargetLine_{confirmedLineRenderers.Count}"));
+
+        return confirmedLineRenderers[index];
+    }
+
+    private LineRenderer CreateLineRenderer(string objectName)
+    {
+        GameObject lineObject = new GameObject(objectName);
+        lineObject.layer = lineRenderer.gameObject.layer;
+        lineObject.transform.SetParent(lineRenderer.transform.parent, false);
+
+        LineRenderer createdLine = lineObject.AddComponent<LineRenderer>();
+        createdLine.sharedMaterials = solidLineMaterials;
+        createdLine.widthMultiplier = lineRenderer.widthMultiplier;
+        createdLine.widthCurve = lineRenderer.widthCurve;
+        createdLine.colorGradient = solidLineGradient;
+        createdLine.numCornerVertices = lineRenderer.numCornerVertices;
+        createdLine.numCapVertices = lineRenderer.numCapVertices;
+        createdLine.alignment = lineRenderer.alignment;
+        createdLine.useWorldSpace = lineRenderer.useWorldSpace;
+        createdLine.loop = false;
+        createdLine.sortingLayerID = lineRenderer.sortingLayerID;
+        createdLine.sortingOrder = lineRenderer.sortingOrder;
+        createdLine.enabled = false;
+        return createdLine;
+    }
+
+    private void DrawBezierCurve(
+        LineRenderer targetLine,
+        Vector3 startPosition,
+        Vector3 controlPoint,
+        Vector3 endPosition,
+        bool dotted,
+        float alphaMultiplier = 1f)
+    {
+        if (targetLine == null)
+            return;
+
+        if (dotted && dottedLineMaterial != null)
+            targetLine.sharedMaterial = dottedLineMaterial;
+        else
+            targetLine.sharedMaterials = solidLineMaterials;
+
+        targetLine.colorGradient = CopyGradient(
+            solidLineGradient,
+            (dotted ? dottedLineAlpha : 1f) * alphaMultiplier);
+        targetLine.textureMode = dotted
+            ? LineTextureMode.Stretch
+            : solidLineTextureMode;
+        targetLine.textureScale = dotted
+            ? new Vector2(
+                Mathf.Max(1f, Vector3.Distance(startPosition, endPosition) / dottedPatternLength),
+                1f)
+            : solidLineTextureScale;
+        targetLine.positionCount = curveResolution;
+
+        for (int i = 0; i < curveResolution; i++)
+        {
+            float t = i / (float)(curveResolution - 1);
+            targetLine.SetPosition(
+                i,
+                CalculateBezierPoint(t, startPosition, controlPoint, endPosition));
+        }
+    }
+
+    private void ClearConfirmedTargetLines()
+    {
+        foreach (LineRenderer confirmedLine in confirmedLineRenderers)
+            SetLineRendererVisible(confirmedLine, false);
+    }
+
+    private static void SetLineRendererVisible(LineRenderer targetLine, bool visible)
+    {
+        if (targetLine == null)
+            return;
+
+        targetLine.enabled = visible;
+
+        if (!visible)
+            targetLine.positionCount = 0;
+    }
+
+    private static Gradient CopyGradient(Gradient source, float alphaMultiplier)
+    {
+        Gradient gradient = new Gradient();
+
+        if (source == null)
+            return gradient;
+
+        GradientAlphaKey[] alphaKeys = source.alphaKeys;
+        for (int i = 0; i < alphaKeys.Length; i++)
+            alphaKeys[i].alpha *= alphaMultiplier;
+
+        gradient.SetKeys(source.colorKeys, alphaKeys);
+        return gradient;
+    }
+
+    private void OnDestroy()
+    {
+        if (dottedLineMaterial != null)
+            Destroy(dottedLineMaterial);
+
+        if (dottedLineTexture != null)
+            Destroy(dottedLineTexture);
     }
 
     Vector3 CalculateBezierPoint(float t, Vector3 p0, Vector3 p1, Vector3 p2)
@@ -357,9 +889,9 @@ public class CharacterTargeting : MonoBehaviour
         float tt = t * t;
         float uu = u * u;
 
-        Vector3 point = uu * p0; // (1-t)^2 * p0
-        point += 2 * u * t * p1; // 2 * (1-t) * t * p1
-        point += tt * p2;        // t^2 * p2
+        Vector3 point = uu * p0;
+        point += 2 * u * t * p1;
+        point += tt * p2;
 
         return point;
     }

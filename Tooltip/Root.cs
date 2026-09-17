@@ -1,20 +1,20 @@
-// Root Å¬·¡½º (¸ğµç °´Ã¼ÀÇ °øÅë ºÎ¸ğ Å¬·¡½º)
+// Root í´ë˜ìŠ¤ (ëª¨ë“  ê°ì²´ì˜ ê³µí†µ ë¶€ëª¨ í´ë˜ìŠ¤)
 using UnityEngine;
 
 public abstract class Root
 {
     public string Name { get; set; }
     public string Description { get; set; } 
-    public Texture2D Icon { get; set; } // ¾ÆÀÌÄÜ
-    public ObjectType ObjectType { get; set; } // ¿­°ÅÇü º¯¼ö·Î Å¸ÀÔ ±¸ºĞ
+    public Texture2D Icon { get; set; } // ì•„ì´ì½˜
+    public ObjectType ObjectType { get; set; } // ì—´ê±°í˜• ë³€ìˆ˜ë¡œ íƒ€ì… êµ¬ë¶„
 }
 
 public enum ObjectType
 {
-    Equipment,      // Àåºñ
-    StatusEffect,   // »óÅÂÀÌ»ó
-    Skill,          // ½ºÅ³
-    Consumable,     // ¼Ò¸ğÇ°
-    Material,       // Àç·á
-    QuestItem       // Äù½ºÆ®
+    Equipment,      // ì¥ë¹„
+    StatusEffect,   // ìƒíƒœì´ìƒ
+    Skill,          // ìŠ¤í‚¬
+    Consumable,     // ì†Œëª¨í’ˆ
+    Material,       // ì¬ë£Œ
+    QuestItem       // í€˜ìŠ¤íŠ¸
 }

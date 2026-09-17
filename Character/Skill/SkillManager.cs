@@ -1,31 +1,141 @@
-using System;
-using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
-// ½ºÅ³À» °ü¸®ÇÏ´Â Å¬·¡½º
 public static class SkillManager
 {
-    public static void AddSkill(CharacterData character, SkillBase skill)
+    public const int MaxQuickSlotCount = 12;
+
+    public static bool AddSkill(CharacterData character, SkillDefinitionSO skillDef)
     {
-        if (!character.Skills.Contains(skill))
-        {
-            character.Skills.Add(skill);
-        }
-        else
-        {
-            Debug.Log("ÀÌ¹Ì Á¸ÀçÇÏ´Â ½ºÅ³ ½Àµæ ½Ãµµ");
-        }
+        if (character == null || skillDef == null)
+            return false;
+
+        return AddSkill(character, skillDef.uid);
     }
 
-    public static void RemoveSkill(CharacterData character, SkillBase skill)
+    public static bool AddSkill(CharacterData character, int skillUid)
     {
-        if (character.Skills.Contains(skill))
+        if (character == null)
+            return false;
+
+        if (character.Skills == null)
+            character.Skills = new System.Collections.Generic.List<SkillRuntimeData>();
+
+        if (character.Skills.Any(s => s.skillUid == skillUid))
         {
-            character.Skills.Remove(skill);
+            Debug.Log("ì´ë¯¸ ì¡´ìž¬í•˜ëŠ” ìŠ¤í‚¬ ìŠµë“ ì‹œë„");
+            return false;
         }
-        else
+
+        SkillDefinitionSO def = GameDataRegistry.Instance.GetSkill(skillUid);
+
+        if (def == null)
         {
-            Debug.Log("Á¸ÀçÇÏÁö ¾Ê´Â ½ºÅ³ »èÁ¦ ½Ãµµ");
+            Debug.LogWarning($"ì¡´ìž¬í•˜ì§€ ì•ŠëŠ” ìŠ¤í‚¬ UIDìž…ë‹ˆë‹¤: {skillUid}");
+            return false;
+        }
+
+        if (!def.CanBeAcquiredBy(character))
+        {
+            Debug.Log($"{def.skillName} ìŠ¤í‚¬ì˜ ìŠµë“ ì¡°ê±´ì„ ì¶©ì¡±í•˜ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.");
+            return false;
+        }
+
+        SkillRuntimeData runtime = SkillRuntimeFactory.Create(def);
+
+        if (runtime == null)
+            return false;
+
+        character.Skills.Add(runtime);
+
+        EquipmentManager.UpdateAvailableAttributes(character);
+        EquipmentManager.UpdateSkillAvailability(character);
+
+        TryAutoRegisterQuickSlot(character, runtime);
+
+        Debug.Log($"{def.skillName} ìŠ¤í‚¬ ìŠµë“");
+
+        return true;
+    }
+
+    public static bool RemoveSkill(CharacterData character, SkillDefinitionSO skillDef)
+    {
+        if (character == null || skillDef == null)
+            return false;
+
+        return RemoveSkill(character, skillDef.uid);
+    }
+
+    public static bool RemoveSkill(CharacterData character, int skillUid)
+    {
+        if (character == null || character.Skills == null)
+            return false;
+
+        SkillRuntimeData runtime = character.Skills.FirstOrDefault(s => s.skillUid == skillUid);
+
+        if (runtime == null)
+        {
+            Debug.Log("ì¡´ìž¬í•˜ì§€ ì•ŠëŠ” ìŠ¤í‚¬ ì‚­ì œ ì‹œë„");
+            return false;
+        }
+
+        character.Skills.Remove(runtime);
+
+        return true;
+    }
+
+    public static bool HasSkill(CharacterData character, int skillUid)
+    {
+        if (character == null || character.Skills == null)
+            return false;
+
+        return character.Skills.Any(s => s.skillUid == skillUid);
+    }
+
+    public static SkillRuntimeData GetRuntime(CharacterData character, int skillUid)
+    {
+        if (character == null || character.Skills == null)
+            return null;
+
+        return character.Skills.FirstOrDefault(s => s.skillUid == skillUid);
+    }
+
+    public static void TryAutoRegisterQuickSlot(CharacterData character, SkillRuntimeData runtime)
+    {
+        if (character == null || character.Skills == null || runtime == null)
+            return;
+
+        if (!runtime.canUse)
+            return;
+
+        if (runtime.quickSlot)
+            return;
+
+        int currentQuickSlotCount = character.Skills.Count(s => s.quickSlot);
+
+        if (currentQuickSlotCount >= MaxQuickSlotCount)
+            return;
+
+        runtime.quickSlot = true;
+    }
+
+    public static void RefreshAutoQuickSlots(CharacterData character)
+    {
+        if (character == null || character.Skills == null)
+            return;
+
+        foreach (SkillRuntimeData runtime in character.Skills)
+        {
+            if (runtime == null)
+                continue;
+
+            if (!runtime.canUse)
+            {
+                runtime.quickSlot = false;
+                continue;
+            }
+
+            TryAutoRegisterQuickSlot(character, runtime);
         }
     }
 }

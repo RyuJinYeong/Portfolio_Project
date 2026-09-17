@@ -4,8 +4,8 @@ using UnityEngine;
 public class CharacterManagementPanel : MonoBehaviour
 {
     [Header("Layout")]
-    public RectTransform content;       // ·¹ÀÌ¾Æ¿ô ÄÁÅ×ÀÌ³Ê
-    public GameObject cardPrefab;     // CharacterInfoCard°¡ ºÙ¾îÀÖ´Â ÇÁ¸®ÆÕ
+    public RectTransform content;       // ë ˆì´ì•„ì›ƒ ì»¨í…Œì´ë„ˆ
+    public GameObject cardPrefab;     // CharacterInfoCardê°€ ë¶™ì–´ìˆëŠ” í”„ë¦¬íŒ¹
 
     readonly List<CharacterInfoPanel> _infoPanel = new();
 
@@ -46,7 +46,7 @@ public class CharacterManagementPanel : MonoBehaviour
         foreach (var id in pd.characterIds)
         {
             var cm = CharacterPoolManager.Instance.Get(id);
-            if (!cm) continue;
+            if (!cm || cm.character == null || !cm.character.IsAlive) continue;
 
             var go = Instantiate(cardPrefab, content);
             var panel = go.GetComponent<CharacterInfoPanel>();

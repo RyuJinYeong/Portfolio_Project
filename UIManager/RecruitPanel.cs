@@ -1,88 +1,375 @@
-using System;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class RecruitPanel : MonoBehaviour
 {
-    [Serializable] public class RecruitOffer { public CharacterData template; public int cost; public int contractDays = 7; }
+    [Header("Character View")]
+    public TownCharacterManagementPanel characterView;
 
-    [Header("Offers")]
-    public List<RecruitOffer> offers = new();           // ÀÎ½ºÆåÅÍ¿¡ ¼¼ÆÃ
-    public RectTransform listContainer;
-    public GameObject listItemPrefab;
-    public RectTransform detailContainer;
+    [Header("Recruitment")]
+    public TMP_Text contractFeeText;
+    public TMP_Text sortiePayText;
+    public TMP_Text currentGoldText;
     public Button hireButton;
-    public TMP_Text costText;
-    public TMP_Text contractText;
+    public Button refreshButton;
 
-    CharacterData _selected;
+    [Header("Hire Dialog")]
+    public GameObject hireDialog;
+    public GameObject hireDialogGoldRow;
+    public TMP_Text hireDialogGoldText;
+    public TMP_Text hireDialogMessageText;
+    public Button hireDialogConfirmButton;
+    public Button hireDialogCancelButton;
+    public GameObject insufficientGoldDialog;
+    public TMP_Text insufficientGoldMessageText;
+    public Button insufficientGoldConfirmButton;
 
-    void OnEnable()
+    private CharacterData selectedCharacter;
+    private bool hireConfirmationPending;
+    private bool reservationPending;
+
+    private void Awake()
     {
-        BuildList();
-        hireButton.onClick.AddListener(HireSelected);
+        if (characterView != null)
+            characterView.closeRequested = Close;
+
+        HideHireDialog();
     }
-    void OnDisable()
-    {
-        hireButton.onClick.RemoveAllListeners();
-    }
 
-    void BuildList()
+    private void OnEnable()
     {
-        foreach (Transform c in listContainer) Destroy(c.gameObject);
-        foreach (var off in offers)
+        if (hireButton != null)
         {
-            var go = Instantiate(listItemPrefab, listContainer);
-            var btn = go.GetComponent<Button>();
-            var txt = go.GetComponentInChildren<TMP_Text>();
-            var img = go.GetComponentInChildren<RawImage>();
-
-            txt.text = off.template.Name;
-            img.texture = off.template.Portrait;
-            btn.onClick.AddListener(() => Select(off));
+            hireButton.onClick.RemoveListener(OnHireButtonClicked);
+            hireButton.onClick.AddListener(OnHireButtonClicked);
         }
-        if (offers.Count > 0) Select(offers[0]);
+
+        if (refreshButton != null)
+        {
+            refreshButton.onClick.RemoveListener(OnRefreshButtonClicked);
+            refreshButton.onClick.AddListener(OnRefreshButtonClicked);
+        }
+
+        if (hireDialogConfirmButton != null)
+        {
+            hireDialogConfirmButton.onClick.RemoveListener(OnHireDialogConfirmed);
+            hireDialogConfirmButton.onClick.AddListener(OnHireDialogConfirmed);
+        }
+
+        if (hireDialogCancelButton != null)
+        {
+            hireDialogCancelButton.onClick.RemoveListener(HideHireDialog);
+            hireDialogCancelButton.onClick.AddListener(HideHireDialog);
+        }
+
+        if (insufficientGoldConfirmButton != null)
+        {
+            insufficientGoldConfirmButton.onClick.RemoveListener(OnInsufficientGoldConfirmed);
+            insufficientGoldConfirmButton.onClick.AddListener(OnInsufficientGoldConfirmed);
+        }
+
+        BuildCandidates();
     }
 
-    void Select(RecruitOffer off)
+    private void OnDisable()
     {
-        _selected = off.template;
-        // ¿ìÃø »ó¼¼: ÇÊ¿ä Á¤º¸(½ºÅÈ/Àåºñ/½ºÅ³) ÅØ½ºÆ®/¾ÆÀÌÄÜ Ã¤¿ì±â (°£´Ü ¿¹½Ã)
-        // detailContainer ³»¿¡ ¹ÙÀÎµùÇÑ ÅØ½ºÆ®/¾ÆÀÌÄÜ ¾÷µ¥ÀÌÆ® ·ÎÁ÷ ÀÛ¼º
+        if (hireButton != null)
+            hireButton.onClick.RemoveListener(OnHireButtonClicked);
 
-        costText.text = $"{off.cost:N0} G";
-        contractText.text = $"{off.contractDays} days";
-        hireButton.interactable = PlayerManager.Instance.GetCurrentPlayerData().gold >= off.cost;
+        if (refreshButton != null)
+            refreshButton.onClick.RemoveListener(OnRefreshButtonClicked);
+
+        if (hireDialogConfirmButton != null)
+            hireDialogConfirmButton.onClick.RemoveListener(OnHireDialogConfirmed);
+
+        if (hireDialogCancelButton != null)
+            hireDialogCancelButton.onClick.RemoveListener(HideHireDialog);
+
+        if (insufficientGoldConfirmButton != null)
+            insufficientGoldConfirmButton.onClick.RemoveListener(OnInsufficientGoldConfirmed);
     }
 
-    void HireSelected()
+    private void BuildCandidates()
     {
-        if (_selected == null) return;
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
 
-        // ºñ¿ë Â÷°¨
-        var pd = PlayerManager.Instance.GetCurrentPlayerData();
-        var offer = offers.Find(o => o.template == _selected);
-        if (offer == null) return;
-        if (pd.gold < offer.cost) return;
+        SetText(currentGoldText, playerData != null ? $"{playerData.gold:N0}" : "-");
+        UpdateRefreshButton(playerData);
 
-        pd.gold -= offer.cost;
+        if (playerData == null || characterView == null)
+            return;
 
-        // Ä³¸¯ÅÍ »ı¼º(°íÀ¯ ID ºÎ¿© + ÀúÀå)
-        PlayerManager.Instance.CreateCharacter(_selected); // ³»ºÎ¿¡¼­ ID ºÎ¿© + SaveCharacter()
-        PlayerManager.Instance.AddCharacterID(_selected.ID);
+        if (playerData.recruitmentCandidates == null)
+            playerData.recruitmentCandidates = new System.Collections.Generic.List<CharacterData>();
 
-        // Ç®¿¡ Áï½Ã ÆíÀÔ
-        CharacterPoolManager.Instance.BuildPoolFromPlayerData(() => {
-            // ¼±ÅÃÀûÀ¸·Î: ¸®½ºÆ® °»½Å/Åä½ºÆ® Ç¥½Ã
-        });
+        bool hasLegacyCandidateNames = playerData.recruitmentCandidates.Exists(
+            candidate => candidate != null &&
+                         !string.IsNullOrEmpty(candidate.Name) &&
+                         candidate.Name.EndsWith(" ìš©ë³‘"));
 
-        // ÇÃ·¹ÀÌ¾î ÀúÀå
+        if (!playerData.recruitmentCandidatesInitialized || hasLegacyCandidateNames)
+        {
+            MercenaryGenerator.RefreshRecruitmentCandidates(playerData);
+            PlayerManager.Instance.SavePlayerDataToPlayFab();
+        }
+
+        characterView.BuildCharacters(
+            playerData.recruitmentCandidates,
+            SelectCharacter);
+
+        CaptureMissingPortraits(playerData);
+    }
+
+    private void CaptureMissingPortraits(PlayerData playerData)
+    {
+        if (CharacterPoolManager.Instance == null ||
+            playerData?.recruitmentCandidates == null)
+        {
+            return;
+        }
+
+        foreach (CharacterData character in playerData.recruitmentCandidates)
+        {
+            if (character == null || character.Portrait != null)
+                continue;
+
+            CharacterPoolManager.Instance.CapturePortrait(character, () =>
+                characterView?.RefreshAll());
+        }
+    }
+
+    private void SelectCharacter(CharacterData character)
+    {
+        selectedCharacter = character;
+
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        int contractFee = MercenaryGenerator.CalculateContractFee(character);
+        int sortiePay = MercenaryGenerator.CalculateSortiePay(character);
+
+        SetText(
+            contractFeeText,
+            character != null
+                ? $"{contractFee:N0}" +
+                  (playerData != null &&
+                   character.ID == playerData.reservedRecruitmentCandidateId
+                      ? "  (ì˜ˆì•½ ì¤‘)"
+                      : string.Empty)
+                : "-");
+        SetText(
+            sortiePayText,
+            character != null ? $"{sortiePay:N0}" : "-");
+
+        if (hireButton != null)
+        {
+            hireButton.interactable = character != null &&
+                                      playerData != null;
+        }
+    }
+
+    private void OnHireButtonClicked()
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        if (selectedCharacter == null || playerData == null)
+            return;
+
+        int contractFee = MercenaryGenerator.CalculateContractFee(selectedCharacter);
+        hireConfirmationPending = playerData.gold >= contractFee;
+        reservationPending = !hireConfirmationPending;
+
+        if (!hireConfirmationPending)
+        {
+            SetText(
+                insufficientGoldMessageText,
+                "ê³¨ë“œê°€ ë¶€ì¡±í•©ë‹ˆë‹¤.\nì´ ìš©ë³‘ì„ ì˜ˆì•½í•˜ì‹œê² ìŠµë‹ˆê¹Œ?\nì˜ˆì•½ì€ 1ëª…ë§Œ ìœ ì§€ë©ë‹ˆë‹¤.");
+            SetButtonText(insufficientGoldConfirmButton, "ì˜ˆì•½");
+
+            if (insufficientGoldDialog != null)
+                insufficientGoldDialog.SetActive(true);
+
+            return;
+        }
+
+        if (hireDialogGoldRow != null)
+            hireDialogGoldRow.SetActive(true);
+
+        SetText(hireDialogGoldText, $"{playerData.gold:N0}");
+        SetText(hireDialogMessageText, "ê³ ìš©í•˜ì‹œê² ìŠµë‹ˆê¹Œ?");
+
+        if (hireDialog != null)
+            hireDialog.SetActive(true);
+    }
+
+    private void OnRefreshButtonClicked()
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        if (playerData == null)
+            return;
+
+        HideHireDialog();
+        int refreshCost = MercenaryGenerator.GetRecruitmentRefreshCost(playerData);
+
+        if (playerData.gold < refreshCost)
+        {
+            SetText(
+                insufficientGoldMessageText,
+                $"ìƒˆë¡œê³ ì¹¨ ë¹„ìš© {refreshCost:N0} Gê°€ í•„ìš”í•©ë‹ˆë‹¤.");
+            SetButtonText(insufficientGoldConfirmButton, "í™•ì¸");
+
+            if (insufficientGoldDialog != null)
+                insufficientGoldDialog.SetActive(true);
+
+            return;
+        }
+
+        playerData.gold -= refreshCost;
+        playerData.recruitmentRefreshCount++;
+        selectedCharacter = null;
+        MercenaryGenerator.RefreshRecruitmentCandidates(playerData);
+        PlayerManager.Instance.SavePlayerDataToPlayFab();
+        BuildCandidates();
+    }
+
+    private void OnHireDialogConfirmed()
+    {
+        if (!hireConfirmationPending)
+        {
+            HideHireDialog();
+            return;
+        }
+
+        HireSelected();
+    }
+
+    private void HideHireDialog()
+    {
+        hireConfirmationPending = false;
+        reservationPending = false;
+
+        if (hireDialog != null)
+            hireDialog.SetActive(false);
+
+        if (insufficientGoldDialog != null)
+            insufficientGoldDialog.SetActive(false);
+    }
+
+    private void OnInsufficientGoldConfirmed()
+    {
+        if (reservationPending && selectedCharacter != null)
+        {
+            PlayerData playerData = PlayerManager.Instance != null
+                ? PlayerManager.Instance.GetCurrentPlayerData()
+                : null;
+
+            if (playerData != null)
+            {
+                playerData.reservedRecruitmentCandidateId = selectedCharacter.ID;
+                PlayerManager.Instance.SavePlayerDataToPlayFab();
+            }
+        }
+
+        HideHireDialog();
+        SelectCharacter(selectedCharacter);
+        characterView?.RefreshAll();
+    }
+
+    private void HireSelected()
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        if (selectedCharacter == null ||
+            playerData?.recruitmentCandidates == null)
+        {
+            return;
+        }
+
+        int contractFee = MercenaryGenerator.CalculateContractFee(selectedCharacter);
+
+        if (playerData.gold < contractFee ||
+            !playerData.recruitmentCandidates.Remove(selectedCharacter))
+        {
+            return;
+        }
+
+        playerData.gold -= contractFee;
+        if (playerData.reservedRecruitmentCandidateId == selectedCharacter.ID)
+            playerData.reservedRecruitmentCandidateId = null;
+
+        SetText(currentGoldText, $"{playerData.gold:N0}");
+        selectedCharacter.IsMine = true;
+
+        PromoteEquippedItems(selectedCharacter.EquipmentSlots);
+
+        PlayerManager.Instance.CreateCharacter(selectedCharacter);
+        playerData.characterIds.Add(selectedCharacter.ID);
+        playerData.SetPosition(selectedCharacter.ID, false);
+
+        CharacterPoolManager.Instance?.AddCharacterToPool(selectedCharacter);
         PlayerManager.Instance.SavePlayerDataToPlayFab();
 
-        // Ã¤¿ëµÈ ¿ÀÆÛ Á¦°Å/¸®½ºÆ® °»½Å
-        offers.Remove(offer);
-        BuildList();
+        HideHireDialog();
+        selectedCharacter = null;
+        characterView.BuildCharacters(
+            playerData.recruitmentCandidates,
+            SelectCharacter);
+    }
+
+    public void Close()
+    {
+        HideHireDialog();
+        gameObject.SetActive(false);
+        UIManager.Instance?.ReturnToTownCameraWhenIdle();
+    }
+
+    private static void PromoteEquippedItems(EquipmentSlotData slots)
+    {
+        if (slots == null)
+            return;
+
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.helmetInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.armorInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.glovesInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.shoesInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.ring1InstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.ring2InstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.necklaceInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.weaponInstanceId);
+        EquipmentInstanceRepository.PromoteRuntimeToPlayer(slots.subWeaponInstanceId);
+    }
+
+    private static void SetText(TMP_Text target, string value)
+    {
+        if (target != null)
+            target.text = value;
+    }
+
+    private void UpdateRefreshButton(PlayerData playerData)
+    {
+        int cost = MercenaryGenerator.GetRecruitmentRefreshCost(playerData);
+        SetButtonText(refreshButton, $"ìƒˆë¡œê³ ì¹¨  {cost:N0} G");
+    }
+
+    private static void SetButtonText(Button button, string value)
+    {
+        if (button == null)
+            return;
+
+        TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+
+        if (label != null)
+            label.text = value;
     }
 }

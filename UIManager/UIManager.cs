@@ -1,9 +1,7 @@
-using SoftKitty.InventoryEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,38 +10,74 @@ public class UIManager : MonoBehaviour
     public static UIManager Instance { get; private set; }
 
     [Header("Roots")]
-    public GameObject battleUiRoot; // ÀüÅõ UI ·çÆ®
-    public GameObject townUiRoot;   // ¸¶À» UI ·çÆ®
-    public GameObject TownMenuCanvas; // ¸¶À» UI - ¿ùµå ½ºÆäÀÌ½º ¸Ş´º Äµ¹ö½º
+    public GameObject battleUiRoot; // ì „íˆ¬ UI ë£¨íŠ¸
+    public GameObject townUiRoot;   // ë§ˆì„ UI ë£¨íŠ¸
+    public GameObject TownMenuCanvas; // ë§ˆì„ UI - ì›”ë“œ ìŠ¤í˜ì´ìŠ¤ ë©”ë‰´ ìº”ë²„ìŠ¤
 
-    [Header("Town Panel - Menu")]
-    public GameObject CharacterManagePanel; // TownUI ÇÏÀ§ ¸Ş´º ÆĞ³Î (Ä³¸¯ÅÍ °ü¸®)
-    public GameObject RecruitPanel;         // TownUI ÇÏÀ§ ¸Ş´º ÆĞ³Î (°í¿ë)
-    public GameObject QuestBoardPanel;      // TownUI ÇÏÀ§ ¸Ş´º ÆĞ³Î (Äù½ºÆ® °Ô½ÃÆÇ)
+    [Header("Town Buttons")]
+    public Button storageButton;
+    public Button characterManagementButton;
+    public Button questButton;
+    public Button recruitButton;
 
-    // ¿ÜºÎ(ÆÄÆ¼Æí¼º/°ÔÀÓ¸Å´ÏÀú)·Î ÀÌº¥Æ® ³Ñ°ÜÁÙ ÈÅ
+    [Header("Town Windows")]
+    public TownCharacterManagementPanel characterManagementPanel;
+    public TownCharacterManagementPanel partyManagementPanel;
+    public InventoryUIController inventoryUIController;
+    public GameObject questPanel;
+    public GameObject recruitPanel;
+    public PartyFormationPanel partyFormationPanel;
+    public QuestNodeMapPanel questNodeMapPanel;
+
+    [Header("Global Windows")]
+    public LevelGrowthPanel levelGrowthPanel;
+    [SerializeField] private GameObject battleDefeatDialogPrefab;
+    [SerializeField] private BattleLootPanel battleLootPanelPrefab;
+    [SerializeField] private InventoryItemActionMenuUI inventoryItemActionMenu;
+
+    [Header("Expedition Buttons")]
+    public GameObject expeditionButtonRoot;
+    public GameObject expeditionInventoryButton;
+    public GameObject expeditionPartyManagementButton;
+    public GameObject expeditionMapButton;
+
+    private GameObject activeBattleDefeatDialog;
+    private GameObject activeQuestAbandonDialog;
+    private float questAbandonPreviousTimeScale = 1f;
+    private float questDialogOriginalButtonY;
+    private bool questAbandonWarningOpen;
+
+    [Header("Camera Focus")]
+    public string storageFocusKey = "Storage";
+    public string characterManagementFocusKey = "CharacterManage";
+    public string questFocusKey = "Quest";
+    public string recruitFocusKey = "Employ";
+
+    // ì™¸ë¶€(íŒŒí‹°í¸ì„±/ê²Œì„ë§¤ë‹ˆì €)ë¡œ ì´ë²¤íŠ¸ ë„˜ê²¨ì¤„ í›…
     public System.Action<QuestDef> onQuestAcceptRequest;
 
-    CharacterManagementPanel _characterManagePanel;
     QuestPanel _questPanel;
+    private bool townWindowSession;
 
-    public GameObject turnOrderPanel;  // »ó´Ü ÅÏ Å¥ ÆĞ³Î
-    public GameObject characterPortraitPrefab;  // Ä³¸¯ÅÍ ÃÊ»óÈ­ ÇÁ¸®ÆÕ
+    public GameObject turnOrderPanel;  // ìƒë‹¨ í„´ í íŒ¨ë„
+    public GameObject characterPortraitPrefab;  // ìºë¦­í„° ì´ˆìƒí™” í”„ë¦¬íŒ¹
 
-    public TextMeshProUGUI turnTimerText; // ³²Àº ÅÏ ½Ã°£À» Ç¥½ÃÇÏ´Â ÅØ½ºÆ®
+    public TextMeshProUGUI turnTimerText; // ë‚¨ì€ í„´ ì‹œê°„ì„ í‘œì‹œí•˜ëŠ” í…ìŠ¤íŠ¸
 
-    public GameObject damageTextPrefab;  // µ¥¹ÌÁö ÅØ½ºÆ® ÇÁ¸®ÆÕ
+    public GameObject damageTextPrefab;  // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ í”„ë¦¬íŒ¹
 
-    public Button turnEndButton; // ÅÏ Á¾·á ¹öÆ° Ãß°¡
-    public Button counterTurnEndButton; // ÀÚµ¿ ´ëÀÀ ¹öÆ° Ãß°¡
+    public Button turnEndButton; // í„´ ì¢…ë£Œ ë²„íŠ¼ ì¶”ê°€
+    public Button counterTurnEndButton; // ìë™ ëŒ€ì‘ ë²„íŠ¼ ì¶”ê°€
 
-    public GameObject synergyInfoPanel; // ½Ã³ÊÁö Á¤º¸°¡ Ç¥½ÃµÇ´Â ÆĞ³Î
+    public GameObject synergyInfoPanel; // ì‹œë„ˆì§€ ì •ë³´ê°€ í‘œì‹œë˜ëŠ” íŒ¨ë„
 
-    public GameObject skillQueueFramePrefab; // ½ºÅ³ Å¥¸¦ Ç¥½ÃÇÒ ÇÁ·¹ÀÓ Prefab
-    public GameObject skillIconPrefab; // ½ºÅ³ ¾ÆÀÌÄÜ Prefab
-    public Transform counterSkillPanel; // ÇÏ´ÜºÎÀÇ ¹æ¾îÀÚ, ¹æ¾î ´ë»ó ½ºÅ³ Á¤º¸ ÆĞ³Î    
+    public GameObject skillQueueFramePrefab; // ìŠ¤í‚¬ íë¥¼ í‘œì‹œí•  í”„ë ˆì„ Prefab
+    public GameObject skillIconPrefab; // ìŠ¤í‚¬ ì•„ì´ì½˜ Prefab
+    public Texture2D emptyCounterSlotBackground;
+    public Transform counterSkillPanel; // í•˜ë‹¨ë¶€ì˜ ë°©ì–´ì, ë°©ì–´ ëŒ€ìƒ ìŠ¤í‚¬ ì •ë³´ íŒ¨ë„    
 
     public RawImage characterPortrait;
+    public Image characterHpImage;
     public TextMeshProUGUI characterName;
 
     public TextMeshProUGUI currentHP;
@@ -62,118 +96,1043 @@ public class UIManager : MonoBehaviour
     public GameObject skillBar;
     public GameObject infoPanel;
     
-    // ÇÖ¹Ù ¹öÆ° ¿¬°áÀ» À§ÇÑ ¹è¿­
-    public GameObject[] hotbarButtons = new GameObject[12]; // 12°³ÀÇ ÇÖ¹Ù ¹öÆ°À» À§ÇÑ GameObject ¹è¿­
+    // í•«ë°” ë²„íŠ¼ ì—°ê²°ì„ ìœ„í•œ ë°°ì—´
+    public GameObject[] hotbarButtons = new GameObject[12]; // 12ê°œì˜ í•«ë°” ë²„íŠ¼ì„ ìœ„í•œ GameObject ë°°ì—´
 
     public CharacterTargeting characterTargeting;
+    private CharacterManager displayedCharacter;
 
-    public InventoryHolder storage_temp;
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
 
-        _characterManagePanel = CharacterManagePanel.GetComponent<CharacterManagementPanel>();
+        Instance = this;
 
-        _questPanel = QuestBoardPanel.GetComponent<QuestPanel>();
+        if (storageButton != null &&
+            characterManagementPanel != null &&
+            storageButton.transform.IsChildOf(characterManagementPanel.transform))
+        {
+            GameObject townMenuCanvas = GameObject.Find("TownMenuCanvas");
+            Transform townStorageButton = townMenuCanvas != null
+                ? townMenuCanvas.transform.Find("StorageButton")
+                : null;
+
+            if (townStorageButton != null)
+                storageButton = townStorageButton.GetComponent<Button>();
+        }
+
+        if (characterManagementPanel != null)
+            characterManagementPanel.uiManager = this;
+
+        if (partyManagementPanel != null)
+            partyManagementPanel.uiManager = this;
+
+        _questPanel = questPanel != null ? questPanel.GetComponent<QuestPanel>() : null;
+
+        if (partyFormationPanel == null)
+            partyFormationPanel = GetComponentInChildren<PartyFormationPanel>(true);
+
+        if (questNodeMapPanel == null)
+            questNodeMapPanel = GetComponentInChildren<QuestNodeMapPanel>(true);
+
+        if (levelGrowthPanel == null)
+            levelGrowthPanel = GetComponentInChildren<LevelGrowthPanel>(true);
+
+        if (inventoryItemActionMenu == null)
+            inventoryItemActionMenu = GetComponentInChildren<InventoryItemActionMenuUI>(true);
 
         WireQuestPanel();
+        WireInventoryButtons();
+    }
+
+    private void OnEnable()
+    {
+        if (Instance == null)
+            Instance = this;
+
+        if (storageButton != null)
+            storageButton.onClick.AddListener(OpenCompanyStorage);
+
+        if (characterManagementButton != null)
+            characterManagementButton.onClick.AddListener(OpenCharacterManagement);
+
+        if (questButton != null)
+            questButton.onClick.AddListener(OpenQuest);
+
+        if (recruitButton != null)
+            recruitButton.onClick.AddListener(OpenRecruit);
+    }
+
+    private void OnDisable()
+    {
+        if (storageButton != null)
+            storageButton.onClick.RemoveListener(OpenCompanyStorage);
+
+        if (characterManagementButton != null)
+            characterManagementButton.onClick.RemoveListener(OpenCharacterManagement);
+
+        if (questButton != null)
+            questButton.onClick.RemoveListener(OpenQuest);
+
+        if (recruitButton != null)
+            recruitButton.onClick.RemoveListener(OpenRecruit);
+
+        if (activeQuestAbandonDialog != null)
+        {
+            Time.timeScale = questAbandonPreviousTimeScale;
+            Destroy(activeQuestAbandonDialog);
+            activeQuestAbandonDialog = null;
+            questAbandonWarningOpen = false;
+        }
     }
 
     private void WireQuestPanel()
     {
         if (_questPanel == null) return;
 
-        // Äù½ºÆ® Ä«µå¿¡¼­ "¼ö¶ô" ´­·¶À» ¶§ ¡æ »óÃşÀ¸·Î ÀÌº¥Æ® Àü´Ş(ÆÄÆ¼ Æí¼º È­¸éÀÌ ¹Ş°Ô)
+        // í€˜ìŠ¤íŠ¸ ì¹´ë“œì—ì„œ "ìˆ˜ë½" ëˆŒë €ì„ ë•Œ â†’ ìƒì¸µìœ¼ë¡œ ì´ë²¤íŠ¸ ì „ë‹¬(íŒŒí‹° í¸ì„± í™”ë©´ì´ ë°›ê²Œ)
         _questPanel.OnAcceptRequest = def =>
         {
-            CloseAllTownOverlays();
-            // ¿©±â¼­ ¹Ù·Î Accept±îÁö ÅÂ¿ìÁö ¸»°í, ÆÄÆ¼ Æí¼ºÀ¸·Î À§ÀÓ
+            CloseManagedWindows();
+
+            if (partyFormationPanel != null)
+                partyFormationPanel.Open(def);
+            else
+                ReturnCameraWhenAllWindowsClosed();
+
             onQuestAcceptRequest?.Invoke(def);
         };
     }
 
     public void Update()
     {
-        // ESC: Å¸¿î ÆĞ³Î > ´İ±â, ±× ¿Ü¿£ Æ÷Ä¿½º È¨
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (townUiRoot && townUiRoot.activeInHierarchy &&
-                ((RecruitPanel && RecruitPanel.activeSelf) || (CharacterManagePanel && CharacterManagePanel.activeSelf)))
+            TooltipManager.Instance?.HideTooltip();
+
+            if (characterTargeting != null && characterTargeting.CancelTargeting())
+                return;
+
+            if (activeQuestAbandonDialog != null)
             {
-                CloseAllTownOverlays();
-                CameraFocusRig.Instance?.FocusHome();
+                if (questAbandonWarningOpen)
+                    ConfigureQuestPauseMenu();
+                else
+                    CloseQuestPauseMenu();
+                return;
             }
+
+            if (!IsInTown() &&
+                QuestManager.Instance != null &&
+                QuestManager.Instance.active != null)
+            {
+                if (HasOpenExpeditionDetailWindow())
+                {
+                    CloseTopWindow();
+                    return;
+                }
+
+                OpenQuestPauseMenu();
+                return;
+            }
+
+            if (townWindowSession)
+                CloseTopWindow();
             else if (CameraFocusRig.Instance && CameraFocusRig.Instance.isFocused)
-            {
                 CameraFocusRig.Instance.FocusHome();
-            }
         }
+
+        if (townWindowSession)
+            ReturnCameraWhenAllWindowsClosed();
     }
 
     public void UISwitch(UIMode mode)
     {
         bool isTown = (mode == UIMode.Town);
 
-        // ·çÆ® Åä±Û
+        // ë£¨íŠ¸ í† ê¸€
         if (townUiRoot) townUiRoot.SetActive(isTown);
         if (TownMenuCanvas) TownMenuCanvas.SetActive(isTown);
         if (battleUiRoot) battleUiRoot.SetActive(!isTown);
 
-        // Å¸¿î ÁøÀÔ ½Ã¿£ ¸ğµç ¼­ºê ÆĞ³Î ´İ°í ±âº» »óÅÂ·Î
-        if (isTown) CloseAllTownOverlays();
+        // íƒ€ìš´ ì§„ì… ì‹œì—” ëª¨ë“  ì„œë¸Œ íŒ¨ë„ ë‹«ê³  ê¸°ë³¸ ìƒíƒœë¡œ
+        if (isTown)
+        {
+            CloseManagedWindows();
+            townWindowSession = false;
+            CameraFocusRig.Instance?.FocusHome();
+        }
+
+        SetExpeditionButtonState(false, !isTown);
     }
 
-    #region ¸¶À»³» UI ¹öÆ° Á¶ÀÛ
+    #region ë§ˆì„ë‚´ UI ë²„íŠ¼ ì¡°ì‘
 
-    public void OnClick_Storage()
+    public void OpenCompanyStorage()
     {
-        CameraFocusRig.Instance?.Focus("Storage");
+        bool keepCharacterManagement = characterManagementPanel != null &&
+                                       characterManagementPanel.gameObject.activeInHierarchy;
 
-        CloseAllTownOverlays();
+        BeginTownWindowSession(
+            keepCharacterManagement ? characterManagementFocusKey : storageFocusKey);
 
-        storage_temp.OpenWindow(); // ÀÓ½Ã Ã¢°í ¿­±â - PlayerDataÀÇ InventoryHolder ÇÊµå¿Í ¿¬µ¿ ÇÊ¿ä -> DB ¹é¾÷¿ë
+        if (keepCharacterManagement)
+            inventoryUIController?.CloseAll();
+        else
+            CloseManagedWindows();
 
-        /*
-        PlayerData currentPlayer = PlayerManager.Instance.GetCurrentPlayerData();
-        
-        currentPlayer.storage.OpenWindow();  // Ã¢°í ¿­±â
-        */
+        if (inventoryUIController == null)
+            return;
+
+        inventoryUIController.SetSelectedCharacter(null);
+        SetWindowPosition(inventoryUIController.companyStorageWindow, Vector2.zero);
+        inventoryUIController.OpenCompanyStorage();
+
+        if (keepCharacterManagement && inventoryUIController.companyStorageWindow != null)
+            inventoryUIController.companyStorageWindow.transform.SetAsLastSibling();
     }
 
-    public void Open_Storage()
+    public void OpenCharacterManagement()
     {
-        storage_temp.OpenWindow();
+        BeginTownWindowSession(characterManagementFocusKey);
+        CloseManagedWindows();
+
+        if (characterManagementPanel != null)
+            characterManagementPanel.OpenAndBuild();
     }
 
-    public void OnClick_CharacterManage()
+    public void OpenQuest()
     {
-        CloseAllTownOverlays();
+        BeginTownWindowSession(questFocusKey);
+        CloseManagedWindows();
 
-        CharacterManagePanel?.SetActive(true);
-        _characterManagePanel.OpenAndBuild();
+        if (questPanel != null)
+            questPanel.SetActive(true);
     }
 
-    public void OnClick_Recruit()
+    public void OpenRecruit()
     {
-        CloseAllTownOverlays();        
-        RecruitPanel?.SetActive(true);
+        BeginTownWindowSession(recruitFocusKey);
+        CloseManagedWindows();
+
+        if (recruitPanel != null)
+            recruitPanel.SetActive(true);
     }
 
-    public void OnClick_QuestBoard()
+    public void OpenCharacterEquipment(CharacterManager characterManager)
     {
-        CameraFocusRig.Instance?.Focus("Quest"); // Ä«¸Ş¶ó Æ÷Ä¿½º ÀÌµ¿ - Äù½ºÆ® ÆĞ³ÎÀº ¿ùµå ½ºÆäÀÌ½º Äµ¹ö½º¿¡ ÀÖ±â ¶§¹®¿¡ µû·Î ÆĞ³Î È°¼ºÈ­°¡ ÇÊ¿äÇÏÁö ¾ÊÀ½.
+        if (characterManager == null || inventoryUIController == null)
+            return;
+
+        if (IsInTown())
+            BeginTownWindowSession(characterManagementFocusKey);
+        inventoryUIController.SetSelectedCharacter(characterManager);
+        inventoryUIController.CloseAttachedStorage();
+        SetWindowPosition(inventoryUIController.equipmentWindow, Vector2.zero);
+        inventoryUIController.OpenEquipment();
+
+        if (inventoryUIController.equipmentWindow != null)
+            inventoryUIController.equipmentWindow.transform.SetAsLastSibling();
     }
-    public void CloseAllTownOverlays()
-    {        
-        CharacterManagePanel?.SetActive(false);
-        RecruitPanel?.SetActive(false);
+
+    public void OpenCharacterEquipment(CharacterData character)
+    {
+        if (character == null || inventoryUIController == null)
+            return;
+
+        inventoryUIController.SetSelectedCharacterData(character);
+        inventoryUIController.CloseAttachedStorage();
+        SetWindowPosition(inventoryUIController.equipmentWindow, Vector2.zero);
+        inventoryUIController.OpenEquipment();
+
+        if (inventoryUIController.equipmentWindow != null)
+            inventoryUIController.equipmentWindow.transform.SetAsLastSibling();
+    }
+
+    public void OpenCharacterSkills(CharacterManager characterManager)
+    {
+        if (characterManager == null || inventoryUIController == null)
+            return;
+
+        if (IsInTown())
+            BeginTownWindowSession(characterManagementFocusKey);
+        inventoryUIController.SetSelectedCharacter(characterManager);
+        inventoryUIController.OpenSkills();
+
+        if (inventoryUIController.skillWindow != null)
+            inventoryUIController.skillWindow.transform.SetAsLastSibling();
+    }
+
+    public void OpenCharacterSkills(CharacterData character)
+    {
+        if (character == null || inventoryUIController == null)
+            return;
+
+        inventoryUIController.SetSelectedCharacterData(character);
+        inventoryUIController.OpenSkills();
+
+        if (inventoryUIController.skillWindow != null)
+            inventoryUIController.skillWindow.transform.SetAsLastSibling();
+    }
+
+    public void CloseCharacterManagement()
+    {
+        if (characterManagementPanel != null)
+            characterManagementPanel.gameObject.SetActive(false);
+
+        if (partyManagementPanel != null)
+            partyManagementPanel.gameObject.SetActive(false);
+
+        if (IsInTown())
+            ReturnCameraWhenAllWindowsClosed();
+    }
+
+    public void ReturnToTownCameraWhenIdle()
+    {
+        ReturnCameraWhenAllWindowsClosed();
+    }
+
+    public void CloseTopWindow()
+    {
+        TooltipManager.Instance?.HideTooltip();
+
+        if (inventoryItemActionMenu != null &&
+            inventoryItemActionMenu.gameObject.activeInHierarchy)
+        {
+            inventoryItemActionMenu.Close();
+            return;
+        }
+
+        if (inventoryUIController != null && IsOpen(inventoryUIController.skillWindow))
+        {
+            inventoryUIController.skillWindow.Close();
+            return;
+        }
+
+        if (inventoryUIController != null && IsOpen(inventoryUIController.equipmentWindow))
+        {
+            inventoryUIController.equipmentWindow.Close();
+            return;
+        }
+
+        if (inventoryUIController != null && IsOpen(inventoryUIController.companyStorageWindow))
+        {
+            inventoryUIController.companyStorageWindow.Close();
+            return;
+        }
+
+        if (inventoryUIController != null && IsOpen(inventoryUIController.expeditionInventoryWindow))
+        {
+            inventoryUIController.expeditionInventoryWindow.Close();
+            return;
+        }
+
+        if (characterManagementPanel != null &&
+            characterManagementPanel.gameObject.activeInHierarchy)
+        {
+            characterManagementPanel.gameObject.SetActive(false);
+            return;
+        }
+
+        if (partyManagementPanel != null &&
+            partyManagementPanel.gameObject.activeInHierarchy)
+        {
+            partyManagementPanel.gameObject.SetActive(false);
+            return;
+        }
+
+        if (recruitPanel != null && recruitPanel.activeInHierarchy)
+        {
+            recruitPanel.SetActive(false);
+            return;
+        }
+
+        if (partyFormationPanel != null &&
+            partyFormationPanel.gameObject.activeInHierarchy)
+        {
+            partyFormationPanel.Close();
+            return;
+        }
+
+        if (questNodeMapPanel != null &&
+            questNodeMapPanel.gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        if (questPanel != null && questPanel.activeInHierarchy)
+            questPanel.SetActive(false);
+    }
+
+    public void CloseManagedWindows()
+    {
+        TooltipManager.Instance?.HideTooltip();
+
+        inventoryItemActionMenu?.Close();
+
+        if (inventoryUIController != null)
+            inventoryUIController.CloseAll();
+
+        if (characterManagementPanel != null)
+            characterManagementPanel.gameObject.SetActive(false);
+
+        if (partyManagementPanel != null)
+            partyManagementPanel.gameObject.SetActive(false);
+
+        if (recruitPanel != null)
+            recruitPanel.SetActive(false);
+
+        if (questPanel != null)
+            questPanel.SetActive(false);
+
+        if (partyFormationPanel != null)
+            partyFormationPanel.Close();
+
+        if (questNodeMapPanel != null)
+            questNodeMapPanel.Close();
+    }
+
+    public void ReturnToQuestBoardFromPartyFormation()
+    {
+        if (partyFormationPanel != null)
+            partyFormationPanel.Close();
+
+        if (questPanel != null)
+            questPanel.SetActive(true);
+    }
+
+    public void OpenQuestNodeMap()
+    {
+        if (questNodeMapPanel != null)
+            questNodeMapPanel.Open();
+    }
+
+    public void OpenExpeditionPartyManagement()
+    {
+        if (TurnManager.Instance != null && TurnManager.Instance.IsBattleInProgress)
+            return;
+
+        if (partyManagementPanel != null)
+        {
+            partyManagementPanel.OpenAndBuildExpeditionParty();
+        }
+
+        BringExpeditionButtonsToFront();
+    }
+
+    public void OpenExpeditionInventory()
+    {
+        if (inventoryUIController == null)
+            return;
+
+        CharacterManager selectedCharacter = partyManagementPanel != null
+            ? partyManagementPanel.SelectedCharacter
+            : null;
+
+        if (selectedCharacter != null)
+            inventoryUIController.SetSelectedCharacter(selectedCharacter);
+
+        SetWindowPosition(inventoryUIController.expeditionInventoryWindow, Vector2.zero);
+        inventoryUIController.OpenExpeditionInventory();
+
+        if (inventoryUIController.expeditionInventoryWindow != null)
+            inventoryUIController.expeditionInventoryWindow.transform.SetAsLastSibling();
+    }
+
+    public void OpenCompanyStorageFromPartyFormation()
+    {
+        if (inventoryUIController == null)
+            return;
+
+        SetWindowPosition(inventoryUIController.companyStorageWindow, Vector2.zero);
+        inventoryUIController.OpenCompanyStorage();
+
+        if (inventoryUIController.companyStorageWindow != null)
+            inventoryUIController.companyStorageWindow.transform.SetAsLastSibling();
+    }
+
+    public void SetExpeditionMapButtonVisible(bool visible)
+    {
+        if (expeditionMapButton != null)
+            expeditionMapButton.SetActive(visible);
+    }
+
+    public void SetExpeditionButtonState(bool utilityButtonsVisible, bool mapButtonVisible)
+    {
+        if (expeditionButtonRoot != null)
+            expeditionButtonRoot.SetActive(utilityButtonsVisible || mapButtonVisible);
+
+        if (expeditionInventoryButton != null)
+            expeditionInventoryButton.SetActive(utilityButtonsVisible);
+
+        if (expeditionPartyManagementButton != null)
+            expeditionPartyManagementButton.SetActive(utilityButtonsVisible);
+
+        SetExpeditionMapButtonVisible(mapButtonVisible);
+    }
+
+    public void BringExpeditionButtonsToFront()
+    {
+        if (partyManagementPanel != null &&
+            partyManagementPanel.gameObject.activeInHierarchy)
+        {
+            partyManagementPanel.transform.SetAsLastSibling();
+        }
+
+        if (inventoryUIController != null)
+        {
+            if (IsOpen(inventoryUIController.companyStorageWindow))
+                inventoryUIController.companyStorageWindow.transform.SetAsLastSibling();
+
+            if (IsOpen(inventoryUIController.expeditionInventoryWindow))
+                inventoryUIController.expeditionInventoryWindow.transform.SetAsLastSibling();
+
+            if (IsOpen(inventoryUIController.equipmentWindow))
+                inventoryUIController.equipmentWindow.transform.SetAsLastSibling();
+
+            if (IsOpen(inventoryUIController.skillWindow))
+                inventoryUIController.skillWindow.transform.SetAsLastSibling();
+        }
+
+        if (expeditionButtonRoot != null && expeditionButtonRoot.activeInHierarchy)
+            expeditionButtonRoot.transform.SetAsLastSibling();
+    }
+
+    public void OpenQuestEncounter()
+    {
+        if (battleUiRoot != null)
+            battleUiRoot.SetActive(false);
+
+        if (questNodeMapPanel != null)
+            questNodeMapPanel.OpenEncounter();
+    }
+
+    public bool OpenPendingLevelUps(System.Action onCompleted = null)
+    {
+        IEnumerable<CharacterManager> characters = CharacterPoolManager.Instance != null
+            ? CharacterPoolManager.Instance.All()
+            : Enumerable.Empty<CharacterManager>();
+
+        return OpenPendingLevelUps(characters, onCompleted);
+    }
+
+    public bool OpenPendingLevelUps(
+        IEnumerable<CharacterManager> characters,
+        System.Action onCompleted = null)
+    {
+        if (levelGrowthPanel == null)
+            return false;
+
+        return levelGrowthPanel.Open(
+            characters,
+            onCompleted);
+    }
+
+    public bool OpenBattleDefeat(System.Action onContinue)
+    {
+        if (battleDefeatDialogPrefab == null)
+        {
+            Debug.LogError("[UIManager] Battle defeat dialog prefab is not assigned.");
+            return false;
+        }
+
+        if (activeBattleDefeatDialog != null)
+            Destroy(activeBattleDefeatDialog);
+
+        activeBattleDefeatDialog = Instantiate(battleDefeatDialogPrefab, transform);
+        activeBattleDefeatDialog.name = "BattleDefeatDialog";
+        activeBattleDefeatDialog.transform.SetAsLastSibling();
+
+        Animator animator = activeBattleDefeatDialog.GetComponent<Animator>();
+
+        if (animator != null)
+            animator.enabled = false;
+
+        if (activeBattleDefeatDialog.transform is RectTransform rootRect)
+        {
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+            rootRect.localScale = Vector3.one;
+        }
+
+        Transform panel = activeBattleDefeatDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel != null
+            ? panel.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        TextMeshProUGUI messageText = panel != null
+            ? panel.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        Button continueButton = panel != null
+            ? panel.Find("ButtonYes")?.GetComponent<Button>()
+            : null;
+
+        if (panel == null || titleText == null || messageText == null || continueButton == null)
+        {
+            Debug.LogError("[UIManager] Battle defeat dialog hierarchy is invalid.");
+            Destroy(activeBattleDefeatDialog);
+            activeBattleDefeatDialog = null;
+            return false;
+        }
+
+        panel.localScale = Vector3.one;
+        titleText.text = "íŒ¨ë°°";
+        messageText.text = "ì›ì •ëŒ€ê°€ ì „ë©¸í–ˆìŠµë‹ˆë‹¤.";
+
+        TextMeshProUGUI buttonText = continueButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (buttonText != null)
+            buttonText.text = "ê³„ì†í•˜ê¸°";
+
+        if (turnEndButton != null)
+            turnEndButton.gameObject.SetActive(false);
+        if (counterTurnEndButton != null)
+            counterTurnEndButton.gameObject.SetActive(false);
+
+        characterTargeting?.StopTargetingAndClearConfirmedLines();
+        ClearHotbarButtons();
+
+        continueButton.onClick.RemoveAllListeners();
+        continueButton.onClick.AddListener(() =>
+        {
+            continueButton.interactable = false;
+            Destroy(activeBattleDefeatDialog);
+            activeBattleDefeatDialog = null;
+            onContinue?.Invoke();
+        });
+
+        return true;
+    }
+
+    private bool OpenQuestPauseMenu()
+    {
+        if (battleDefeatDialogPrefab == null)
+        {
+            Debug.LogError("[UIManager] Quest abandon dialog prefab is not assigned.");
+            return false;
+        }
+
+        if (activeQuestAbandonDialog != null)
+            return true;
+
+        activeQuestAbandonDialog = Instantiate(battleDefeatDialogPrefab, transform);
+        activeQuestAbandonDialog.name = "QuestPauseMenu";
+        activeQuestAbandonDialog.transform.SetAsLastSibling();
+
+        Animator animator = activeQuestAbandonDialog.GetComponent<Animator>();
+        if (animator != null)
+            animator.enabled = false;
+
+        if (activeQuestAbandonDialog.transform is RectTransform rootRect)
+        {
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
+            rootRect.localScale = Vector3.one;
+        }
+
+        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel != null
+            ? panel.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        TextMeshProUGUI messageText = panel != null
+            ? panel.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        Button continueButton = panel != null
+            ? panel.Find("ButtonYes")?.GetComponent<Button>()
+            : null;
+
+        if (panel == null || titleText == null || messageText == null || continueButton == null)
+        {
+            Debug.LogError("[UIManager] Quest abandon dialog hierarchy is invalid.");
+            Destroy(activeQuestAbandonDialog);
+            activeQuestAbandonDialog = null;
+            return false;
+        }
+
+        panel.localScale = Vector3.one;
+
+        GameObject abandonButtonObject = Instantiate(continueButton.gameObject, panel);
+        abandonButtonObject.name = "ButtonAbandon";
+
+        foreach (TextMeshProUGUI dialogText in
+                 activeQuestAbandonDialog.GetComponentsInChildren<TextMeshProUGUI>(true))
+        {
+            dialogText.fontSize *= 0.5f;
+        }
+
+        RectTransform continueRect = continueButton.transform as RectTransform;
+        questDialogOriginalButtonY = continueRect != null
+            ? continueRect.anchoredPosition.y
+            : 0f;
+
+        questAbandonPreviousTimeScale = Time.timeScale;
+        Time.timeScale = 0f;
+        ConfigureQuestPauseMenu();
+        return true;
+    }
+
+    private void ConfigureQuestPauseMenu()
+    {
+        if (activeQuestAbandonDialog == null)
+            return;
+
+        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel?.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI messageText = panel?.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>();
+        Button continueButton = panel?.Find("ButtonYes")?.GetComponent<Button>();
+        Button abandonButton = panel?.Find("ButtonAbandon")?.GetComponent<Button>();
+
+        if (panel == null || titleText == null || messageText == null ||
+            continueButton == null || abandonButton == null)
+        {
+            return;
+        }
+
+        Image panelImage = panel.GetComponent<Image>();
+        if (panelImage != null)
+            panelImage.enabled = false;
+
+        titleText.gameObject.SetActive(false);
+        messageText.gameObject.SetActive(false);
+        continueButton.interactable = true;
+        abandonButton.interactable = true;
+
+        if (continueButton.transform is RectTransform continueRect)
+            continueRect.anchoredPosition = new Vector2(0f, 60f);
+        if (abandonButton.transform is RectTransform abandonRect)
+            abandonRect.anchoredPosition = new Vector2(0f, -60f);
+
+        TextMeshProUGUI continueText = continueButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        TextMeshProUGUI abandonText = abandonButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (continueText != null)
+            continueText.text = "ê³„ì†í•˜ê¸°";
+        if (abandonText != null)
+            abandonText.text = "ì˜ë¢° í¬ê¸°";
+
+        continueButton.onClick = new Button.ButtonClickedEvent();
+        abandonButton.onClick = new Button.ButtonClickedEvent();
+        continueButton.onClick.AddListener(CloseQuestPauseMenu);
+        abandonButton.onClick.AddListener(ConfigureQuestAbandonWarning);
+        questAbandonWarningOpen = false;
+    }
+
+    private void ConfigureQuestAbandonWarning()
+    {
+        if (activeQuestAbandonDialog == null)
+            return;
+
+        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
+        TextMeshProUGUI titleText = panel?.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>();
+        TextMeshProUGUI messageText = panel?.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>();
+        Button cancelButton = panel?.Find("ButtonYes")?.GetComponent<Button>();
+        Button abandonButton = panel?.Find("ButtonAbandon")?.GetComponent<Button>();
+
+        if (panel == null || titleText == null || messageText == null ||
+            cancelButton == null || abandonButton == null)
+        {
+            return;
+        }
+
+        Image panelImage = panel.GetComponent<Image>();
+        if (panelImage != null)
+            panelImage.enabled = true;
+
+        titleText.gameObject.SetActive(true);
+        messageText.gameObject.SetActive(true);
+        titleText.text = "ì˜ë¢° í¬ê¸°";
+        messageText.text = "ì¤‘ë„ í¬ê¸°í•  ê²½ìš° ì›ì •ëŒ€ê°€ ì‹¤ì¢… ì²˜ë¦¬ë©ë‹ˆë‹¤. í¬ê¸°í•˜ì‹œê² ìŠµë‹ˆê¹Œ?";
+
+        if (cancelButton.transform is RectTransform cancelRect)
+            cancelRect.anchoredPosition = new Vector2(-130f, questDialogOriginalButtonY);
+        if (abandonButton.transform is RectTransform abandonRect)
+            abandonRect.anchoredPosition = new Vector2(130f, questDialogOriginalButtonY);
+
+        TextMeshProUGUI cancelText = cancelButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        TextMeshProUGUI abandonText = abandonButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (cancelText != null)
+            cancelText.text = "ì·¨ì†Œ";
+        if (abandonText != null)
+            abandonText.text = "ì˜ë¢° í¬ê¸°";
+
+        cancelButton.onClick = new Button.ButtonClickedEvent();
+        abandonButton.onClick = new Button.ButtonClickedEvent();
+        cancelButton.onClick.AddListener(ConfigureQuestPauseMenu);
+        abandonButton.onClick.AddListener(() =>
+        {
+            cancelButton.interactable = false;
+            abandonButton.interactable = false;
+            CloseQuestPauseMenu();
+            TurnManager.Instance.AbandonExpedition();
+        });
+        questAbandonWarningOpen = true;
+    }
+
+    private void CloseQuestPauseMenu()
+    {
+        if (activeQuestAbandonDialog == null)
+            return;
+
+        Time.timeScale = questAbandonPreviousTimeScale;
+        Destroy(activeQuestAbandonDialog);
+        activeQuestAbandonDialog = null;
+        questAbandonWarningOpen = false;
+    }
+
+    public bool OpenBattleLoot(
+        IReadOnlyList<InventorySlotData> loot,
+        System.Action onCompleted)
+    {
+        return OpenBattleLoot(loot, 0, onCompleted);
+    }
+
+    public bool OpenBattleLoot(
+        IReadOnlyList<InventorySlotData> loot,
+        int gold,
+        System.Action onCompleted)
+    {
+        bool hasItems = loot != null &&
+            loot.Any(slot => slot != null && slot.itemUid > 0 && slot.count > 0);
+
+        if (!hasItems && gold <= 0)
+            return false;
+
+        if (battleLootPanelPrefab == null)
+        {
+            Debug.LogError("[UIManager] Battle loot panel prefab is not assigned.");
+            return false;
+        }
+
+        BattleLootPanel panel = Instantiate(battleLootPanelPrefab, transform);
+        panel.name = "BattleLoot";
+
+        if (panel.transform is RectTransform rectTransform)
+            rectTransform.localScale = Vector3.one;
+
+        panel.Open(loot, gold, onCompleted);
+        return true;
+    }
+
+    public bool OpenInventoryItemActionMenu(
+        InventorySlotData slot,
+        bool directTargetSelection,
+        bool allowSell,
+        System.Action<CharacterManager> onUseOrEquip,
+        System.Action<CharacterManager> onAppraise,
+        System.Action onSell,
+        System.Action onDiscard)
+    {
+        if (slot == null || inventoryItemActionMenu == null)
+            return false;
+
+        inventoryItemActionMenu.Open(
+            slot,
+            GetInventoryActionTargets(),
+            directTargetSelection,
+            allowSell && IsInTown(),
+            onUseOrEquip,
+            onAppraise,
+            onSell,
+            onDiscard);
+        return true;
+    }
+
+    public void CloseInventoryItemActionMenu()
+    {
+        inventoryItemActionMenu?.Close();
+    }
+
+    private List<CharacterManager> GetInventoryActionTargets()
+    {
+        bool isInTown = IsInTown();
+        IEnumerable<CharacterManager> candidates = !isInTown && GameManager.Instance != null
+            ? GameManager.Instance.GetAllCharacters()
+            : CharacterPoolManager.Instance != null
+                ? CharacterPoolManager.Instance.All()
+                : Enumerable.Empty<CharacterManager>();
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+        HashSet<string> expeditionIds = !isInTown && playerData?.activeCharacterIds != null
+            ? new HashSet<string>(playerData.activeCharacterIds)
+            : null;
+
+        return candidates
+            .Where(manager => manager != null &&
+                              manager.character != null &&
+                              manager.character.IsMine &&
+                              manager.character.IsAlive &&
+                              (expeditionIds == null ||
+                               expeditionIds.Contains(manager.character.ID)))
+            .GroupBy(manager => manager.character.ID)
+            .Select(group => group.First())
+            .ToList();
+    }
+
+    private void WireInventoryButtons()
+    {
+        ReplaceButtonAction(
+            expeditionInventoryButton != null
+                ? expeditionInventoryButton.GetComponent<Button>() ??
+                  expeditionInventoryButton.GetComponentInChildren<Button>(true)
+                : null,
+            OpenExpeditionInventory);
+        ReplaceButtonAction(
+            expeditionPartyManagementButton != null
+                ? expeditionPartyManagementButton.GetComponent<Button>() ??
+                  expeditionPartyManagementButton.GetComponentInChildren<Button>(true)
+                : null,
+            OpenExpeditionPartyManagement);
+
+        Transform partyPanel = partyFormationPanel != null
+            ? partyFormationPanel.transform
+            : transform.Find("PartyFormationPanel");
+
+        ReplaceButtonAction(
+            FindButton(partyPanel, "ExpeditionInventory"),
+            OpenExpeditionInventory);
+        ReplaceButtonAction(
+            FindButton(partyPanel, "Crate"),
+            OpenCompanyStorageFromPartyFormation);
+
+        Transform companyStorage = inventoryUIController != null &&
+                                   inventoryUIController.companyStorageWindow != null
+            ? inventoryUIController.companyStorageWindow.transform
+            : transform.Find("CompanyStorageWindow");
+        Transform expeditionShortcut = FindDescendant(
+            companyStorage,
+            "ExpeditionInventoryButtons");
+
+        if (expeditionShortcut == null)
+        {
+            expeditionShortcut = FindDescendant(
+                companyStorage,
+                "ExpeditionInventory");
+        }
+
+        ReplaceButtonAction(
+            FindButton(expeditionShortcut, "ExpandBt"),
+            OpenExpeditionInventory);
+    }
+
+    private static Button FindButton(Transform root, string objectName)
+    {
+        Transform target = FindDescendant(root, objectName);
+
+        if (target == null)
+            return null;
+
+        return target.GetComponent<Button>() ??
+               target.GetComponentInChildren<Button>(true);
+    }
+
+    private static Transform FindDescendant(Transform root, string objectName)
+    {
+        if (root == null)
+            return null;
+
+        foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (child.name == objectName)
+                return child;
+        }
+
+        return null;
+    }
+
+    private static void ReplaceButtonAction(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button == null || action == null)
+            return;
+
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(action);
+    }
+
+    private static bool IsInTown()
+    {
+        PlayerData playerData = PlayerManager.Instance != null
+            ? PlayerManager.Instance.GetCurrentPlayerData()
+            : null;
+
+        return playerData == null || playerData.currentStage == "Town";
+    }
+
+    private void BeginTownWindowSession(string focusKey)
+    {
+        townWindowSession = true;
+        CameraFocusRig.Instance?.Focus(focusKey);
+    }
+
+    private void ReturnCameraWhenAllWindowsClosed()
+    {
+        if (!townWindowSession || HasOpenManagedWindow())
+            return;
+
+        townWindowSession = false;
+        CameraFocusRig.Instance?.FocusHome();
+    }
+
+    private bool HasOpenManagedWindow()
+    {
+        if (characterManagementPanel != null &&
+            characterManagementPanel.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
+        if (partyManagementPanel != null &&
+            partyManagementPanel.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
+        if ((recruitPanel != null && recruitPanel.activeInHierarchy) ||
+            (questPanel != null && questPanel.activeInHierarchy) ||
+            (partyFormationPanel != null &&
+             partyFormationPanel.gameObject.activeInHierarchy) ||
+            (questNodeMapPanel != null &&
+             questNodeMapPanel.gameObject.activeInHierarchy))
+        {
+            return true;
+        }
+
+        return inventoryUIController != null &&
+               (IsOpen(inventoryUIController.companyStorageWindow) ||
+                IsOpen(inventoryUIController.expeditionInventoryWindow) ||
+                IsOpen(inventoryUIController.equipmentWindow) ||
+                IsOpen(inventoryUIController.skillWindow));
+    }
+
+    private bool HasOpenExpeditionDetailWindow()
+    {
+        if (inventoryItemActionMenu != null &&
+            inventoryItemActionMenu.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
+        return inventoryUIController != null &&
+               (IsOpen(inventoryUIController.companyStorageWindow) ||
+                IsOpen(inventoryUIController.expeditionInventoryWindow) ||
+                IsOpen(inventoryUIController.equipmentWindow) ||
+                IsOpen(inventoryUIController.skillWindow));
+    }
+
+    private static bool IsOpen(MonoBehaviour window)
+    {
+        return window != null && window.gameObject.activeInHierarchy;
+    }
+
+    private static void SetWindowPosition(MonoBehaviour window, Vector2 position)
+    {
+        if (window != null && window.transform is RectTransform rect)
+            rect.anchoredPosition = position;
     }
 
     #endregion
@@ -182,61 +1141,126 @@ public class UIManager : MonoBehaviour
 
 
 
-    // µ¥¹ÌÁö ÆË¾÷ »ı¼º
+    // ë°ë¯¸ì§€ íŒì—… ìƒì„±
     public void ShowDamage(int damageAmount, Vector3 worldPosition)
     {
-        // ¿ùµå ÁÂÇ¥¸¦ ½ºÅ©¸° ÁÂÇ¥·Î º¯È¯
-        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2);  // Ä³¸¯ÅÍ À§ÂÊ¿¡ Ç¥½ÃµÇµµ·Ï À§Ä¡ Á¶Á¤
+        // ì›”ë“œ ì¢Œí‘œë¥¼ ìŠ¤í¬ë¦° ì¢Œí‘œë¡œ ë³€í™˜
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2);  // ìºë¦­í„° ìœ„ìª½ì— í‘œì‹œë˜ë„ë¡ ìœ„ì¹˜ ì¡°ì •
 
-        // µ¥¹ÌÁö ÅØ½ºÆ® ÀÎ½ºÅÏ½º »ı¼º ¹× Äµ¹ö½ºÀÇ ÀÚ½ÄÀ¸·Î Ãß°¡
+        // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ ì¸ìŠ¤í„´ìŠ¤ ìƒì„± ë° ìº”ë²„ìŠ¤ì˜ ìì‹ìœ¼ë¡œ ì¶”ê°€
         GameObject damageTextInstance = Instantiate(damageTextPrefab, this.transform);
         damageTextInstance.transform.position = screenPosition;
 
         TextMeshProUGUI damageText = damageTextInstance.GetComponent<TextMeshProUGUI>();
 
-        // µ¥¹ÌÁö ÅØ½ºÆ® ¼³Á¤ (-n Çü½Ä, »¡°£»ö)
+        // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ ì„¤ì • (-n í˜•ì‹, ë¹¨ê°„ìƒ‰)
         damageText.text = $"-{damageAmount}";
         damageText.color = Color.red;
 
-        // ÅØ½ºÆ®¸¦ ÀÏÁ¤ ½Ã°£ µ¿¾È Ç¥½Ã ÈÄ »ç¶óÁö°Ô ÇÏ´Â ÄÚ·çÆ¾ È£Ãâ
+        // í…ìŠ¤íŠ¸ë¥¼ ì¼ì • ì‹œê°„ ë™ì•ˆ í‘œì‹œ í›„ ì‚¬ë¼ì§€ê²Œ í•˜ëŠ” ì½”ë£¨í‹´ í˜¸ì¶œ
         StartCoroutine(PopDamage(damageTextInstance));
     }
 
-    // µ¥¹ÌÁö ÅØ½ºÆ® Ç¥½Ã È¿°ú (ÆË¾÷ ÈÄ ¼­¼­È÷ »ç¶óÁü)
+    public void ShowCombatResult(string resultText, Vector3 worldPosition)
+    {
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2.5f);
+        GameObject resultTextInstance = Instantiate(damageTextPrefab, transform);
+        resultTextInstance.transform.position = screenPosition;
+        resultTextInstance.transform.SetAsLastSibling();
+
+        TextMeshProUGUI resultLabel = resultTextInstance.GetComponent<TextMeshProUGUI>();
+        resultLabel.text = resultText;
+        resultLabel.fontStyle = FontStyles.Bold;
+        resultLabel.fontSize *= 1.25f;
+        resultLabel.color = resultText == "Critical"
+            ? new Color(1f, 0.45f, 0.05f)
+            : new Color(0.25f, 0.9f, 1f);
+
+        StartCoroutine(PopDamage(resultTextInstance));
+    }
+
+    public IEnumerator ShowExtraTurnNotification()
+    {
+        GameObject notification = Instantiate(damageTextPrefab, transform);
+        notification.transform.position = new Vector3(
+            Screen.width * 0.5f,
+            Screen.height * 0.5f,
+            0f);
+        notification.transform.SetAsLastSibling();
+
+        TextMeshProUGUI label = notification.GetComponent<TextMeshProUGUI>();
+        label.text = "ì¶”ê°€ í„´ íšë“";
+        label.fontStyle = FontStyles.Bold;
+        label.fontSize *= 0.8f;
+        label.color = new Color(1f, 0.82f, 0.25f);
+
+        yield return PopDamage(notification);
+    }
+
+    public void ShowTraitAcquisition(
+        TraitDefinitionSO trait,
+        TraitGrade grade)
+    {
+        if (trait == null || damageTextPrefab == null)
+            return;
+
+        GameObject notification = Instantiate(damageTextPrefab, transform);
+        notification.transform.position = new Vector3(
+            Screen.width * 0.5f,
+            Screen.height * 0.5f,
+            0f);
+        notification.transform.SetAsLastSibling();
+
+        TextMeshProUGUI label = notification.GetComponent<TextMeshProUGUI>();
+        label.text = $"{grade} {trait.traitName} íšë“";
+        label.fontStyle = FontStyles.Bold;
+        label.fontSize *= 0.8f;
+        label.color = trait.polarity switch
+        {
+            TraitPolarity.Positive => new Color(0.29f, 0.67f, 0.22f, 1f),
+            TraitPolarity.Negative => new Color(0.85f, 0.24f, 0.18f, 1f),
+            TraitPolarity.Mixed => new Color(0.9f, 0.67f, 0.2f, 1f),
+            _ => Color.white
+        };
+
+        StartCoroutine(PopDamage(notification));
+    }
+
+    // ë°ë¯¸ì§€ í…ìŠ¤íŠ¸ í‘œì‹œ íš¨ê³¼ (íŒì—… í›„ ì„œì„œíˆ ì‚¬ë¼ì§)
     private IEnumerator PopDamage(GameObject damageTextInstance)
     {
         TextMeshProUGUI damageText = damageTextInstance.GetComponent<TextMeshProUGUI>();
 
-        // ÅØ½ºÆ® ÆË¾÷ È¿°ú
+        // í…ìŠ¤íŠ¸ íŒì—… íš¨ê³¼
         float t = 0f;
         Vector3 originalScale = damageText.transform.localScale;
 
         while (t < 1f)
         {
-            t += Time.deltaTime * 5f;  // ºü¸£°Ô ÆË¾÷ÇÏ´Â È¿°ú
-            damageText.transform.localScale = originalScale * (1f + t * 0.2f); // ½ºÄÉÀÏ Áõ°¡
-            damageText.transform.position += Vector3.up * Time.deltaTime * 20; // ¾à°£ À§·Î ÀÌµ¿
+            t += Time.deltaTime * 5f;  // ë¹ ë¥´ê²Œ íŒì—…í•˜ëŠ” íš¨ê³¼
+            damageText.transform.localScale = originalScale * (1f + t * 0.2f); // ìŠ¤ì¼€ì¼ ì¦ê°€
+            damageText.transform.position += Vector3.up * Time.deltaTime * 20; // ì•½ê°„ ìœ„ë¡œ ì´ë™
             yield return null;
         }
 
         yield return new WaitForSeconds(0.5f);
 
-        // ÅØ½ºÆ®°¡ ¼­¼­È÷ »ç¶óÁö¸ç Ãà¼ÒµÇ´Â È¿°ú
+        // í…ìŠ¤íŠ¸ê°€ ì„œì„œíˆ ì‚¬ë¼ì§€ë©° ì¶•ì†Œë˜ëŠ” íš¨ê³¼
         t = 1f;
         while (t > 0f)
         {
-            t -= Time.deltaTime * 3f;  // ¼­¼­È÷ »ç¶óÁö´Â ¼Óµµ
-            damageText.color = new Color(damageText.color.r, damageText.color.g, damageText.color.b, t); // ¾ËÆÄ °ª Á¶Á¤
+            t -= Time.deltaTime * 3f;  // ì„œì„œíˆ ì‚¬ë¼ì§€ëŠ” ì†ë„
+            damageText.color = new Color(damageText.color.r, damageText.color.g, damageText.color.b, t); // ì•ŒíŒŒ ê°’ ì¡°ì •
             damageText.transform.localScale = originalScale * (1f + t * 0.2f);
             yield return null;
         }
 
-        // ÅØ½ºÆ® ¿ÀºêÁ§Æ® »èÁ¦
+        // í…ìŠ¤íŠ¸ ì˜¤ë¸Œì íŠ¸ ì‚­ì œ
         Destroy(damageTextInstance);
     }
 
 
-    // ³²Àº ÅÏ ½Ã°£À» ¾÷µ¥ÀÌÆ®ÇÏ´Â ¸Ş¼­µå
+    // ë‚¨ì€ í„´ ì‹œê°„ì„ ì—…ë°ì´íŠ¸í•˜ëŠ” ë©”ì„œë“œ
     public void UpdateTurnTimer(float timeRemaining)
     {
         if (turnTimerText != null)
@@ -247,78 +1271,133 @@ public class UIManager : MonoBehaviour
 
     public void UpdateSkillTransparency(CharacterManager characterManager)
     {
+        if (characterManager == null || characterManager.character == null)
+            return;
+
+        if (characterManager != displayedCharacter)
+            return;
+
         foreach (GameObject button in hotbarButtons)
         {
-            // ¹öÆ°ÀÇ RawImage ÄÄÆ÷³ÍÆ®¿Í ¿¬°áµÈ ½ºÅ³ÀÇ ¾ÆÀÌÄÜÀ» ºñ±³ÇÏ¿© ÇØ´ç ½ºÅ³ Ã£±â
-            RawImage buttonImage = button.GetComponent<RawImage>();
-            if (buttonImage != null && buttonImage.enabled)
+            if (button == null)
+                continue;
+
+            SkillButton skillButton = button.GetComponent<SkillButton>();
+            if (skillButton == null || skillButton.skill == null)
+                continue;
+
+            SkillDefinitionSO linkedSkill = skillButton.skill;
+
+            bool canUseSkill =
+                characterManager.character.CurrentStamina >= linkedSkill.staminaCost &&
+                characterManager.character.CurrentMentality >= linkedSkill.mentalCost;
+
+            bool inactive = !characterManager.isPlayerTurn || !canUseSkill;
+
+            if (characterManager == TurnManager.Instance.defenseCharacter)
             {
-                SkillBase linkedSkill = characterManager.character.Skills.FirstOrDefault(skill => skill.icon == buttonImage.texture);
-                if (linkedSkill != null)
-                {
-                    // ¸®¼Ò½º°¡ ÃæºĞÇÑÁö Ã¼Å©
-                    bool canUseSkill = characterManager.character.CurrentStamina >= linkedSkill.StaminaCost &&
-                                       characterManager.character.CurrentMentality >= linkedSkill.MentalCost;
+                bool evadeCannotProtectOther =
+                    linkedSkill.isCounterSkill &&
+                    linkedSkill.counterActionType == CounterActionType.Evade &&
+                    TurnManager.Instance.defenseTarget != characterManager;
 
-                    // ÇöÀç ÅÏÀÌ ¾Æ´Ï°Å³ª ¸®¼Ò½º°¡ ºÎÁ·ÇÒ °æ¿ì ½ºÅ³ »ç¿ë ºÒ°¡·Î Ç¥½Ã
-                    bool Inactive = !characterManager.isPlayerTurn || !canUseSkill;
-                    if(characterManager == TurnManager.Instance.defenseCharacter) // ¹æ¾îÄ³¸¯ÅÍÀÏ °æ¿ì ÅÏ °ü·Ã ºÎºĞ ½ºÅµ ÈÄ ¸®¼Ò½º ¼Ò¸ğ·®¸¸ °è»ê
-                    {
-                        Inactive = !canUseSkill;
-                    }
-
-                    // ¹öÆ°ÀÇ CanvasGroupÀ» ÅëÇØ Åõ¸íµµ ¼³Á¤
-                    CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
-                    if (canvasGroup == null)
-                    {
-                        canvasGroup = button.AddComponent<CanvasGroup>(); // CanvasGroupÀÌ ¾øÀ» °æ¿ì Ãß°¡
-                    }
-
-                    canvasGroup.alpha = Inactive ? 0.3f : 1.0f;  // ¸®¼Ò½º°¡ ºÎÁ·ÇÒ °æ¿ì Åõ¸íµµ¸¦ ³·Ãã
-                }
+                inactive = !canUseSkill || evadeCannotProtectOther;
             }
+
+            CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+                canvasGroup = button.AddComponent<CanvasGroup>();
+
+            canvasGroup.alpha = inactive ? 0.3f : 1.0f;
+
+            Button uiButton = button.GetComponent<Button>();
+            if (uiButton != null)
+                uiButton.interactable = !inactive;
         }
     }
 
 
-    // ÅÏ Å¥ ÀÌ¹ÌÁö ¾÷µ¥ÀÌÆ® ¸Ş¼­µå
+    // í„´ í ì´ë¯¸ì§€ ì—…ë°ì´íŠ¸ ë©”ì„œë“œ
     public void UpdateTurnOrder(List<CharacterManager> turnQueue, CharacterManager currentCharacter)
     {
-        // ±âÁ¸ ÅÏ Å¥ UI ÃÊ±âÈ­
+        // ê¸°ì¡´ í„´ í UI ì´ˆê¸°í™”
         foreach (Transform child in turnOrderPanel.transform)
         {
-            Destroy(child.gameObject);  // ±âÁ¸ ÃÊ»óÈ­ Á¦°Å
+            Destroy(child.gameObject);  // ê¸°ì¡´ ì´ˆìƒí™” ì œê±°
         }
 
-        // ÅÏ Å¥¿¡ ÀÖ´Â ¸ğµç Ä³¸¯ÅÍÀÇ ÃÊ»óÈ­ Ãß°¡
+        // í„´ íì— ìˆëŠ” ëª¨ë“  ìºë¦­í„°ì˜ ì´ˆìƒí™” ì¶”ê°€
         foreach (var characterManager in turnQueue)
         {
+            if (characterManager == null ||
+                characterManager.character == null ||
+                !characterManager.character.IsAlive)
+            {
+                continue;
+            }
+
             GameObject portraitObj = Instantiate(characterPortraitPrefab, turnOrderPanel.transform);
             RawImage portraitImage = portraitObj.GetComponent<RawImage>();
             portraitImage.texture = characterManager.character.Portrait;
 
-            // ÇöÀç ÅÏÀÎ Ä³¸¯ÅÍ °­Á¶ Ç¥½Ã
+            TurnOrderPortraitUI portraitUI = portraitObj.GetComponent<TurnOrderPortraitUI>();
+            if (portraitUI == null)
+                portraitUI = portraitObj.AddComponent<TurnOrderPortraitUI>();
+
+            portraitUI.Bind(characterManager, characterTargeting);
+
+            // í˜„ì¬ í„´ì¸ ìºë¦­í„° ê°•ì¡° í‘œì‹œ
             if (characterManager == currentCharacter)
             {
-                portraitObj.transform.localScale = Vector3.one * 1.15f; // Å©±â 1.1¹è Áõ°¡
+                portraitObj.transform.localScale = Vector3.one * 1.15f; // í¬ê¸° 1.1ë°° ì¦ê°€
             }
             else
             {
-                portraitObj.transform.localScale = Vector3.one; // ±âº» Å©±â
+                portraitObj.transform.localScale = Vector3.one; // ê¸°ë³¸ í¬ê¸°
             }
         }
     }
 
     public void DisplayCharacterInfo(CharacterManager characterManager)
     {
+        displayedCharacter = characterManager;
         infoPanel.SetActive(true);
-        CharacterData characterData = characterManager.character;
+        RefreshDisplayedCharacterInfo();
+
+        skillBar.SetActive(characterManager.character.IsMine); // ìºë¦­í„°ê°€ ìì‹ ì˜ ê²ƒì¼ ê²½ìš° ìŠ¤í‚¬ë°” í™œì„±í™”
+
+        // í•«ë°” ìŠ¤í‚¬ ì—…ë°ì´íŠ¸
+        UpdateHotbarSkills(characterManager);
+    }
+
+    public void RefreshCharacterInfo(CharacterManager characterManager)
+    {
+        if (characterManager == null || characterManager != displayedCharacter)
+            return;
+
+        RefreshDisplayedCharacterInfo();
+        UpdateSkillTransparency(characterManager);
+    }
+
+    private void RefreshDisplayedCharacterInfo()
+    {
+        if (displayedCharacter == null || displayedCharacter.character == null)
+            return;
+
+        CharacterData characterData = displayedCharacter.character;
 
         characterPortrait.texture = characterData.Portrait;
         characterName.text = characterData.Name;
 
         currentHP.text = $"{characterData.CurrentHp}";
         characterHP.text = $"{characterData.FinalStats.MaxHp}";
+
+        if (characterHpImage != null)
+        {
+            characterHpImage.fillAmount = characterData.FinalStats.MaxHp > 0
+                ? Mathf.Clamp01((float)characterData.CurrentHp / characterData.FinalStats.MaxHp)
+                : 0f;
+        }
 
         currentStamina.text = $"{characterData.CurrentStamina}";
         characterStamina.text = $"{characterData.FinalStats.MaxStamina}";
@@ -330,185 +1409,214 @@ public class UIManager : MonoBehaviour
         characterMagicAttack.text = $"{characterData.FinalStats.MagicalAttack}";
         characterPhysicalDefense.text = $"{characterData.FinalStats.PhysicalDefense}";
         characterMagicDefense.text = $"{characterData.FinalStats.MagicalDefense}";
-
-        skillBar.SetActive(characterData.IsMine); // Ä³¸¯ÅÍ°¡ ÀÚ½ÅÀÇ °ÍÀÏ °æ¿ì ½ºÅ³¹Ù È°¼ºÈ­
-
-        // ÇÖ¹Ù ½ºÅ³ ¾÷µ¥ÀÌÆ®
-        UpdateHotbarSkills(characterManager);
     }
 
-    // ÇÖ¹Ù ½ºÅ³ ¾÷µ¥ÀÌÆ® ¸Ş¼­µå
+    // í•«ë°” ìŠ¤í‚¬ ì—…ë°ì´íŠ¸ ë©”ì„œë“œ
     public void UpdateHotbarSkills(CharacterManager characterManager)
     {
-        // ¸ğµç ÇÖ¹Ù ¹öÆ°°ú RawImage¸¦ ºñÈ°¼ºÈ­
-        foreach (var button in hotbarButtons)
-        {
-            button.GetComponent<SkillButton>().skill = null;
-            button.GetComponent<Button>().interactable = false; // ¹öÆ° ºñÈ°¼ºÈ­
-            button.GetComponent<RawImage>().enabled = false;    // ÀÌ¹ÌÁö ºñÈ°¼ºÈ­            
+        if (characterManager == null || characterManager.character == null)
+            return;
 
-            // ÄÚ½ºÆ® ÅØ½ºÆ® ÃÊ±âÈ­
-            TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
-            if (costText != null)
-            {
-                costText.text = ""; // ¸®¼Ò½º ¼Ò¸ğ·® ÅØ½ºÆ® ÃÊ±âÈ­
-            }
+        ClearHotbarButtons();
 
-            // ÄÚ½ºÆ® ÇÁ·¹ÀÓ - Bind ÀÌ¹ÌÁö ÃÊ±âÈ­
-            Image[] images = button.GetComponentsInChildren<Image>();
-
-            Image costFrameImage = images[1];
-
-            if (costFrameImage != null)
-            {
-                costFrameImage.color = new Color(1f, 1f, 1f, 1f); // ±âº» »ö»ó (Èò»ö, Åõ¸íµµ 1)
-            }
-        }
-
-        // »ç¿ë °¡´ÉÇÑ ½ºÅ³ÀÌ ÀÖ´Â °æ¿ì ÇÖ¹Ù¿¡ Ç¥½Ã
         int hotbarIndex = 0;
 
-        foreach (SkillBase skill in characterManager.character.Skills)
+        foreach (SkillRuntimeData runtime in characterManager.character.Skills)
         {
-            if (characterManager.combatHandler.isDefenseCharacter) // ¼±ÅÃµÈ Ä³¸¯ÅÍ°¡ ¹æ¾î Ä³¸¯ÅÍÀÏ °æ¿ì
+            if (runtime == null)
+                continue;
+
+            SkillDefinitionSO skill = GameDataRegistry.Instance.GetSkill(runtime.skillUid);
+
+            if (skill == null)
+                continue;
+
+            if (!runtime.quickSlot || !runtime.canUse)
+                continue;
+
+            bool showAsCounter = characterManager.combatHandler.isDefenseCharacter;
+
+            if (showAsCounter)
             {
-                if (skill.QuickSlot && skill.CanUse && skill.IsCounterSkill)
-                {
-                    if (hotbarIndex < hotbarButtons.Length) // ÇÖ¹Ù ½½·ÔÀÌ ³²¾ÆÀÖ´Â °æ¿ì
-                    {
-                        GameObject button = hotbarButtons[hotbarIndex];
-
-                        button.GetComponent<RawImage>().texture = skill.icon; // Texture2D·Î ¾ÆÀÌÄÜ ¼³Á¤
-                        button.GetComponent<RawImage>().enabled = true;       // ¾ÆÀÌÄÜ Ç¥½Ã
-                        button.GetComponent<SkillButton>().skill = skill;
-                        if (characterManager.combatHandler.isDefenseCharacter)
-                        {
-                            button.GetComponent<Button>().interactable = true;    // ¹öÆ° È°¼ºÈ­
-
-                            // ¹öÆ° Å¬¸¯ ½Ã ½ºÅ³ »ç¿ë Ã³¸®
-                            button.GetComponent<Button>().onClick.RemoveAllListeners(); // ±âÁ¸ ¸®½º³Ê Á¦°Å
-                            button.GetComponent<Button>().onClick.AddListener(() =>
-                            {
-                                characterTargeting.StartTargeting(skill); // ½ºÅ³ Å¸°ÙÆÃ ½ÃÀÛ
-                            });
-                        }
-
-                        // ¸®¼Ò½º ¼Ò¸ğ·® Ç¥½Ã
-                        TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
-                        Image[] images = button.GetComponentsInChildren<Image>();
-                        if (costText != null)
-                        {
-                            Image costFrameImage = images[1];
-                            if (skill.Type == SkillType.Physical)
-                            {
-                                costText.text = $"{skill.StaminaCost}";
-                                costText.color = new Color(1f, 0.5f, 0f); // ÁÖÈ²»ö (Áö±¸·Â)
-                                costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f); // ºÎ¸ğ ÀÌ¹ÌÁö »ö»ó º¯°æ (ÁÖÈ² °è¿­)
-                            }
-                            else if (skill.Type == SkillType.Magical)
-                            {
-                                costText.text = $"{skill.MentalCost}";
-                                costText.color = new Color(0f, 0.5f, 1f); // ÆÄ¶õ»ö (Á¤½Å·Â)
-                                costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f); // ºÎ¸ğ ÀÌ¹ÌÁö »ö»ó º¯°æ (ÆÄ¶õ °è¿­)
-                            }
-                        }
-
-                        hotbarIndex++; // ´ÙÀ½ ÇÖ¹Ù ½½·ÔÀ¸·Î ÀÌµ¿
-                    }
-                }
+                if (!skill.isCounterSkill)
+                    continue;
             }
-            else if (skill.QuickSlot && skill.CanUse && !skill.IsCounterSkill) // »ç¿ë °¡´ÉÇÑ °ø°İ ½ºÅ³ + ¼±ÅÃ ´ë»óÀÌ ¹æ¾îÄ³¸¯ÅÍ°¡ ¾Æ´Ò °æ¿ì
+            else
             {
-                if (hotbarIndex < hotbarButtons.Length) // ÇÖ¹Ù ½½·ÔÀÌ ³²¾ÆÀÖ´Â °æ¿ì
-                {
-                    GameObject button = hotbarButtons[hotbarIndex];
-
-                    button.GetComponent<RawImage>().texture = skill.icon; // Texture2D·Î ¾ÆÀÌÄÜ ¼³Á¤
-                    button.GetComponent<RawImage>().enabled = true;       // ¾ÆÀÌÄÜ Ç¥½Ã
-                    button.GetComponent<SkillButton>().skill = skill;
-
-                    if (characterManager.isPlayerTurn)
-                    {
-                        button.GetComponent<Button>().interactable = true;    // ¹öÆ° È°¼ºÈ­
-
-                        // ¹öÆ° Å¬¸¯ ½Ã ½ºÅ³ »ç¿ë Ã³¸®
-                        button.GetComponent<Button>().onClick.RemoveAllListeners(); // ±âÁ¸ ¸®½º³Ê Á¦°Å
-                        button.GetComponent<Button>().onClick.AddListener(() =>
-                        {
-                            characterTargeting.StartTargeting(skill); // ½ºÅ³ Å¸°ÙÆÃ ½ÃÀÛ
-                        });
-                    }
-
-                    // ¸®¼Ò½º ¼Ò¸ğ·® Ç¥½Ã
-                    TextMeshProUGUI costText = button.GetComponentInChildren<TextMeshProUGUI>();
-                    Image[] images = button.GetComponentsInChildren<Image>();
-                    if (costText != null)
-                    {
-                        Image costFrameImage = images[1];
-                        if (skill.Type == SkillType.Physical)
-                        {
-                            costText.text = $"{skill.StaminaCost}";
-                            costText.color = new Color(1f, 0.5f, 0f); // ÁÖÈ²»ö (Áö±¸·Â)
-                            costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f); // ºÎ¸ğ ÀÌ¹ÌÁö »ö»ó º¯°æ (ÁÖÈ² °è¿­)
-                        }
-                        else if (skill.Type == SkillType.Magical)
-                        {
-                            costText.text = $"{skill.MentalCost}";
-                            costText.color = new Color(0f, 0.5f, 1f); // ÆÄ¶õ»ö (Á¤½Å·Â)
-                            costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f); // ºÎ¸ğ ÀÌ¹ÌÁö »ö»ó º¯°æ (ÆÄ¶õ °è¿­)
-                        }
-                    }
-
-                    hotbarIndex++; // ´ÙÀ½ ÇÖ¹Ù ½½·ÔÀ¸·Î ÀÌµ¿
-                }
+                if (skill.isCounterSkill)
+                    continue;
             }
-            
+
+            if (hotbarIndex >= hotbarButtons.Length)
+                break;
+
+            BindHotbarButton(hotbarButtons[hotbarIndex], characterManager, skill, showAsCounter);
+
+            hotbarIndex++;
         }
 
         UpdateSkillTransparency(characterManager);
     }
 
-    #region Ä«¿îÅÍ ½ºÅ³ ÆĞ³Î Á¶ÀÛ
+    private void ClearHotbarButtons()
+    {
+        foreach (var buttonObj in hotbarButtons)
+        {
+            if (buttonObj == null)
+                continue;
 
-    // ¹æ¾î ´ë»ó°ú ¹æ¾îÀÚ¸¦ ±â¹İÀ¸·Î ÆĞ³ÎÀ» ÃÊ±âÈ­ - ¹æ¾î´ë»ó ¼±ÅÃ ½Ã È£Ãâ
+            SkillButton skillButton = buttonObj.GetComponent<SkillButton>();
+            if (skillButton != null)
+            {
+                skillButton.skill = null;
+                skillButton.queueData = null;
+                skillButton.queueIndex = -1;
+                skillButton.isCounterSkill = false;
+            }
+
+            Button button = buttonObj.GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.RemoveAllListeners();
+                button.interactable = false;
+            }
+
+            RawImage rawImage = buttonObj.GetComponent<RawImage>();
+            if (rawImage != null)
+            {
+                rawImage.texture = null;
+                rawImage.enabled = false;
+            }
+
+            TextMeshProUGUI costText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+            if (costText != null)
+                costText.text = "";
+
+            Image[] images = buttonObj.GetComponentsInChildren<Image>();
+            if (images != null && images.Length > 1)
+            {
+                Image costFrameImage = images[1];
+                if (costFrameImage != null)
+                    costFrameImage.color = new Color(1f, 1f, 1f, 1f);
+            }
+
+            CanvasGroup canvasGroup = buttonObj.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+                canvasGroup.alpha = 1f;
+        }
+    }
+
+    private void BindHotbarButton(
+    GameObject buttonObj,
+    CharacterManager characterManager,
+    SkillDefinitionSO skill,
+    bool isCounterSkill)
+    {
+        if (buttonObj == null || characterManager == null || skill == null)
+            return;
+
+        RawImage rawImage = buttonObj.GetComponent<RawImage>();
+        if (rawImage != null)
+        {
+            rawImage.texture = skill.icon;
+            rawImage.enabled = true;
+        }
+
+        SkillButton skillButton = buttonObj.GetComponent<SkillButton>();
+        if (skillButton != null)
+        {
+            skillButton.skill = skill;
+            skillButton.queueData = null;
+            skillButton.queueIndex = -1;
+            skillButton.isCounterSkill = isCounterSkill;
+        }
+
+        Button button = buttonObj.GetComponent<Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+
+            button.interactable = true;
+            button.onClick.AddListener(() =>
+            {
+                characterTargeting.StartTargeting(skill);
+            });
+        }
+
+        ApplySkillCostUI(buttonObj, skill);
+    }
+
+    private void ApplySkillCostUI(GameObject buttonObj, SkillDefinitionSO skill)
+    {
+        if (buttonObj == null || skill == null)
+            return;
+
+        TextMeshProUGUI costText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
+        Image[] images = buttonObj.GetComponentsInChildren<Image>();
+
+        if (costText == null)
+            return;
+
+        Image costFrameImage = null;
+
+        if (images != null && images.Length > 1)
+            costFrameImage = images[1];
+
+        if (skill.type == SkillType.Physical)
+        {
+            costText.text = $"{skill.staminaCost}";
+            costText.color = new Color(1f, 0.5f, 0f);
+
+            if (costFrameImage != null)
+                costFrameImage.color = new Color(1f, 0.7f, 0.4f, 1f);
+        }
+        else if (skill.type == SkillType.Magical)
+        {
+            costText.text = $"{skill.mentalCost}";
+            costText.color = new Color(0f, 0.5f, 1f);
+
+            if (costFrameImage != null)
+                costFrameImage.color = new Color(0.4f, 0.6f, 1f, 1f);
+        }
+    }
+
+    #region ì¹´ìš´í„° ìŠ¤í‚¬ íŒ¨ë„ ì¡°ì‘
+
+    // ë°©ì–´ ëŒ€ìƒê³¼ ë°©ì–´ìë¥¼ ê¸°ë°˜ìœ¼ë¡œ íŒ¨ë„ì„ ì´ˆê¸°í™” - ë°©ì–´ëŒ€ìƒ ì„ íƒ ì‹œ í˜¸ì¶œ
     public void UpdateCounterSkillPanel(CharacterManager defender, CharacterManager target)
     {
-        // ±âÁ¸ ÀÚ½Äµé ÃÊ±âÈ­
         ClearCounterSkillPanel();
 
-        // ÇöÀç °ø°İÀÚÀÇ ½ºÅ³ Å¥¸¦ °¡Á®¿È
         CharacterManager attacker = TurnManager.Instance.currentCharacter;
-        List<(SkillBase skill, CharacterManager target)> atkSkillQueue = attacker.combatHandler.GetSkillQueue();
-        
-        // ¹æ¾îÀÚ¿Í ¹æ¾î´ë»óÀ» Å¸°ÙÀ¸·Î ÇÏ´Â ½ºÅ³µé¸¸ ÃßÃâÇÏ¿© »õ·Î¿î Å¥ ±¸¼º
-        List<(SkillBase skill, CharacterManager target)> filteredSkillQueue = atkSkillQueue.Where(item => item.target == defender || item.target == target).ToList(); // ¸®½ºÆ®·Î º¯È¯ÇÏ¿© ¼ø¼­¸¦ À¯Áö
-        
-        // ÀÚ±â ÀÚ½ÅÀ» ¹æ¾îÇÏ´Â °æ¿ì
+
+        if (attacker == null || defender == null || target == null)
+            return;
+
+        attacker.combatHandler.ResolveConcealForSkillQueue();
+
+        List<SkillQueueData> atkSkillQueue = attacker.combatHandler.GetSkillQueue();
+
+        List<SkillQueueData> filteredSkillQueue = atkSkillQueue
+            .Where(item => item != null && (item.target == defender || item.target == target))
+            .ToList();
+
         if (defender == target)
         {
-            // ÇÏ³ªÀÇ ÇÁ·¹ÀÓÀ¸·Î Ç¥½Ã
             AddSkillFrame(defender, filteredSkillQueue);
         }
         else
-        {   
-            // **°¢ Ä³¸¯ÅÍ¸¦ ÇâÇÑ °ø°İÀÌ ÀÖ´ÂÁö °³º°ÀûÀ¸·Î Ã¼Å©
+        {
             bool hasDefenderAttack = filteredSkillQueue.Any(item => item.target == defender);
             bool hasTargetAttack = filteredSkillQueue.Any(item => item.target == target);
 
-            // ¹æ¾îÀÚ¿¡°Ô ÇâÇÏ´Â °ø°İÀÌ ÀÖ´Ù¸é ÆĞ³Î »ı¼º
             if (hasDefenderAttack)
-            {
                 AddSkillFrame(defender, filteredSkillQueue);
-            }
 
-            // ¹æ¾î ´ë»ó¿¡°Ô ÇâÇÏ´Â °ø°İÀÌ ÀÖ´Ù¸é ÆĞ³Î »ı¼º
             if (hasTargetAttack)
-            {
                 AddSkillFrame(target, filteredSkillQueue);
-            }
         }
     }
-    // ÆĞ³Î ÃÊ±âÈ­ (±âÁ¸ ÀÚ½Ä ¿ÀºêÁ§Æ® »èÁ¦)
+    // íŒ¨ë„ ì´ˆê¸°í™” (ê¸°ì¡´ ìì‹ ì˜¤ë¸Œì íŠ¸ ì‚­ì œ)
     public void ClearCounterSkillPanel()
     {
         foreach (Transform child in counterSkillPanel)
@@ -517,111 +1625,227 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // ½ºÅ³ Å¥ ÇÁ·¹ÀÓ Ãß°¡
-    private void AddSkillFrame(CharacterManager owner, List<(SkillBase skill, CharacterManager target)> skillQueue)
+    // ìŠ¤í‚¬ í í”„ë ˆì„ ì¶”ê°€
+    private void AddSkillFrame(CharacterManager owner, List<SkillQueueData> skillQueue)
     {
-        // ÇÁ·¹ÀÓ »ı¼º
         GameObject frame = Instantiate(skillQueueFramePrefab, counterSkillPanel);
 
-        // ÇÁ·¹ÀÓÀÇ Á¦¸ñ ¼³Á¤
         TextMeshProUGUI titleText = frame.GetComponentInChildren<TextMeshProUGUI>();
         if (titleText != null)
         {
             titleText.text = "=> " + owner.character.Name;
         }
 
-        // ½ÇÁ¦ ½ºÅ³ ¾ÆÀÌÄÜÀ» ¹èÄ¡ÇÒ Panel °´Ã¼ Ã£±â
         Transform skillPanel = frame.transform.Find("SkillPanel");
         if (skillPanel == null)
         {
-            Debug.LogWarning($"SkillPanelÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù. Prefab ±¸Á¶ È®ÀÎ ÇÊ¿ä.");
+            Debug.LogWarning("SkillPanelì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤. Prefab êµ¬ì¡° í™•ì¸ í•„ìš”.");
             return;
         }
 
-        // ¼ø¹øÀ» Àç¸Å±â¸é¼­ ½ºÅ³ ¾ÆÀÌÄÜ Ãß°¡
+        int orderNumber = 1;
+
         for (int i = 0; i < skillQueue.Count; i++)
         {
-            // ÇöÀç °ø°İÀÚÀÇ ½ºÅ³ Å¥¿¡¼­ owner¸¦ Å¸°ÙÀ¸·Î ÇÏ´Â °Í¸¸ ÇÊÅÍ¸µ
             if (skillQueue[i].target == owner)
-                AddSkillIcon(skillPanel, skillQueue[i].skill, owner, i + 1); // ¼ø¹ø ºÎ¿©ÇÏ¿© Ãß°¡
+            {
+                AddSkillIcon(skillPanel, skillQueue[i], owner, i, orderNumber);
+                orderNumber++;
+            }
         }
     }
 
-    // ½ºÅ³ ¾ÆÀÌÄÜ Ãß°¡ (°ø°İ½ºÅ³)
-    private void AddSkillIcon(Transform parent, SkillBase skill, CharacterManager owner, int orderNumber)
+    // ìŠ¤í‚¬ ì•„ì´ì½˜ ì¶”ê°€ (ê³µê²©ìŠ¤í‚¬)
+    private void AddSkillIcon(
+    Transform parent,
+    SkillQueueData attackQueueData,
+    CharacterManager owner,
+    int counterQueueIndex,
+    int orderNumber)
     {
+        if (parent == null || attackQueueData == null || attackQueueData.skill == null)
+            return;
+
         CharacterManager defenseCharacter = TurnManager.Instance.defenseCharacter;
 
+        if (defenseCharacter == null)
+            return;
+
         GameObject skillQueueIcon = Instantiate(skillIconPrefab, parent);
+
         GameObject atkSkillIcon = skillQueueIcon.transform.GetChild(0).gameObject;
         GameObject defSkillIcon = skillQueueIcon.transform.GetChild(2).gameObject;
 
-        // °ø°İ ½ºÅ³ ¾ÆÀÌÄÜ
-        atkSkillIcon.GetComponent<SkillButton>().skill = skill;
-        var atkIconImage = atkSkillIcon.GetComponent<RawImage>();
-        if (atkIconImage && skill.icon) atkIconImage.texture = skill.icon;
+        ApplyAttackSkillIcon(atkSkillIcon, attackQueueData);
 
-        // ¡å¡å¡å ¿©±âºÎÅÍ "ÇØ´ç ½½·Ô¿¡ ÇöÀç µî·ÏµÈ ´ëÀÀ ½ºÅ³"À» Á¶È¸ÇÏ¿© »ç¿ë ¡å¡å¡å
-        int idx0 = orderNumber - 1;
-        var counterQueue = defenseCharacter.combatHandler.GetCounterSkillQueue();
-        SkillBase counterToShow = defenseCharacter.character.DefaultCounterSkill;
+        int idx0 = counterQueueIndex;
 
-        if (idx0 >= 0 && idx0 < counterQueue.Count && counterQueue[idx0].skill != null)
+        List<SkillQueueData> counterQueue = defenseCharacter.combatHandler.GetCounterSkillQueue();
+
+        SkillDefinitionSO counterToShow = idx0 >= 0 && idx0 < counterQueue.Count
+            ? counterQueue[idx0].skill
+            : GetDefaultCounterSkill(defenseCharacter);
+
+        ApplyCounterSkillIcon(defSkillIcon, counterToShow, idx0);
+
+        BindCounterChanceContext(
+            atkSkillIcon,
+            attackQueueData,
+            counterToShow,
+            defenseCharacter,
+            owner);
+        BindCounterChanceContext(
+            defSkillIcon,
+            attackQueueData,
+            counterToShow,
+            defenseCharacter,
+            owner);
+
+        TextMeshProUGUI orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
+        if (orderText != null)
         {
-            counterToShow = counterQueue[idx0].skill;
+            orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
         }
 
-        defSkillIcon.GetComponent<SkillButton>().skill = counterToShow;
-        var defIconImage = defSkillIcon.GetComponent<RawImage>();
-        if (defIconImage && counterToShow.icon) defIconImage.texture = counterToShow.icon;
-        // ¡ã¡ã¡ã ÇöÀç µî·ÏµÈ ´ëÀÀ ½ºÅ³ ¹İ¿µ ³¡
+        Button button = defSkillIcon.GetComponent<Button>();
+        SkillButton counterSkillButton = defSkillIcon.GetComponent<SkillButton>();
 
-        // ¼ø¹ø Ç¥½Ã
-        var orderText = skillQueueIcon.GetComponentInChildren<TextMeshProUGUI>();
-        if (orderText) orderText.text = orderNumber > 0 ? orderNumber.ToString() : "";
+        if (counterSkillButton != null)
+        {
+            counterSkillButton.onRightClick = () =>
+            {
+                TooltipManager.Instance?.HideTooltip();
+                defenseCharacter.combatHandler.ClearCounterSkillAt(counterQueueIndex);
+            };
+        }
 
-        // ¹öÆ° ¸®½º³Ê
-        var button = defSkillIcon.GetComponent<Button>();
         if (button != null)
         {
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() =>
             {
                 CharacterTargeting tgt = UIManager.Instance.characterTargeting;
-                int idx0Local = orderNumber - 1;
+                int idx0Local = counterQueueIndex;
 
                 if (tgt.isDefenseSkillTargeting)
                 {
-                    // »õ ´ëÀÀ ½ºÅ³·Î ±³Ã¼
                     defenseCharacter.combatHandler.SetOrResetCounterSkill(idx0Local, tgt.selectedSkill);
                     tgt.StopTargeting();
                 }
                 else
                 {
-                    // ±âº» ´ëÀÀ ½ºÅ³·Î ¸®¼Â
-                    defenseCharacter.combatHandler.SetOrResetCounterSkill(idx0Local, null);
+                    defenseCharacter.combatHandler.CycleBasicCounterSkill(idx0Local);
                 }
             });
         }
     }
 
+    private void ApplyAttackSkillIcon(GameObject iconObj, SkillQueueData data)
+    {
+        if (iconObj == null || data == null || data.skill == null)
+            return;
+
+        SkillButton skillButton = iconObj.GetComponent<SkillButton>();
+        if (skillButton != null)
+        {
+            skillButton.skill = data.skill;
+            skillButton.queueData = data;
+            skillButton.queueIndex = data.order - 1;
+            skillButton.isCounterSkill = false;
+        }
+
+        RawImage rawImage = iconObj.GetComponent<RawImage>();
+        if (rawImage != null)
+        {
+            if (data.isConcealed && data.revealLevel != RevealLevel.Full)
+                rawImage.texture = null;
+            else
+                rawImage.texture = data.skill.icon;
+        }
+    }
+
+    private void ApplyCounterSkillIcon(GameObject iconObj, SkillDefinitionSO skill, int queueIndex)
+    {
+        if (iconObj == null)
+            return;
+
+        SkillButton skillButton = iconObj.GetComponent<SkillButton>();
+        if (skillButton != null)
+        {
+            skillButton.skill = skill;
+            skillButton.queueData = null;
+            skillButton.queueIndex = queueIndex;
+            skillButton.isCounterSkill = true;
+        }
+
+        RawImage rawImage = iconObj.GetComponent<RawImage>();
+        if (rawImage != null)
+        {
+            rawImage.texture = skill != null ? skill.icon : emptyCounterSlotBackground;
+        }
+    }
+
+    private void BindCounterChanceContext(
+        GameObject iconObj,
+        SkillQueueData attackQueueData,
+        SkillDefinitionSO counterSkill,
+        CharacterManager counterUser,
+        CharacterManager protectedTarget)
+    {
+        if (iconObj == null)
+            return;
+
+        SkillButton skillButton = iconObj.GetComponent<SkillButton>();
+        if (skillButton == null)
+            return;
+
+        skillButton.pairedAttackQueueData = attackQueueData;
+        skillButton.pairedCounterSkill = counterSkill;
+        skillButton.counterUser = counterUser;
+        skillButton.protectedTarget = protectedTarget;
+    }
+    private SkillDefinitionSO GetDefaultCounterSkill(CharacterManager characterManager)
+    {
+        if (characterManager == null || characterManager.character == null)
+            return null;
+
+        if (characterManager.character.DefaultCounterSkill <= 0)
+            return null;
+
+        SkillDefinitionSO defaultCounter =
+            GameDataRegistry.Instance.GetSkill(characterManager.character.DefaultCounterSkill);
+
+        if (defaultCounter != null &&
+            defaultCounter.counterActionType == CounterActionType.Evade &&
+            TurnManager.Instance != null &&
+            TurnManager.Instance.defenseCharacter == characterManager &&
+            TurnManager.Instance.defenseTarget != characterManager)
+        {
+            return null;
+        }
+
+        return defaultCounter;
+    }
+
+
     #endregion 
 
-    // ½Ã³ÊÁö Á¤º¸¸¦ UI¿¡ Ç¥½ÃÇÏ´Â ¸Ş¼­µå
-    public void UpdateSynergyUI(List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)
+
+    // ì‹œë„ˆì§€ ì •ë³´ë¥¼ UIì— í‘œì‹œí•˜ëŠ” ë©”ì„œë“œ - êµ¬í˜„ ë³´ë¥˜
+    public void UpdateSynergyUI()//List<SynergyEffect> activeSynergies, List<SynergyRule> allSynergies)
     {
-        // È°¼ºÈ­µÈ ½Ã³ÊÁö¸¦ UI¿¡ Ç¥½Ã
+        // í™œì„±í™”ëœ ì‹œë„ˆì§€ë¥¼ UIì— í‘œì‹œ
         foreach (Transform child in synergyInfoPanel.transform)
         {
-            Destroy(child.gameObject);  // ±âÁ¸ UI ¾ÆÀÌÅÛ »èÁ¦
+            Destroy(child.gameObject);  // ê¸°ì¡´ UI ì•„ì´í…œ ì‚­ì œ
         }
         /*
         foreach (var synergy in allSynergies)
         {
-            //string status = activeSynergies.Contains(synergy.Name) ? " (È°¼ºÈ­)" : " (ºñÈ°¼º)";
+            //string status = activeSynergies.Contains(synergy.Name) ? " (í™œì„±í™”)" : " (ë¹„í™œì„±)";
             GameObject newSynergyText = new GameObject(synergy.Name + status);
             newSynergyText.transform.SetParent(synergyInfoPanel.transform);
-            newSynergyText.AddComponent<Text>().text = synergy.Name + status; // ÅØ½ºÆ® Ç¥½Ã
+            newSynergyText.AddComponent<Text>().text = synergy.Name + status; // í…ìŠ¤íŠ¸ í‘œì‹œ
         }*/
     }
 }

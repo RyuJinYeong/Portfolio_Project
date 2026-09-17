@@ -1,21 +1,24 @@
 using Newtonsoft.Json;
 using PlayFab;
 using PlayFab.ClientModels;
-using SoftKitty.InventoryEngine;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.TextCore.Text;
 
 public class PlayerManager : MonoBehaviour
 {
-    // ½Ì±ÛÅæ ÀÎ½ºÅÏ½º
+    // ì‹±ê¸€í†¤ ì¸ìŠ¤í„´ìŠ¤
     public static PlayerManager _instance;
 
-    // ÇöÀç ·Î±×ÀÎÇÑ ÇÃ·¹ÀÌ¾î Á¤º¸
+    // í˜„ì¬ ë¡œê·¸ì¸í•œ í”Œë ˆì´ì–´ ì •ë³´
     private PlayerData currentPlayerData;
+    private readonly HashSet<string> livingCharacterIds = new();
+
+    public bool HasLivingCharacter => livingCharacterIds.Count > 0;
+
+    [NonSerialized]
+    public bool suppressRemotePersistence;
 
     public List<CharacterManager> Characters = new List<CharacterManager>();
 
@@ -25,18 +28,18 @@ public class PlayerManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    // ½Ì±ÛÅæ ÀÎ½ºÅÏ½º¸¦ ¹İÈ¯ÇÏ´Â ÇÁ·ÎÆÛÆ¼
+    // ì‹±ê¸€í†¤ ì¸ìŠ¤í„´ìŠ¤ë¥¼ ë°˜í™˜í•˜ëŠ” í”„ë¡œí¼í‹°
     public static PlayerManager Instance
     {
         get
         {
-            // ÀÎ½ºÅÏ½º°¡ ¾ø´Â °æ¿ì¿¡¸¸ »ı¼º
+            // ì¸ìŠ¤í„´ìŠ¤ê°€ ì—†ëŠ” ê²½ìš°ì—ë§Œ ìƒì„±
             if (_instance == null)
             {
-                // ¾À¿¡¼­ PlayerManager ¿ÀºêÁ§Æ®¸¦ Ã£À½
-                _instance = FindObjectOfType<PlayerManager>();
+                // ì”¬ì—ì„œ PlayerManager ì˜¤ë¸Œì íŠ¸ë¥¼ ì°¾ìŒ
+                _instance = FindFirstObjectByType<PlayerManager>();
 
-                // ¾À¿¡ PlayerManager ¿ÀºêÁ§Æ®°¡ ¾ø´Â °æ¿ì¿¡´Â »õ·Î »ı¼º
+                // ì”¬ì— PlayerManager ì˜¤ë¸Œì íŠ¸ê°€ ì—†ëŠ” ê²½ìš°ì—ëŠ” ìƒˆë¡œ ìƒì„±
                 if (_instance == null)
                 {
                     GameObject obj = new GameObject("PlayerManager");
@@ -47,60 +50,22 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
-    public void GetSkillIconAddressesBulk(IEnumerable<string> characterIds, Action<List<string>> onDone)
-    {
-        var ids = characterIds?.Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList() ?? new List<string>();
-        if (ids.Count == 0) { onDone?.Invoke(new List<string>()); return; }
-
-        PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>
-        {
-            var keys = new HashSet<string>();
-
-            foreach (var id in ids)
-            {
-                var key = id;
-                if (result.Data == null || !result.Data.TryGetValue(key, out var rec) || string.IsNullOrEmpty(rec.Value))
-                    continue;
-
-                try
-                {
-                    var dto = JsonConvert.DeserializeObject<CharacterSaveDTO>(rec.Value);
-                    if (dto?.skills != null)
-                        foreach (var s in dto.skills) TryAddSkillIcon(s.uid, keys);
-                    if (dto?.defaultCounterSkillUid != 0)
-                        TryAddSkillIcon(dto.defaultCounterSkillUid, keys);
-                    // Àåºñ ºÎ¿© ½ºÅ³ µîÀ» DTO¿¡ ³Ö¾ú´Ù¸é ¿©±âµµ Ãß°¡
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"GetSkillIconAddressesBulk: parse error for {id}\n{e}");
-                }
-            }
-
-            onDone?.Invoke(keys.ToList());
-        },
-        err =>
-        {
-            Debug.LogError($"GetSkillIconAddressesBulk: PlayFab error\n{err.GenerateErrorReport()}");
-            onDone?.Invoke(new List<string>());
-        });
-    }
-
-    static void TryAddSkillIcon(int uid, HashSet<string> keys)
-    {
-        if (uid == 0) return;
-        if (ItemManager.itemDic.TryGetValue(uid, out var item) && item is SkillBase sb)
-        {
-            if (!string.IsNullOrEmpty(sb.IconAddress))
-                keys.Add(sb.IconAddress);
-        }
-    }
-
-
-    // ÇÃ·¹ÀÌ¾î ·Î±×ÀÎ ÈÄ µ¥ÀÌÅÍ¸¦ ºÒ·¯¿À´Â ¸Ş¼­µå
+    // í”Œë ˆì´ì–´ ë¡œê·¸ì¸ í›„ ë°ì´í„°ë¥¼ ë¶ˆëŸ¬ì˜¤ëŠ” ë©”ì„œë“œ
     public void LoadPlayerDataFromPlayFab()
     {
-        PlayFabClientAPI.GetUserData(new GetUserDataRequest(), OnDataReceived, OnDataError);
+        LoadPlayerDataFromPlayFab(null);
+    }
+
+    public void LoadPlayerDataFromPlayFab(Action onDataLoaded)
+    {
+        PlayFabClientAPI.GetUserData(
+            new GetUserDataRequest(),
+            result =>
+            {
+                OnDataReceived(result);
+                onDataLoaded?.Invoke();
+            },
+            OnDataError);
     }
 
     private void OnDataReceived(GetUserDataResult result)
@@ -114,42 +79,69 @@ public class PlayerManager : MonoBehaviour
                 var dto = JsonConvert.DeserializeObject<PlayerSaveDTO>(rec.Value);
 
                 _instance.currentPlayerData = SaveMapper.FromDto(dto);
+                RefreshLivingCharacterIds(data);
                 Debug.Log("Player data loaded.");
-
-                if (dto.questState != null)
-                {
-                    SaveMapper.FromDto(dto.questState);
-                }
-                else
-                {
-                    QuestManager.Instance?.GenerateBoardIfEmpty(8);
-                }
             }
             else
             {
                 _instance.currentPlayerData = new PlayerData();
+                livingCharacterIds.Clear();
                 Debug.LogWarning("No player data found, initializing new player data.");
 
-                QuestManager.Instance?.GenerateBoardIfEmpty(8);
+                SaveMapper.FromDto((QuestStateDTO)null);
             }
         }
         catch (Exception e)
         {
             Debug.LogError($"OnDataReceived parse error: {e}");
             _instance.currentPlayerData = new PlayerData();
-            QuestManager.Instance?.GenerateBoardIfEmpty(8);
+            livingCharacterIds.Clear();
+            SaveMapper.FromDto((QuestStateDTO)null);
+        }
+    }
+
+    private void RefreshLivingCharacterIds(Dictionary<string, UserDataRecord> accountData)
+    {
+        livingCharacterIds.Clear();
+
+        if (currentPlayerData?.characterIds == null || accountData == null)
+            return;
+
+        foreach (string characterId in currentPlayerData.characterIds)
+        {
+            if (string.IsNullOrEmpty(characterId) ||
+                !accountData.TryGetValue(characterId, out UserDataRecord record) ||
+                string.IsNullOrEmpty(record.Value))
+            {
+                continue;
+            }
+
+            try
+            {
+                CharacterSaveDTO character = JsonConvert.DeserializeObject<CharacterSaveDTO>(record.Value);
+
+                if (character != null && character.isAlive)
+                    livingCharacterIds.Add(characterId);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Character alive-state parse error ({characterId}): {e}");
+            }
         }
     }
 
     private void OnDataError(PlayFabError error)
     {
         Debug.LogError("Error loading player data: " + error.GenerateErrorReport());
-        // Å¬¶óÀÌ¾ğÆ®¿¡ ³×Æ®¿öÅ© ¿¡·¯ UI Ãâ·Â ±¸Çö ¿¹Á¤
+        // í´ë¼ì´ì–¸íŠ¸ì— ë„¤íŠ¸ì›Œí¬ ì—ëŸ¬ UI ì¶œë ¥ êµ¬í˜„ ì˜ˆì •
     }
 
-    // ÇÃ·¹ÀÌ¾î µ¥ÀÌÅÍ¸¦ PlayFab¿¡ ÀúÀåÇÏ´Â ¸Ş¼­µå
+    // í”Œë ˆì´ì–´ ë°ì´í„°ë¥¼ PlayFabì— ì €ì¥í•˜ëŠ” ë©”ì„œë“œ
     public void SavePlayerDataToPlayFab()
     {
+        if (suppressRemotePersistence)
+            return;
+
         var dto = SaveMapper.ToDto(_instance.currentPlayerData);
         string jsonData = JsonConvert.SerializeObject(dto);
 
@@ -183,17 +175,28 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
-    //Ä³¸¯ÅÍ »ı¼º (°íÀ¯ ID ¹ß±Ş ÈÄ ÇÃ·¹ÀÌÆÕ¿¡ ÀúÀå)
+    //ìºë¦­í„° ìƒì„± (ê³ ìœ  ID ë°œê¸‰ í›„ í”Œë ˆì´íŒ¹ì— ì €ì¥)
     public void CreateCharacter(CharacterData character)
     {
-        // °íÀ¯ ID »ı¼º
+        // ê³ ìœ  ID ìƒì„±
         character.ID = System.Guid.NewGuid().ToString();
         SaveCharacter(character);
     }
 
-    // Ä³¸¯ÅÍ µ¥ÀÌÅÍ¸¦ ID¸¦ Å°·Î ÇÃ·¹ÀÌÆÕ¿¡ ÀúÀå
+    // ìºë¦­í„° ë°ì´í„°ë¥¼ IDë¥¼ í‚¤ë¡œ í”Œë ˆì´íŒ¹ì— ì €ì¥
     public void SaveCharacter(CharacterData characterData)
     {
+        if (characterData != null && !string.IsNullOrEmpty(characterData.ID))
+        {
+            if (characterData.IsAlive)
+                livingCharacterIds.Add(characterData.ID);
+            else
+                livingCharacterIds.Remove(characterData.ID);
+        }
+
+        if (suppressRemotePersistence)
+            return;
+
         var dto = SaveMapper.ToDto(characterData);
         string json = JsonConvert.SerializeObject(dto);
 
@@ -208,7 +211,7 @@ public class PlayerManager : MonoBehaviour
         );
     }
 
-    // Ä³¸¯ÅÍ µ¥ÀÌÅÍ¸¦ ·ÎµåÇÏ´Â ¸Ş¼­µå
+    // ìºë¦­í„° ë°ì´í„°ë¥¼ ë¡œë“œí•˜ëŠ” ë©”ì„œë“œ
     public void LoadCharacter(string characterId, Action<CharacterData> onCharacterLoaded)
     {
         PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>
@@ -243,10 +246,10 @@ public class PlayerManager : MonoBehaviour
 
     public void SaveCharacterPosition(string characterID, bool isFrontRow)
     {
-        if (_instance.currentPlayerData != null)
-        {
-            _instance.currentPlayerData.characterPositionMapping[characterID] = isFrontRow;
-            SavePlayerDataToPlayFab();
-        }
+        if (_instance.currentPlayerData == null)
+            return;
+
+        _instance.currentPlayerData.SetPosition(characterID, isFrontRow);
+        SavePlayerDataToPlayFab();
     }
 }

@@ -7,20 +7,20 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 public static class IconStore
 {
-    // µ¿½Ã¿¡ ·ÎµåÇÒ Addressables ÀÛ¾÷ ¼ö(³×Æ®¿öÅ©/µğ½ºÅ© º´·Ä)
+    // ë™ì‹œì— ë¡œë“œí•  Addressables ì‘ì—… ìˆ˜(ë„¤íŠ¸ì›Œí¬/ë””ìŠ¤í¬ ë³‘ë ¬)
     public static int MaxConcurrent = 6;
 
     class Entry
     {
         public Texture2D tex;
         public AsyncOperationHandle<Texture2D> handle;
-        public HashSet<string> groups = new(); // µ¿ÀÏ Å°°¡ ¿©·¯ ±×·ì¿¡ ¼ÓÇÒ ¼ö ÀÖÀ½
+        public HashSet<string> groups = new(); // ë™ì¼ í‚¤ê°€ ì—¬ëŸ¬ ê·¸ë£¹ì— ì†í•  ìˆ˜ ìˆìŒ
     }
 
     static readonly Dictionary<string, Entry> _map = new();
     static readonly Dictionary<string, HashSet<string>> _groupIndex = new();
 
-    // ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡ ±âº» Á¶È¸ ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ê¸°ë³¸ ì¡°íšŒ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public static bool TryGet(string key, out Texture2D tex)
     {
         if (!string.IsNullOrEmpty(key) && _map.TryGetValue(key, out var e) && e.tex != null)
@@ -35,7 +35,7 @@ public static class IconStore
     public static Texture2D GetOrNull(string key)
         => (!string.IsNullOrEmpty(key) && _map.TryGetValue(key, out var e)) ? e.tex : null;
 
-    // ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡ ³»ºÎ: put ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ë‚´ë¶€: put â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     static void Put(string key, AsyncOperationHandle<Texture2D> handle, string group)
     {
         if (string.IsNullOrEmpty(key)) { if (handle.IsValid()) Addressables.Release(handle); return; }
@@ -46,7 +46,7 @@ public static class IconStore
             e = _map[key] = new Entry { tex = handle.Result, handle = handle };
         else
         {
-            // ÀÌ¹Ì ÀÖÀ¸¸é »õ ÇÚµéÀº ÇØÁ¦(±âÁ¸ ÅØ½ºÃ³ À¯Áö)
+            // ì´ë¯¸ ìˆìœ¼ë©´ ìƒˆ í•¸ë“¤ì€ í•´ì œ(ê¸°ì¡´ í…ìŠ¤ì²˜ ìœ ì§€)
             if (handle.IsValid()) Addressables.Release(handle);
         }
 
@@ -56,7 +56,7 @@ public static class IconStore
         set.Add(key);
     }
 
-    // ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡ ÇÁ¸®·Îµå(¸ÖÆ¼Å°) ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ í”„ë¦¬ë¡œë“œ(ë©€í‹°í‚¤) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public static IEnumerator Preload(IEnumerable<string> keys, string group, Action<float> onProgress = null)
     {
         var uniq = new HashSet<string>(keys ?? Array.Empty<string>());
@@ -98,7 +98,7 @@ public static class IconStore
         onProgress?.Invoke(1f);
     }
 
-    // ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡ ÇÁ¸®·Îµå(´ÜÀÏ) ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ í”„ë¦¬ë¡œë“œ(ë‹¨ì¼) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public static IEnumerator PreloadSingle(string key, string group, Action<Texture2D> onDone = null)
     {
         if (string.IsNullOrEmpty(key)) yield break;
@@ -119,7 +119,7 @@ public static class IconStore
         }
     }
 
-    // ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡ ±×·ì ÇØÁ¦ ¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡¦¡
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ê·¸ë£¹ í•´ì œ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     public static void ClearGroup(string group)
     {
         if (!_groupIndex.TryGetValue(group, out var set)) return;

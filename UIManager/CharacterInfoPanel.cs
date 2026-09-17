@@ -1,10 +1,6 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using SoftKitty.InventoryEngine;
-
-
-//Ä³¸¯ÅÍ °ü¸® ÆÐ³Î ÇÏÀ§ÀÇ Ä³¸¯ÅÍ Á¤º¸ Á¦¾î
 
 public class CharacterInfoPanel : MonoBehaviour
 {
@@ -13,7 +9,9 @@ public class CharacterInfoPanel : MonoBehaviour
     public TMP_Text nameText;
     public TMP_Text levelText;
     public TMP_Text hpText;
-    public TMP_Text[] baseStats; // UI ¼ø¼­ (Èû, ±â±³, ¼Óµµ, ´«½ä¹Ì, ÀÎ³», Áö´É, ÁöÇý, °Ç°­, ÅëÂû)
+
+    // UI ìˆœì„œ: íž˜, ê¸°êµ, ì†ë„, ëˆˆì°ë¯¸, ì¸ë‚´, ì§€ëŠ¥, ì§€í˜œ, ê±´ê°•, í†µì°°
+    public TMP_Text[] baseStats;
 
     [Header("Buttons")]
     public Button btnEquipment;
@@ -21,44 +19,66 @@ public class CharacterInfoPanel : MonoBehaviour
     public Button btnSkills;
 
     CharacterManager characterManager;
+    CharacterData characterData;
 
     public void Bind(CharacterManager cm)
     {
         characterManager = cm;
+        characterData = cm != null ? cm.character : null;
+
         WireButtons(false);
         UpdateBasics();
         WireButtons(true);
+    }
+
+    public void Bind(CharacterData data)
+    {
+        characterManager = null;
+        characterData = data;
+
+        WireButtons(false);
+        UpdateBasics();
     }
 
     void WireButtons(bool on)
     {
         if (!on)
         {
-            if (btnEquipment) btnEquipment.onClick.RemoveAllListeners();
-            if (btnInventory) btnInventory.onClick.RemoveAllListeners();
-            if (btnSkills) btnSkills.onClick.RemoveAllListeners();
+            if (btnEquipment != null) btnEquipment.onClick.RemoveAllListeners();
+            if (btnInventory != null) btnInventory.onClick.RemoveAllListeners();
+            if (btnSkills != null) btnSkills.onClick.RemoveAllListeners();
             return;
         }
 
-        if (btnEquipment) btnEquipment.onClick.AddListener(OpenEquipment);
-        if (btnInventory) btnInventory.onClick.AddListener(OpenInventory);
-        if (btnSkills) btnSkills.onClick.AddListener(OpenSkills);
+        if (btnEquipment != null) btnEquipment.onClick.AddListener(OpenEquipment);
+        if (btnInventory != null) btnInventory.onClick.AddListener(OpenInventory);
+        if (btnSkills != null) btnSkills.onClick.AddListener(OpenSkills);
     }
 
     void UpdateBasics()
     {
-        if (characterManager == null) return;
-        var c = characterManager.character;
+        if (characterData == null)
+            return;
 
-        portrait.texture = c.Portrait;
-        nameText.text = c.Name;
-        levelText.text = "Lv." + c.Level;
-        hpText.text = c.CurrentHp + "/" + c.FinalStats.MaxHp;
+        CharacterData c = characterData;
 
-        if (baseStats != null && baseStats.Length > 0)
+        if (portrait != null)
+            portrait.texture = c.Portrait;
+
+        if (nameText != null)
+            nameText.text = c.Name;
+
+        if (levelText != null)
+            levelText.text = "Lv." + c.Level;
+
+        if (hpText != null && c.FinalStats != null)
+            hpText.text = c.CurrentHp + "/" + c.FinalStats.MaxHp;
+
+        if (baseStats != null && baseStats.Length > 0 && c.FinalStats != null)
         {
-            var fs = c.FinalStats;
-            string[] vals = new string[]
+            CharacterStats fs = c.FinalStats;
+
+            string[] vals =
             {
                 fs.Strength.ToString(),
                 fs.Dexterity.ToString(),
@@ -68,35 +88,48 @@ public class CharacterInfoPanel : MonoBehaviour
                 fs.Intelligence.ToString(),
                 fs.Wisdom.ToString(),
                 fs.Health.ToString(),
-                fs.Insight.ToString()
+                fs.Insight.ToString(),
+                fs.Vitality.ToString()
             };
+
             for (int i = 0; i < baseStats.Length && i < vals.Length; i++)
-                baseStats[i].text = vals[i];
+            {
+                if (baseStats[i] != null)
+                    baseStats[i].text = vals[i];
+            }
         }
     }
 
     void OpenEquipment()
     {
-        if (characterManager == null) return;
+        if (characterManager == null)
+            return;
 
-        characterManager.character.CharacterEquipment.OpenWindow();
+        Debug.Log("SO ê¸°ë°˜ ìž¥ë¹„ íŒ¨ë„ ì—°ê²° í•„ìš”");
+
+        // ì˜ˆì‹œ:
+        // UIManager.Instance.OpenCharacterEquipmentPanel(characterManager);
     }
 
     void OpenInventory()
     {
-        if (characterManager == null) return;
+        Debug.Log("ìºë¦­í„° ê°œë³„ ì¸ë²¤í† ë¦¬ëŠ” ì œê±°ë¨. ê³„ì •/ì›ì •ëŒ€ ì°½ê³  íŒ¨ë„ë¡œ ì—°ê²° í•„ìš”");
 
-        characterManager.character.CharacterInventory.OpenWindow();
+        // ì˜ˆì‹œ:
+        // UIManager.Instance.OpenStoragePanel();
     }
 
     void OpenSkills()
     {
-        if (characterManager == null) return;
+        if (characterManager == null)
+            return;
 
-        characterManager.character.CharacterInventory.OpenWindowByName("Skills", "Skills");
+        Debug.Log("SO ê¸°ë°˜ ìŠ¤í‚¬ íŒ¨ë„ ì—°ê²° í•„ìš”");
+
+        // ì˜ˆì‹œ:
+        // UIManager.Instance.OpenSkillPanel(characterManager);
     }
 
-    // ´É·ÂÄ¡ °»½Å ½Ã È£Ãâ ÇÊ¿ä
     public void Refresh()
     {
         UpdateBasics();

@@ -4,9 +4,9 @@ using TMPro;
 
 public class TooltipHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    public Root rootObject; // Root Å¬·¡½º¸¦ »ó¼Ó¹ŞÀº ¸ğµç °´Ã¼¿¡ ´ëÇØ ÂüÁ¶
+    public Root rootObject; // Root í´ë˜ìŠ¤ë¥¼ ìƒì†ë°›ì€ ëª¨ë“  ê°ì²´ì— ëŒ€í•´ ì°¸ì¡°
     public TextMeshProUGUI textComponent;
-    public bool isTextTooltip = false; // ÅØ½ºÆ® ±â¹İÀÎÁö ¾ÆÀÌÄÜ ±â¹İÀÎÁö ±¸ºĞ
+    public bool isTextTooltip = false; // í…ìŠ¤íŠ¸ ê¸°ë°˜ì¸ì§€ ì•„ì´ì½˜ ê¸°ë°˜ì¸ì§€ êµ¬ë¶„
 
     private void Awake()
     {
@@ -20,18 +20,18 @@ public class TooltipHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     {
         if (rootObject != null)
         {
-            // ¾ÆÀÌÄÜ ±â¹İ ÅøÆÁ
+            // ì•„ì´ì½˜ ê¸°ë°˜ íˆ´íŒ
             if (!isTextTooltip)
             {
                 TooltipManager.Instance.ShowTooltip(rootObject.Description, Input.mousePosition);
             }
-            // ÅØ½ºÆ® ±â¹İ ÅøÆÁ
+            // í…ìŠ¤íŠ¸ ê¸°ë°˜ íˆ´íŒ
             else
             {
                 string keyword = GetWordFromText(textComponent.text, TMP_TextUtilities.GetCursorIndexFromPosition(textComponent, Input.mousePosition, null));
                 if (!string.IsNullOrEmpty(keyword))
                 {
-                    TooltipManager.Instance.ShowTooltip(TooltipManager.Instance.keywordTooltips[keyword], Input.mousePosition);
+                    TooltipManager.Instance.ShowKeywordTooltip(keyword, Input.mousePosition);
                 }
             }
         }
@@ -42,7 +42,7 @@ public class TooltipHandler : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         TooltipManager.Instance.HideTooltip();
     }
 
-    // ÅØ½ºÆ®¿¡¼­ Æ¯Á¤ ´Ü¾î ÃßÃâ
+    // í…ìŠ¤íŠ¸ì—ì„œ íŠ¹ì • ë‹¨ì–´ ì¶”ì¶œ
     private string GetWordFromText(string text, int index)
     {
         if (index < 0 || index >= text.Length)
