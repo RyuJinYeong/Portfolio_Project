@@ -82,21 +82,21 @@ Project L은 용병단 운영, 턴제 전투, 반복 원정을 연결한 게임�
 `CombatHandler`에서 공격 스킬과 대응 스킬을 큐로 관리합니다. 대상 선택과 스킬 실행, 보호 개입을 처리하며, 판정된 대상과 보호 성공 여부 등의 결과를 후속 처리에 전달합니다.
 
 - **살펴볼 부분:** 행동 예약, 대응 처리, 보호에 따른 실제 공격 대상 결정
-- **관련 코드:** [CombatHandler.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/SOTest/Character/CharacterManager/Handler/CombatHandler.cs) · [TurnManager.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/SOTest/UIManager/TurnManager.cs)
+- **관련 코드:** [CombatHandler.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/main/Character/CharacterManager/Handler/CombatHandler.cs) · [TurnManager.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/main/UIManager/TurnManager.cs)
 
 ### 전투 연출 구성
 
 전투 연출을 위한 `BattlePresentationDirector`와 캐릭터의 `BattlePresentationHandler`를 두고 카메라, 캐릭터 동작 및 스킬 연출을 구성합니다. 공격과 보호 대응을 화면에서 읽을 수 있도록 표현을 개선하고 있습니다.
 
 - **살펴볼 부분:** 전투 진행과 연출의 연결, 카메라 제어, 캐릭터 단위 표현
-- **관련 코드:** [BattlePresentationDirector.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/SOTest/GameManager/BattlePresentationDirector.cs) · [BattlePresentationHandler.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/SOTest/Character/CharacterManager/Handler/BattlePresentationHandler.cs)
+- **관련 코드:** [BattlePresentationDirector.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/main/GameManager/BattlePresentationDirector.cs) · [BattlePresentationHandler.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/main/Character/CharacterManager/Handler/BattlePresentationHandler.cs)
 
 ### 데이터 정의와 저장 데이터 변환
 
 스킬과 특성의 정의를 ScriptableObject로 관리하고, 플레이어·캐릭터·원정 상태를 저장용 DTO로 변환합니다. 콘텐츠 정의와 진행 상태를 구분해 관리하며, 추가 콘텐츠를 기존 시스템에 연결할 수 있도록 개발하고 있습니다.
 
 - **살펴볼 부분:** 콘텐츠 정의, 런타임 상태, 저장·복원을 위한 데이터 변환
-- **관련 코드:** [ScriptableObject 정의](https://github.com/RyuJinYeong/Portfolio_Project/tree/SOTest/ScriptableObject/Script) · [SaveDTO.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/SOTest/Player/SaveDTO.cs) · [SaveMapper.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/SOTest/Player/SaveMapper.cs)
+- **관련 코드:** [ScriptableObject 정의](https://github.com/RyuJinYeong/Portfolio_Project/tree/main/ScriptableObject/Script) · [SaveDTO.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/main/Player/SaveDTO.cs) · [SaveMapper.cs](https://github.com/RyuJinYeong/Portfolio_Project/blob/main/Player/SaveMapper.cs)
 
 ### 협동 플레이 동기화 — 개발 데모
 
@@ -110,14 +110,14 @@ Project L은 용병단 운영, 턴제 전투, 반복 원정을 연결한 게임�
 
 | 경로 | 주요 내용 |
 | :--- | :--- |
-| [Character/](https://github.com/RyuJinYeong/Portfolio_Project/tree/SOTest/Character) | 캐릭터, 전투 처리, 장비, 스킬, 특성 |
-| [ScriptableObject/Script/](https://github.com/RyuJinYeong/Portfolio_Project/tree/SOTest/ScriptableObject/Script) | 콘텐츠 정의 및 관련 데이터 타입 |
-| [Player/](https://github.com/RyuJinYeong/Portfolio_Project/tree/SOTest/Player) | 플레이어 데이터와 저장용 DTO·매핑 |
-| [Quest/](https://github.com/RyuJinYeong/Portfolio_Project/tree/SOTest/Quest) | 의뢰와 원정 진행 |
-| [GameManager/](https://github.com/RyuJinYeong/Portfolio_Project/tree/SOTest/GameManager) | 게임·스테이지 관리 및 전투 연출 |
-| [UIManager/](https://github.com/RyuJinYeong/Portfolio_Project/tree/SOTest/UIManager) | 전투·편성·원정 UI와 게임 상태 연결 |
+| [Character/](https://github.com/RyuJinYeong/Portfolio_Project/tree/main/Character) | 캐릭터, 전투 처리, 장비, 스킬, 특성 |
+| [ScriptableObject/Script/](https://github.com/RyuJinYeong/Portfolio_Project/tree/main/ScriptableObject/Script) | 콘텐츠 정의 및 관련 데이터 타입 |
+| [Player/](https://github.com/RyuJinYeong/Portfolio_Project/tree/main/Player) | 플레이어 데이터와 저장용 DTO·매핑 |
+| [Quest/](https://github.com/RyuJinYeong/Portfolio_Project/tree/main/Quest) | 의뢰와 원정 진행 |
+| [GameManager/](https://github.com/RyuJinYeong/Portfolio_Project/tree/main/GameManager) | 게임·스테이지 관리 및 전투 연출 |
+| [UIManager/](https://github.com/RyuJinYeong/Portfolio_Project/tree/main/UIManager) | 전투·편성·원정 UI와 게임 상태 연결 |
 
-*코드 탐색 링크는 `SOTest` 브랜치를 기준으로 작성했습니다. 최신 개발 데모와 공개 코드의 구현 범위는 다를 수 있습니다.*
+*코드 탐색 링크는 `main` 브랜치를 기준으로 작성했습니다. 최신 개발 데모와 공개 코드의 구현 범위는 다를 수 있습니다.*
 
 ## 개발 현황
 
