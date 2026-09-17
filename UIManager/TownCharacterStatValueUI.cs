@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public enum TownCharacterStatDisplayType
 {
@@ -44,10 +45,41 @@ public enum TownCharacterStatDisplayType
     SmashAffinity
 }
 
-public class TownCharacterStatValueUI : MonoBehaviour
+public class TownCharacterStatValueUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     public TownCharacterStatDisplayType statType;
     public TMP_Text valueText;
+    private bool showingTooltip;
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        string keyword = statType switch
+        {
+            TownCharacterStatDisplayType.StaminaRecovery => "턴당 지구력 회복량",
+            TownCharacterStatDisplayType.MentalityRecovery => "턴당 정신력 회복량",
+            _ => gameObject.name
+        };
+        if (TooltipManager.Instance != null &&
+            TooltipManager.Instance.keywordTooltips.TryGetValue(keyword, out string description))
+        {
+            TooltipManager.Instance.ShowTooltip(description, eventData.position);
+            showingTooltip = true;
+        }
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (showingTooltip)
+            TooltipManager.Instance?.HideTooltip();
+        showingTooltip = false;
+    }
+
+    private void OnDisable()
+    {
+        if (showingTooltip)
+            TooltipManager.Instance?.HideTooltip();
+        showingTooltip = false;
+    }
 
     public void Refresh(CharacterStats stats)
     {

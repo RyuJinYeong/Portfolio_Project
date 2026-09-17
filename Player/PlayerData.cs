@@ -18,6 +18,7 @@ public class LostExpeditionInventoryData
 
 public class PlayerData
 {
+    public string profileId = Guid.NewGuid().ToString("N");
     // 플레이어의 닉네임 - 용병단 이름
     public string playerName;
 
@@ -86,7 +87,7 @@ public class PlayerData
         if (string.IsNullOrEmpty(characterId))
             return;
 
-        if (positions == null)
+        if (positions == null) 
             positions = new List<PositionEntry>();
 
         PositionEntry entry = positions.Find(p => p != null && p.characterId == characterId);

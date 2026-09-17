@@ -393,7 +393,7 @@ public class CharacterCreation : MonoBehaviour
 
                 if (valueText != null)
                 {
-                    TraitGrade currentGrade = TraitGradeUtility.GetGrade(runtime.point);
+                    TraitGrade currentGrade = TraitGradeUtility.GetGrade(runtime.point, def);
                     valueText.text = currentGrade.ToString();
                     valueText.fontSize = 7f;
                     valueText.color = traitTextColor;

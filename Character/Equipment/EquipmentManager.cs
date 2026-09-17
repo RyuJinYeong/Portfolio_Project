@@ -32,6 +32,9 @@ public static class EquipmentManager
 
         if (equipment is WeaponDefinitionSO weapon)
         {
+            if (character.HasTraitFlag(TraitSpecialFlag.FearOfBlades) &&
+                weapon.weaponType != WeaponType.Mace && weapon.weaponType != WeaponType.Hammer &&
+                weapon.weaponType != WeaponType.Shield && weapon.weaponType != WeaponType.Staff) return;
             if (equipment.equipType == EquipmentType.Weapon && !character.CanEquipMainWeapon(weapon))
             {
                 Debug.Log("장착 불가능한 주무기입니다.");

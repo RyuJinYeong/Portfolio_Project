@@ -212,7 +212,7 @@ public class CharacterStats // 기본 캐릭터 스탯
 
     public CharacterStats ShiftOperator(int shift)
     {
-        int multiplier = 1 << Mathf.Max(0, shift);
+        int multiplier = Mathf.Max(0, shift) + 1;
 
         return new CharacterStats
         {
@@ -324,6 +324,17 @@ public class CharacterSpecialStats
 
     public int StatusResistance; // 공용 상태이상 저항력
 
+    [Header("스킬 특화 (%)")]
+    public int BasicSpecialization;
+    public int WeaponArtSpecialization;
+    public int SwordsmanshipSpecialization;
+    public int ArcherySpecialization;
+    public int ShieldArtSpecialization;
+    public int MartialArtSpecialization;
+    public int DaggerArtSpecialization;
+    public int MagicSpecialization;
+    public int MonsterSpecialization;
+
     [Header("유틸")]
     public int MapDetectionRange;
 
@@ -331,6 +342,12 @@ public class CharacterSpecialStats
     public int KillHpRecovery;
     public int KillStaminaRecovery;
     public int KillMentalityRecovery;
+
+    public int SkillActivationSpeedBonus;
+    public int PersonalRestHpRecoveryBonus;
+    public int PersonalRestMoraleRecoveryBonus;
+    public int PartyRestHpRecoveryBonus;
+    public int PartyRestMoraleRecoveryBonus;
 
     [Header("레벨업")]
     public int MinLevelUpStatGainBonus;
@@ -348,12 +365,26 @@ public class CharacterSpecialStats
             DefenseSkillSuccessRateBonus =
                 a.DefenseSkillSuccessRateBonus + b.DefenseSkillSuccessRateBonus,
             StatusResistance = a.StatusResistance + b.StatusResistance,
+            BasicSpecialization = a.BasicSpecialization + b.BasicSpecialization,
+            WeaponArtSpecialization = a.WeaponArtSpecialization + b.WeaponArtSpecialization,
+            SwordsmanshipSpecialization = a.SwordsmanshipSpecialization + b.SwordsmanshipSpecialization,
+            ArcherySpecialization = a.ArcherySpecialization + b.ArcherySpecialization,
+            ShieldArtSpecialization = a.ShieldArtSpecialization + b.ShieldArtSpecialization,
+            MartialArtSpecialization = a.MartialArtSpecialization + b.MartialArtSpecialization,
+            DaggerArtSpecialization = a.DaggerArtSpecialization + b.DaggerArtSpecialization,
+            MagicSpecialization = a.MagicSpecialization + b.MagicSpecialization,
+            MonsterSpecialization = a.MonsterSpecialization + b.MonsterSpecialization,
 
             MapDetectionRange = a.MapDetectionRange + b.MapDetectionRange,
 
             KillHpRecovery = a.KillHpRecovery + b.KillHpRecovery,
             KillStaminaRecovery = a.KillStaminaRecovery + b.KillStaminaRecovery,
             KillMentalityRecovery = a.KillMentalityRecovery + b.KillMentalityRecovery,
+            SkillActivationSpeedBonus = a.SkillActivationSpeedBonus + b.SkillActivationSpeedBonus,
+            PersonalRestHpRecoveryBonus = a.PersonalRestHpRecoveryBonus + b.PersonalRestHpRecoveryBonus,
+            PersonalRestMoraleRecoveryBonus = a.PersonalRestMoraleRecoveryBonus + b.PersonalRestMoraleRecoveryBonus,
+            PartyRestHpRecoveryBonus = a.PartyRestHpRecoveryBonus + b.PartyRestHpRecoveryBonus,
+            PartyRestMoraleRecoveryBonus = a.PartyRestMoraleRecoveryBonus + b.PartyRestMoraleRecoveryBonus,
 
             MinLevelUpStatGainBonus = a.MinLevelUpStatGainBonus + b.MinLevelUpStatGainBonus,
             MaxLevelUpStatGainBonus = a.MaxLevelUpStatGainBonus + b.MaxLevelUpStatGainBonus
@@ -362,7 +393,7 @@ public class CharacterSpecialStats
 
     public CharacterSpecialStats ShiftOperator(int shift)
     {
-        int multiplier = 1 << Mathf.Max(0, shift);
+        int multiplier = Mathf.Max(0, shift) + 1;
 
         return new CharacterSpecialStats
         {
@@ -370,12 +401,26 @@ public class CharacterSpecialStats
             CriticalDamageBonus = CriticalDamageBonus * multiplier,
             DefenseSkillSuccessRateBonus = DefenseSkillSuccessRateBonus * multiplier,
             StatusResistance = StatusResistance * multiplier,
+            BasicSpecialization = BasicSpecialization * (Mathf.Max(0, shift) + 1),
+            WeaponArtSpecialization = WeaponArtSpecialization * (Mathf.Max(0, shift) + 1),
+            SwordsmanshipSpecialization = SwordsmanshipSpecialization * (Mathf.Max(0, shift) + 1),
+            ArcherySpecialization = ArcherySpecialization * (Mathf.Max(0, shift) + 1),
+            ShieldArtSpecialization = ShieldArtSpecialization * (Mathf.Max(0, shift) + 1),
+            MartialArtSpecialization = MartialArtSpecialization * (Mathf.Max(0, shift) + 1),
+            DaggerArtSpecialization = DaggerArtSpecialization * (Mathf.Max(0, shift) + 1),
+            MagicSpecialization = MagicSpecialization * (Mathf.Max(0, shift) + 1),
+            MonsterSpecialization = MonsterSpecialization * (Mathf.Max(0, shift) + 1),
 
             MapDetectionRange = MapDetectionRange * multiplier,
 
             KillHpRecovery = KillHpRecovery * multiplier,
             KillStaminaRecovery = KillStaminaRecovery * multiplier,
             KillMentalityRecovery = KillMentalityRecovery * multiplier,
+            SkillActivationSpeedBonus = SkillActivationSpeedBonus * multiplier,
+            PersonalRestHpRecoveryBonus = PersonalRestHpRecoveryBonus * multiplier,
+            PersonalRestMoraleRecoveryBonus = PersonalRestMoraleRecoveryBonus * multiplier,
+            PartyRestHpRecoveryBonus = PartyRestHpRecoveryBonus * multiplier,
+            PartyRestMoraleRecoveryBonus = PartyRestMoraleRecoveryBonus * multiplier,
 
             MinLevelUpStatGainBonus = MinLevelUpStatGainBonus * multiplier,
             MaxLevelUpStatGainBonus = MaxLevelUpStatGainBonus * multiplier
@@ -390,12 +435,26 @@ public class CharacterSpecialStats
             CriticalDamageBonus = CriticalDamageBonus,
             DefenseSkillSuccessRateBonus = DefenseSkillSuccessRateBonus,
             StatusResistance = StatusResistance,
+            BasicSpecialization = BasicSpecialization,
+            WeaponArtSpecialization = WeaponArtSpecialization,
+            SwordsmanshipSpecialization = SwordsmanshipSpecialization,
+            ArcherySpecialization = ArcherySpecialization,
+            ShieldArtSpecialization = ShieldArtSpecialization,
+            MartialArtSpecialization = MartialArtSpecialization,
+            DaggerArtSpecialization = DaggerArtSpecialization,
+            MagicSpecialization = MagicSpecialization,
+            MonsterSpecialization = MonsterSpecialization,
 
             MapDetectionRange = MapDetectionRange,
 
             KillHpRecovery = KillHpRecovery,
             KillStaminaRecovery = KillStaminaRecovery,
             KillMentalityRecovery = KillMentalityRecovery,
+            SkillActivationSpeedBonus = SkillActivationSpeedBonus,
+            PersonalRestHpRecoveryBonus = PersonalRestHpRecoveryBonus,
+            PersonalRestMoraleRecoveryBonus = PersonalRestMoraleRecoveryBonus,
+            PartyRestHpRecoveryBonus = PartyRestHpRecoveryBonus,
+            PartyRestMoraleRecoveryBonus = PartyRestMoraleRecoveryBonus,
 
             MinLevelUpStatGainBonus = MinLevelUpStatGainBonus,
             MaxLevelUpStatGainBonus = MaxLevelUpStatGainBonus
@@ -503,6 +562,17 @@ public class CharacterData
     public int Level { get; set; }
     public int Exp { get; set; }
     public int PendingLevelUps { get; set; }
+    public bool LastStandUsed { get; set; }
+
+    public int LimitFatalDamage(int damage)
+    {
+        if (IsAlive && CurrentHp > 0 && damage >= CurrentHp && !LastStandUsed && HasTraitFlag(TraitSpecialFlag.LastStand))
+        {
+            LastStandUsed = true;
+            return Mathf.Max(0, CurrentHp - 1);
+        }
+        return damage;
+    }
 
     public int CurrentHp { get; set; }
     public int CurrentStamina { get; set; }
@@ -736,10 +806,13 @@ public class CharacterData
     }
 
     // 무기 착용 가능 여부
-    public bool CanEquipMainWeapon(WeaponDefinitionSO weapon)
+    public bool CanEquipMainWeapon(WeaponDefinitionSO weapon, bool replacingSubWeapon = false)
     {
         if (weapon == null)
             return true;
+        if (HasTraitFlag(TraitSpecialFlag.FearOfBlades) &&
+            weapon.weaponType != WeaponType.Mace && weapon.weaponType != WeaponType.Hammer &&
+            weapon.weaponType != WeaponType.Shield && weapon.weaponType != WeaponType.Staff) return false;
 
         if (HasTraitFlag(TraitSpecialFlag.OneArmed) &&
             weapon.weaponTags != null &&
@@ -748,7 +821,7 @@ public class CharacterData
             return false;
         }
 
-        if (weapon.weaponTags != null &&
+        if (!replacingSubWeapon && weapon.weaponTags != null &&
             weapon.weaponTags.Contains(WeaponTag.TwoHanded) &&
             GetSubWeapon() != null)
         {
@@ -788,12 +861,23 @@ public class CharacterData
         ApplyTraitPass(false);
         ApplyTraitPass(true);
 
+        int maxHpModifier = BaseStats.MaxHp;
+        int maxStaminaModifier = BaseStats.MaxStamina;
+        int maxMentalityModifier = BaseStats.MaxMentality;
+        int staminaRecoveryModifier = BaseStats.StaminaRecovery;
+        int mentalityRecoveryModifier = BaseStats.MentalityRecovery;
         BaseStats.ClampNonNegative();
+        BaseStats.MaxHp = maxHpModifier;
+        BaseStats.MaxStamina = maxStaminaModifier;
+        BaseStats.MaxMentality = maxMentalityModifier;
+        BaseStats.StaminaRecovery = staminaRecoveryModifier;
+        BaseStats.MentalityRecovery = mentalityRecoveryModifier;
     }
 
     // 특성 적용 패스
     void ApplyTraitPass(bool percentage)
     {
+        CharacterStats percentageStats = percentage ? new CharacterStats() : null;
         foreach (TraitRuntimeData runtime in GetAllTraitRuntimes())
         {
             TraitDefinitionSO def = GameDataRegistry.Instance.GetTrait(runtime.traitId);
@@ -803,6 +887,9 @@ public class CharacterData
 
             if (def.isPercentage != percentage)
                 continue;
+
+            if (!def.canGradeUp)
+                runtime.point = TraitGradeUtility.GetGradeValue(def.defaultAcquireGrade);
 
             int shift = TraitGradeUtility.GetGradeShift(runtime, def);
 
@@ -815,7 +902,7 @@ public class CharacterData
                 : new CharacterSpecialStats();
 
             if (percentage)
-                ApplyPercentageStats(BaseStats, statDelta);
+                percentageStats += statDelta;
             else
                 BaseStats += statDelta;
 
@@ -832,13 +919,16 @@ public class CharacterData
                     : new CharacterSpecialStats();
 
                 if (percentage)
-                    ApplyPercentageStats(BaseStats, conditionalStatDelta);
+                    percentageStats += conditionalStatDelta;
                 else
                     BaseStats += conditionalStatDelta;
 
                 BaseSpecialStats += conditionalSpecialDelta;
             }
         }
+
+        if (percentage)
+            ApplyPercentageStats(BaseStats, percentageStats);
     }
 
     bool CanApplyConditionalTrait(TraitDefinitionSO def)
@@ -961,6 +1051,8 @@ public class CharacterData
 
         FinalStats = CalcStat(tempStats);
         FinalStats.ClampNonNegative();
+        FinalStats.MaxStamina = Mathf.Max(1, FinalStats.MaxStamina);
+        FinalStats.MaxMentality = Mathf.Max(1, FinalStats.MaxMentality);
 
         UpdateFinalSpecialStats();
 
@@ -1002,8 +1094,8 @@ public class CharacterData
         int baseMagicalDefense = stats.MagicalDefense + baseEndurance / 2;
         int basePhysicalAttack = stats.PhysicalAttack;
         int baseMagicalAttack = stats.MagicalAttack + stats.Intelligence; // 지능 지수에 따라 증가. - 장착 무기 타입 상관 없이 적용
-        int baseDetection = stats.Detection + (int)(stats.Dexterity * ((double)(stats.Dexterity / 10.0)) + stats.Speed * ((double)(stats.Speed / 10.0)));
-        int baseInsight =  stats.Insight + (int)(stats.Wisdom * ((double)(stats.Wisdom / 10.0)) + stats.Intelligence * ((double)(stats.Intelligence / 10.0)));
+        int baseDetection = stats.Detection + (stats.Dexterity + stats.Speed) / 2;
+        int baseInsight = stats.Insight + (stats.Wisdom + stats.Intelligence) / 2;
         int baseMaxHp = 15 + Level * 5 + stats.Vitality * 2 + stats.Health * 3 + stats.MaxHp;
         float baseAtkSpd = (1.0f + stats.Speed * 0.01f); // 기본 속도 1.0 + 속도 스탯 * 0.01
 
@@ -1060,8 +1152,10 @@ public class CharacterData
         stats.MagicalAttack = baseMagicalAttack;
         stats.Detection = baseDetection;
         stats.Insight = baseInsight;
-        stats.AttackSpeed = baseAtkSpd;
-        stats.CastSpeed = baseCastSpd;
+        float activationSpeedMultiplier = Mathf.Max(0.01f,
+            1f + (BaseSpecialStats.SkillActivationSpeedBonus + ModifiedSpecialStats.SkillActivationSpeedBonus) / 100f);
+        stats.AttackSpeed = baseAtkSpd * activationSpeedMultiplier;
+        stats.CastSpeed = baseCastSpd * activationSpeedMultiplier;
         stats.MaxMentality = baseMaxMentality;
         stats.MaxStamina = baseMaxStamina;
         stats.MaxHp = baseMaxHp;

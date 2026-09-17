@@ -427,12 +427,47 @@ public static class QuestEncounterResolver
     private static void RecoverResources(List<CharacterManager> targets)
     {
         const float recoveryRate = 0.2f;
+        bool isRest = QuestManager.Instance?.GetCurrentRouteNode()?.type == QuestRouteNodeType.Rest;
+        int partyHpBonus = 0;
+        int partyMoraleBonus = 0;
+        if (isRest)
+        {
+            var sharedTraitBonuses = new Dictionary<int, Vector2Int>();
+            foreach (CharacterManager member in GetTargets(QuestEncounterTargetScope.WholeParty, null, false))
+            {
+                if (!member.character.IsAlive || member.character.CurrentHp <= 0) continue;
+                partyHpBonus += member.character.FinalSpecialStats.PartyRestHpRecoveryBonus;
+                partyMoraleBonus += member.character.FinalSpecialStats.PartyRestMoraleRecoveryBonus;
+                foreach (TraitRuntimeData runtime in member.character.GetAllTraitRuntimes())
+                {
+                    if (runtime.traitId != 1016 && runtime.traitId != 1017) continue;
+                    TraitDefinitionSO definition = GameDataRegistry.Instance.GetTrait(runtime.traitId);
+                    if (definition == null || definition.specialStatDelta == null) continue;
+                    CharacterSpecialStats bonus = definition.specialStatDelta.ShiftOperator(
+                        TraitGradeUtility.GetGradeShift(runtime, definition));
+                    partyHpBonus -= bonus.PartyRestHpRecoveryBonus;
+                    partyMoraleBonus -= bonus.PartyRestMoraleRecoveryBonus;
+                    sharedTraitBonuses.TryGetValue(runtime.traitId, out Vector2Int strongest);
+                    sharedTraitBonuses[runtime.traitId] = new Vector2Int(
+                        Mathf.Max(strongest.x, bonus.PartyRestHpRecoveryBonus),
+                        Mathf.Max(strongest.y, bonus.PartyRestMoraleRecoveryBonus));
+                }
+            }
+            foreach (Vector2Int bonus in sharedTraitBonuses.Values)
+            {
+                partyHpBonus += bonus.x;
+                partyMoraleBonus += bonus.y;
+            }
+        }
 
         foreach (CharacterManager manager in targets)
         {
             CharacterData character = manager.character;
             bool wasDead = !character.IsAlive || character.CurrentHp <= 0;
-            int hpRecovery = Mathf.CeilToInt(character.FinalStats.MaxHp * recoveryRate);
+            float hpRate = isRest ? Mathf.Clamp01(recoveryRate +
+                (partyHpBonus + character.FinalSpecialStats.PersonalRestHpRecoveryBonus) / 100f) : recoveryRate;
+            int hpRecovery = Mathf.CeilToInt(character.FinalStats.MaxHp * hpRate);
+            if (wasDead) hpRecovery = Mathf.Max(1, hpRecovery);
             int staminaRecovery = Mathf.CeilToInt(character.FinalStats.MaxStamina * recoveryRate);
             int mentalityRecovery = Mathf.CeilToInt(character.FinalStats.MaxMentality * recoveryRate);
 
@@ -445,6 +480,13 @@ public static class QuestEncounterResolver
             character.CurrentMentality = Mathf.Min(
                 character.CurrentMentality + mentalityRecovery,
                 character.FinalStats.MaxMentality);
+
+            if (isRest)
+            {
+                float moraleRate = Mathf.Clamp01(recoveryRate +
+                    (partyMoraleBonus + character.FinalSpecialStats.PersonalRestMoraleRecoveryBonus) / 100f);
+                character.Morale = Mathf.Clamp(character.Morale + Mathf.CeilToInt(100f * moraleRate), 0, 100);
+            }
 
             if (wasDead)
             {

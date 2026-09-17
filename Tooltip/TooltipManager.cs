@@ -18,6 +18,7 @@ public class TooltipManager : MonoBehaviour
     public Text descriptionText;
     public GameObject tooltipObject;
     public GameObject simpleTooltipObject;
+    public Texture2D concealedSkillIcon;
 
     public TextMeshProUGUI tooltipText;
     public TextMeshProUGUI counterChanceText;
@@ -34,48 +35,50 @@ public class TooltipManager : MonoBehaviour
     private string lastSizedTooltipText;
     private GameObject activeTooltipObject;
     private bool isCounterChanceActive;
+    [System.NonSerialized] public GameObject hoveredBattleIcon;
+    private bool trackingBattleIcon;
 
     public Dictionary<string, string> keywordTooltips = new Dictionary<string, string>
     {
-        { "근력", "무기를 통한 물리 데미지에 영향을 주는 기본 스탯입니다." },
-        { "기교", "경량 무기를 통한 물리 데미지에 영향을 주는 기본 스탯입니다." },
-        { "속도", "최대 지구력과 공격 속도에 영향을 주는 기본 스탯입니다." },
-        { "지능", "마법 공격력과 정신력 회복량에 영향을 주는 기본 스탯입니다." },
-        { "지혜", "최대 정신력과 시전 속도에 영향을 주는 기본 스탯입니다." },
-        { "건강", "HP와 상태이상 저항에 영향을 주는 기본 스탯입니다." },
-        { "활력", "최대 체력과 지구력 회복량에 영향을 주는 기본 스탯입니다." },
-        { "인내", "방어력에 영향을 주는 기본 스탯입니다." },        
+        { "근력", "무기 기반 물리 피해에 영향을 줍니다." },
+        { "기교", "경량 무기 기반 물리 피해에 영향을 줍니다." },
+        { "속도", "최대 지구력과 공격 속도에 영향을 줍니다." },
+        { "지능", "마법 공격력과 정신력 회복량에 영향을 줍니다." },
+        { "지혜", "최대 정신력과 시전 속도에 영향을 줍니다." },
+        { "건강", "최대 HP와 상태이상 저항에 영향을 줍니다." },
+        { "활력", "최대 HP와 지구력 회복량에 영향을 줍니다." },
+        { "인내", "방어력에 영향을 줍니다." },
         { "LV", "캐릭터의 현재 레벨입니다." },
 
-        { "눈썰미", "간파 관련 판정에 영향을 주는 탐지 계열 스탯입니다." },
-        { "통찰력", "통찰 관련 판정에 영향을 주는 탐지 계열 스탯입니다." },
+        { "눈썰미", "간파 판정에 영향을 줍니다." },
+        { "통찰력", "통찰 판정에 영향을 줍니다." },
 
-        { "HP", "캐릭터가 보유할 수 있는 최대 체력입니다." },
-        { "지구력", "물리 스킬에 사용되는 자원입니다." },
-        { "정신력", "마법 스킬과 정신 계열 스킬에 사용되는 자원입니다." },
-        { "턴당 지구력 회복량", "한 턴마다 회복하는 지구력입니다." },
-        { "턴당 정신력 회복량", "한 턴마다 회복하는 정신력입니다." },
+        { "HP", "캐릭터의 최대 체력입니다." },
+        { "지구력", "물리 스킬 사용에 소모되는 자원입니다." },
+        { "정신력", "마법 및 정신 계열 스킬 사용에 소모되는 자원입니다." },
+        { "턴당 지구력 회복량", "턴마다 회복하는 지구력입니다." },
+        { "턴당 정신력 회복량", "턴마다 회복하는 정신력입니다." },
 
-        { "물리 공격력", "물리 스킬과 무기 공격의 피해량에 영향을 주는 공격 능력치입니다." },
-        { "마법 공격력", "마법 스킬의 피해량에 영향을 주는 공격 능력치입니다." },
-        { "물리 방어력", "물리 피해를 줄이는 방어 능력치입니다." },
-        { "마법 방어력", "마법 피해를 줄이는 방어 능력치입니다." },
-        { "공격 속도", "물리 행동의 속도에 영향을 주는 능력치입니다." },
-        { "시전 속도", "마법 행동의 속도에 영향을 주는 능력치입니다." },
+        { "물리 공격력", "물리 스킬과 무기 공격의 피해에 영향을 줍니다." },
+        { "마법 공격력", "마법 스킬 피해에 영향을 줍니다." },
+        { "물리 방어력", "받는 물리 피해를 줄입니다." },
+        { "마법 방어력", "받는 마법 피해를 줄입니다." },
+        { "공격 속도", "물리 행동의 발동 속도에 영향을 줍니다." },
+        { "시전 속도", "마법 행동의 발동 속도에 영향을 줍니다." },
 
-        { "화염 저항", "화염 속성 피해를 줄이는 저항 능력치입니다." },
-        { "번개 저항", "번개 속성 피해를 줄이는 저항 능력치입니다." },
-        { "얼음 저항", "얼음 속성 피해를 줄이는 저항 능력치입니다." },
-        { "관통 저항", "관통 계열 피해를 줄이는 저항 능력치입니다." },
-        { "참격 저항", "참격 계열 피해를 줄이는 저항 능력치입니다." },
-        { "타격 저항", "타격 계열 피해를 줄이는 저항 능력치입니다." },
+        { "화염 저항", "받는 화염 피해를 줄입니다." },
+        { "번개 저항", "받는 번개 피해를 줄입니다." },
+        { "얼음 저항", "받는 얼음 피해를 줄입니다." },
+        { "관통 저항", "받는 관통 피해를 줄입니다." },
+        { "참격 저항", "받는 참격 피해를 줄입니다." },
+        { "타격 저항", "받는 타격 피해를 줄입니다." },
 
-        { "화염 특화", "화염 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
-        { "번개 특화", "번개 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
-        { "얼음 특화", "얼음 속성 공격의 효율에 영향을 주는 속성 특화 능력치입니다." },
-        { "관통 특화", "관통 계열 물리 공격의 효율에 영향을 주는 물리 특화 능력치입니다." },
-        { "참격 특화", "참격 계열 물리 공격의 효율에 영향을 주는 물리 특화 능력치입니다." },
-        { "타격 특화", "타격 계열 물리 공격의 효율에 영향을 주는 물리 특화 능력치입니다." }
+        { "화염 특화", "화염 공격의 성능에 영향을 줍니다." },
+        { "번개 특화", "번개 공격의 성능에 영향을 줍니다." },
+        { "얼음 특화", "얼음 공격의 성능에 영향을 줍니다." },
+        { "관통 특화", "관통 공격의 성능에 영향을 줍니다." },
+        { "참격 특화", "참격 공격의 성능에 영향을 줍니다." },
+        { "타격 특화", "타격 공격의 성능에 영향을 줍니다." }
     };
 
     private void Awake()
@@ -120,6 +123,9 @@ public class TooltipManager : MonoBehaviour
 
     private void Update()
     {
+        if (hoveredBattleIcon != null) trackingBattleIcon = true;
+        if (trackingBattleIcon && (hoveredBattleIcon == null || !hoveredBattleIcon.activeInHierarchy))
+            HideTooltip();
         if (isTooltipActive)
             UpdateTooltipPosition(Input.mousePosition);
 
@@ -132,7 +138,7 @@ public class TooltipManager : MonoBehaviour
         if (queueData == null || queueData.skill == null)
             return;
 
-        if (queueData.isConcealed)
+        if (SkillConcealUtility.ShouldHideFromLocalPlayer(queueData))
         {
             switch (queueData.revealLevel)
             {
@@ -211,7 +217,7 @@ public class TooltipManager : MonoBehaviour
         SetTextTooltipMode();
 
         TraitGrade grade = runtime != null
-            ? TraitGradeUtility.GetGrade(runtime.point)
+            ? TraitGradeUtility.GetGrade(runtime.point, trait)
             : trait.defaultAcquireGrade;
         string traitDescription = TownTraitPreviewCardUI.BuildDescription(runtime, trait);
 
@@ -232,6 +238,41 @@ public class TooltipManager : MonoBehaviour
 
         if (tooltipText != null)
             tooltipText.text = $"<b>{grade} {trait.traitName}</b>\n{traitDescription}";
+
+        UpdateTooltipPosition(position);
+
+        if (activeTooltipObject != null)
+            activeTooltipObject.SetActive(true);
+
+        isTooltipActive = true;
+    }
+
+    public void ShowSkillConcealTooltip(Vector3 position)
+    {
+        SetSkillTooltipMode();
+
+        UIManager uiManager = UIManager.Instance;
+        bool concealEnabled = uiManager != null && uiManager.IsSkillConcealEnabled;
+
+        if (skillIcon != null)
+            skillIcon.texture = uiManager != null
+                ? (concealEnabled ? uiManager.concealEnabledIcon : uiManager.concealDisabledIcon)
+                : null;
+
+        if (skillNameText != null)
+            skillNameText.text = "스킬 은닉";
+
+        if (skillTypeText != null)
+            skillTypeText.text = concealEnabled ? "활성화" : "비활성화";
+
+        if (skillSpeedText != null)
+            skillSpeedText.text = "";
+
+        if (costText != null)
+            costText.text = "추가 비용: 기본 자원 비용의 30%";
+
+        if (descriptionText != null)
+            descriptionText.text = "다음 사용하는 스킬의 타겟팅 정보를 제외한 정보를 숨깁니다.\n간파 단계에 따라 일부 정보가 공개됩니다. 단, 해당 공격이 완전히 간파되면 대응이 쉬워집니다.";
 
         UpdateTooltipPosition(position);
 
@@ -278,7 +319,7 @@ public class TooltipManager : MonoBehaviour
                 : item.itemName;
         }
 
-        string typeText = GetItemTypeText(item, equipment);
+        string typeText = GetItemTypeText(slot, item, equipment);
         string detailText = BuildItemDescription(slot, item, equipment);
 
         if (skillIcon != null)
@@ -365,6 +406,8 @@ public class TooltipManager : MonoBehaviour
 
     public void HideTooltip()
     {
+        hoveredBattleIcon = null;
+        trackingBattleIcon = false;
         if (tooltipObject != null)
             tooltipObject.SetActive(false);
 
@@ -504,9 +547,16 @@ public class TooltipManager : MonoBehaviour
     }
 
     private string GetItemTypeText(
+        InventorySlotData slot,
         ItemDefinitionSO item,
         EquipmentRuntimeData equipment)
     {
+        if (slot != null && slot.IsMonsterEssence())
+        {
+            string baseType = item is ConsumableDefinitionSO ? "소모품" : "기타 아이템";
+            return $"{baseType} - 몬스터의 정수";
+        }
+
         if (item is WeaponDefinitionSO weapon)
             return $"장비 - {GetEquipmentTypeText(weapon.equipType)} / {weapon.weaponType}";
 
@@ -608,10 +658,24 @@ public class TooltipManager : MonoBehaviour
         AppendStat(builder, "치명타 피해", stats.CriticalDamageBonus);
         AppendStat(builder, "방어 스킬 성공률", stats.DefenseSkillSuccessRateBonus);
         AppendStat(builder, "상태이상 저항", stats.StatusResistance);
+        AppendStat(builder, "기본기 스킬 특화 (%)", stats.BasicSpecialization);
+        AppendStat(builder, "무기술 스킬 특화 (%)", stats.WeaponArtSpecialization);
+        AppendStat(builder, "검술 스킬 특화 (%)", stats.SwordsmanshipSpecialization);
+        AppendStat(builder, "궁술 스킬 특화 (%)", stats.ArcherySpecialization);
+        AppendStat(builder, "방패술 스킬 특화 (%)", stats.ShieldArtSpecialization);
+        AppendStat(builder, "체술 스킬 특화 (%)", stats.MartialArtSpecialization);
+        AppendStat(builder, "단검술 스킬 특화 (%)", stats.DaggerArtSpecialization);
+        AppendStat(builder, "마법 스킬 특화 (%)", stats.MagicSpecialization);
+        AppendStat(builder, "몬스터 스킬 특화 (%)", stats.MonsterSpecialization);
         AppendStat(builder, "지도 탐지 범위", stats.MapDetectionRange);
         AppendStat(builder, "처치 시 HP 회복", stats.KillHpRecovery);
         AppendStat(builder, "처치 시 지구력 회복", stats.KillStaminaRecovery);
         AppendStat(builder, "처치 시 정신력 회복", stats.KillMentalityRecovery);
+        AppendStat(builder, "스킬 시전 속도 (%)", stats.SkillActivationSpeedBonus);
+        AppendStat(builder, "개인 휴식 HP 회복 (%p)", stats.PersonalRestHpRecoveryBonus);
+        AppendStat(builder, "개인 휴식 사기 회복 (%p)", stats.PersonalRestMoraleRecoveryBonus);
+        AppendStat(builder, "원정대 휴식 HP 회복 (%p)", stats.PartyRestHpRecoveryBonus);
+        AppendStat(builder, "원정대 휴식 사기 회복 (%p)", stats.PartyRestMoraleRecoveryBonus);
         AppendStat(builder, "최소 레벨업 상승치", stats.MinLevelUpStatGainBonus);
         AppendStat(builder, "최대 레벨업 상승치", stats.MaxLevelUpStatGainBonus);
     }
@@ -733,25 +797,25 @@ public class TooltipManager : MonoBehaviour
 
     private void ShowConcealedTooltip(Vector3 position)
     {
-        SetTextTooltipMode();
+        SetSkillTooltipMode();
 
         if (skillIcon != null)
-            skillIcon.texture = null;
+            skillIcon.texture = concealedSkillIcon;
 
         if (skillNameText != null)
             skillNameText.text = "은폐된 스킬";
 
         if (skillTypeText != null)
-            skillTypeText.text = "정보 없음";
+            skillTypeText.text = "";
 
         if (skillSpeedText != null)
-            skillSpeedText.text = "간파 실패";
+            skillSpeedText.text = "";
 
         if (costText != null)
             costText.text = "";
 
         if (descriptionText != null)
-            descriptionText.text = "상대가 스킬 정보를 은폐했습니다. 타겟은 확인 가능하지만 스킬의 정체는 알 수 없습니다.";
+            descriptionText.text = "정보가 은폐되어 있습니다.";
 
         if (tooltipText != null)
             tooltipText.text = "은폐된 스킬";
@@ -772,22 +836,22 @@ public class TooltipManager : MonoBehaviour
         SetSkillTooltipMode();
 
         if (skillIcon != null)
-            skillIcon.texture = null;
+            skillIcon.texture = concealedSkillIcon;
 
         if (skillNameText != null)
-            skillNameText.text = "일부 간파된 스킬";
+            skillNameText.text = "부분 간파된 스킬";
 
         if (skillTypeText != null)
-            skillTypeText.text = $"{GetStyleText(skill.style)} 스타일 / {GetSkillRangeText(skill)}";
+            skillTypeText.text = $"{(skill.type == SkillType.Physical ? "물리" : skill.type == SkillType.Magical ? "마법" : "혼합")} / {GetStyleText(skill.style)} 스타일";
 
         if (skillSpeedText != null)
-            skillSpeedText.text = $"속도: {GetSpeedRankText(skill.activationSpeed)}";
+            skillSpeedText.text = $"{GetSkillRangeText(skill)} / 속도: {GetSpeedRankText(skill.activationSpeed)}";
 
         if (costText != null)
             costText.text = $"위력: {GetPowerRankText(skill.GetTotalDamageMultiplier())}";
 
         if (descriptionText != null)
-            descriptionText.text = "스킬의 일부 정보만 간파했습니다. 정확한 스킬명과 세부 효과는 알 수 없습니다.";
+            descriptionText.text = "스킬명, 세부 효과를 간파하지 못했습니다.";
 
         UpdateTooltipPosition(position);
 
@@ -943,7 +1007,7 @@ public class TooltipManager : MonoBehaviour
                     ? status.statusName
                     : $"상태이상 {applyData.statusEffectId}";
 
-                text.Append($"\n{statusName} {applyData.stackAmount}스택을 {applyData.baseChance}% 확률로 적용");
+                text.Append($"\n{statusName} {applyData.stackAmount}스택 적용 (기본 확률 {applyData.baseChance}%, 능력치·저항 보정)");
             }
         }
 

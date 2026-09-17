@@ -100,6 +100,40 @@ public class QuestNodeMapPanel : MonoBehaviour
         UIManager.Instance?.BringExpeditionButtonsToFront();
     }
 
+    public Transform GetRouteNodeTransform(int nodeId)
+    {
+        return nodeRects.TryGetValue(nodeId, out RectTransform nodeRect)
+            ? nodeRect
+            : null;
+    }
+
+    public QuestEncounterDialog GetEncounterDialog() => encounterDialog;
+
+    public QuestEncounterDialog OpenSharedEncounter()
+    {
+        Clear();
+        if (UIManager.Instance?.battleUiRoot != null)
+            UIManager.Instance.battleUiRoot.SetActive(false);
+        gameObject.SetActive(true);
+        UIManager.Instance?.SetExpeditionMapButtonVisible(false);
+        if (routeBoard != null)
+            routeBoard.SetActive(false);
+        if (panelBackground != null)
+            panelBackground.color = Color.clear;
+        if (encounterDialog != null)
+            encounterDialog.gameObject.SetActive(true);
+        transform.SetAsLastSibling();
+        UIManager.Instance?.SetExpeditionButtonState(true, false);
+        UIManager.Instance?.BringExpeditionButtonsToFront();
+        return encounterDialog;
+    }
+
+    public void SetSharedStatus(string message)
+    {
+        if (statusText != null)
+            statusText.text = message;
+    }
+
     private void Build(ActiveQuestRuntime active)
     {
         Clear();
@@ -320,6 +354,11 @@ public class QuestNodeMapPanel : MonoBehaviour
 
     private void SelectNode(QuestRouteNode node)
     {
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition)
+        {
+            if (node != null) MultiplayerSession.Instance.ChooseExpeditionOption(node.id.ToString());
+            return;
+        }
         if (node == null || QuestManager.Instance == null || !QuestManager.Instance.SelectRouteNode(node.id))
         {
             if (statusText != null)

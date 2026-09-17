@@ -12,5 +12,8 @@ public enum TraitSpecialFlag
     InitiativeAdvantage,
     Pathfinder,
     RestCook,
-    RestPerformer
+    RestPerformer,
+    CannotCounter,
+    FearOfBlades,
+    LastStand
 }

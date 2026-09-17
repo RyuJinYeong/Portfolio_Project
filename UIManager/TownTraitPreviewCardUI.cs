@@ -22,7 +22,7 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         if (nameText != null)
         {
             TraitGrade grade = runtime != null
-                ? TraitGradeUtility.GetGrade(runtime.point)
+                ? TraitGradeUtility.GetGrade(runtime.point, trait)
                 : trait.defaultAcquireGrade;
             nameText.text = $"{grade} {trait.traitName}";
             nameText.color = GetPolarityTextColor(trait.polarity);
@@ -62,10 +62,7 @@ public class TownTraitPreviewCardUI : MonoBehaviour
     public static string BuildDescription(TraitRuntimeData runtime, TraitDefinitionSO trait)
     {
         StringBuilder text = new StringBuilder();
-        bool hasSpecialFlag = trait.specialFlags != null &&
-            trait.specialFlags.Exists(flag => flag != TraitSpecialFlag.None);
-
-        if (hasSpecialFlag && !string.IsNullOrWhiteSpace(trait.description))
+        if (!string.IsNullOrWhiteSpace(trait.description))
             text.Append(trait.description.Trim());
 
         int shift = TraitGradeUtility.GetGradeShift(runtime, trait);
@@ -83,7 +80,7 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         if (changes.Length > 0)
         {
             if (text.Length > 0)
-                text.Append("\n\n");
+                text.Append("\n");
 
             text.Append(changes);
         }
@@ -103,7 +100,7 @@ public class TownTraitPreviewCardUI : MonoBehaviour
             if (conditionalChanges.Length > 0)
             {
                 if (text.Length > 0)
-                    text.Append("\n\n");
+                    text.Append("\n");
 
                 string condition = $"{GetWeaponTypeText(trait.requiredWeaponType)} 장착 시 ";
                 text.Append(condition);
@@ -111,25 +108,22 @@ public class TownTraitPreviewCardUI : MonoBehaviour
             }
         }
 
-        if (text.Length == 0 && !string.IsNullOrWhiteSpace(trait.description))
-            text.Append(trait.description.Trim());
-
         return text.Length > 0 ? text.ToString() : "효과 설명 없음";
     }
 
     private static void AppendStatChanges(StringBuilder text, CharacterStats stats, bool percentage)
     {
         string suffix = percentage ? "%" : string.Empty;
-        AppendValue(text, "근력", stats.Strength, suffix);
-        AppendValue(text, "기교", stats.Dexterity, suffix);
-        AppendValue(text, "속도", stats.Speed, suffix);
-        AppendValue(text, "지능", stats.Intelligence, suffix);
-        AppendValue(text, "지혜", stats.Wisdom, suffix);
-        AppendValue(text, "건강", stats.Health, suffix);
-        AppendValue(text, "활력", stats.Vitality, suffix);
-        AppendValue(text, "인내", stats.Endurance, suffix);
-        AppendValue(text, "눈썰미", stats.Detection, suffix);
-        AppendValue(text, "통찰력", stats.Insight, suffix);
+        AppendValue(text, percentage ? "본체 근력" : "근력", stats.Strength, suffix);
+        AppendValue(text, percentage ? "본체 기교" : "기교", stats.Dexterity, suffix);
+        AppendValue(text, percentage ? "본체 속도" : "속도", stats.Speed, suffix);
+        AppendValue(text, percentage ? "본체 지능" : "지능", stats.Intelligence, suffix);
+        AppendValue(text, percentage ? "본체 지혜" : "지혜", stats.Wisdom, suffix);
+        AppendValue(text, percentage ? "본체 건강" : "건강", stats.Health, suffix);
+        AppendValue(text, percentage ? "본체 활력" : "활력", stats.Vitality, suffix);
+        AppendValue(text, percentage ? "본체 인내" : "인내", stats.Endurance, suffix);
+        AppendValue(text, percentage ? "본체 눈썰미" : "눈썰미", stats.Detection, suffix);
+        AppendValue(text, percentage ? "본체 통찰력" : "통찰력", stats.Insight, suffix);
         AppendValue(text, "최대 HP", stats.MaxHp, suffix);
         AppendValue(text, "최대 지구력", stats.MaxStamina, suffix);
         AppendValue(text, "최대 정신력", stats.MaxMentality, suffix);
@@ -159,11 +153,26 @@ public class TownTraitPreviewCardUI : MonoBehaviour
     {
         AppendValue(text, "대성공 확률", stats.CriticalChance, "%");
         AppendValue(text, "대성공 피해", stats.CriticalDamageBonus, "%");
+        AppendValue(text, "대응 성공률", stats.DefenseSkillSuccessRateBonus, "%");
         AppendValue(text, "상태이상 저항", stats.StatusResistance, "%");
+        AppendValue(text, "기본기 스킬 특화", stats.BasicSpecialization, "%");
+        AppendValue(text, "무기술 스킬 특화", stats.WeaponArtSpecialization, "%");
+        AppendValue(text, "검술 스킬 특화", stats.SwordsmanshipSpecialization, "%");
+        AppendValue(text, "궁술 스킬 특화", stats.ArcherySpecialization, "%");
+        AppendValue(text, "방패술 스킬 특화", stats.ShieldArtSpecialization, "%");
+        AppendValue(text, "체술 스킬 특화", stats.MartialArtSpecialization, "%");
+        AppendValue(text, "단검술 스킬 특화", stats.DaggerArtSpecialization, "%");
+        AppendValue(text, "마법 스킬 특화", stats.MagicSpecialization, "%");
+        AppendValue(text, "몬스터 스킬 특화", stats.MonsterSpecialization, "%");
         AppendValue(text, "맵 탐지 범위", stats.MapDetectionRange);
         AppendValue(text, "처치 시 HP 회복", stats.KillHpRecovery);
         AppendValue(text, "처치 시 지구력 회복", stats.KillStaminaRecovery);
         AppendValue(text, "처치 시 정신력 회복", stats.KillMentalityRecovery);
+        AppendValue(text, "스킬 시전 속도", stats.SkillActivationSpeedBonus, "%");
+        AppendValue(text, "개인 휴식 시 HP 회복량", stats.PersonalRestHpRecoveryBonus, "%p");
+        AppendValue(text, "개인 휴식 시 사기 회복량", stats.PersonalRestMoraleRecoveryBonus, "%p");
+        AppendValue(text, "휴식 시 HP 회복량", stats.PartyRestHpRecoveryBonus, "%p");
+        AppendValue(text, "휴식 시 사기 회복량", stats.PartyRestMoraleRecoveryBonus, "%p");
         AppendValue(text, "레벨업 최소 상승치", stats.MinLevelUpStatGainBonus);
         AppendValue(text, "레벨업 최대 상승치", stats.MaxLevelUpStatGainBonus);
     }
@@ -176,8 +185,7 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         if (text.Length > 0)
             text.Append('\n');
 
-        text.Append($"{label}{GetSubjectParticle(label)} {Mathf.Abs(value)}{suffix} " +
-            $"{(value > 0 ? "증가" : "감소")}합니다.");
+        text.Append($"{label} {(value > 0 ? "+" : "-")}{Mathf.Abs(value)}{suffix}");
     }
 
     private static void AppendValue(StringBuilder text, string label, float value, string suffix = "")
@@ -188,8 +196,7 @@ public class TownTraitPreviewCardUI : MonoBehaviour
         if (text.Length > 0)
             text.Append('\n');
 
-        text.Append($"{label}{GetSubjectParticle(label)} {Mathf.Abs(value):0.##}{suffix} " +
-            $"{(value > 0f ? "증가" : "감소")}합니다.");
+        text.Append($"{label} {(value > 0f ? "+" : "-")}{Mathf.Abs(value):0.##}{suffix}");
     }
 
     private static string GetSubjectParticle(string label)

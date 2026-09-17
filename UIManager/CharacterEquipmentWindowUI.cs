@@ -27,6 +27,8 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
     public Text legacyCharacterNameText;
     public Text legacyCharacterLevelText;
     public Button closeButton;
+    public Button previousCharacterButton;
+    public Button nextCharacterButton;
     [Header("Stats Panel")]
     public RectTransform statsContainer;
     public GameObject statRowTemplate;
@@ -34,6 +36,7 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
     public Button specialStatsTabButton;
     public Button traitsTabButton;
     public Button storageButton;
+    [SerializeField] private GameObject twoHandedBlock;
     public SharedInventoryType returnInventoryType = SharedInventoryType.ExpeditionStorage;
     public List<EquipmentSlotBinding> slots = new();
 
@@ -41,6 +44,45 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
     private CharacterData characterData;
     private StatsPage statsPage;
     private string portraitEquipmentSignature;
+    private readonly List<CharacterData> navigationCharacters = new();
+
+    public void SetNavigationCharacters(IEnumerable<CharacterData> characters)
+    {
+        navigationCharacters.Clear();
+        if (characters != null)
+            foreach (CharacterData character in characters)
+                if (character != null && !navigationCharacters.Exists(item => item.ID == character.ID))
+                    navigationCharacters.Add(character);
+
+        bool canNavigate = navigationCharacters.Count > 1 && characterData != null &&
+            navigationCharacters.Exists(item => item.ID == characterData.ID);
+        if (previousCharacterButton != null) previousCharacterButton.interactable = canNavigate;
+        if (nextCharacterButton != null) nextCharacterButton.interactable = canNavigate;
+    }
+
+    public void PreviousCharacter() => SwitchCharacter(-1);
+    public void NextCharacter() => SwitchCharacter(1);
+
+    private void SwitchCharacter(int direction)
+    {
+        int index = navigationCharacters.FindIndex(item => item.ID == characterData?.ID);
+        if (index < 0 || navigationCharacters.Count < 2)
+            return;
+
+        CharacterData next = navigationCharacters[
+            (index + direction + navigationCharacters.Count) % navigationCharacters.Count];
+        var navigation = new List<CharacterData>(navigationCharacters);
+        InventoryItemTooltipUI.Instance?.Hide();
+        TooltipManager.Instance?.HideTooltip();
+        InventoryUIController controller = InventoryUIController.Instance;
+        CharacterManager manager = CharacterPoolManager.Instance?.Get(next.ID);
+        if (manager != null)
+            controller.SetSelectedCharacter(manager);
+        else
+            controller.SetSelectedCharacterData(next);
+        controller.OpenEquipment();
+        SetNavigationCharacters(navigation);
+    }
 
     private void OnEnable()
     {
@@ -91,6 +133,7 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
     {
         characterManager = manager;
         characterData = manager != null ? manager.character : null;
+        SetNavigationCharacters(null);
         portraitEquipmentSignature = GetPortraitEquipmentSignature(characterData);
         returnInventoryType = inventoryType;
 
@@ -105,6 +148,7 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
     {
         characterManager = null;
         characterData = character;
+        SetNavigationCharacters(null);
         portraitEquipmentSignature = GetPortraitEquipmentSignature(characterData);
 
         if (storageButton != null)
@@ -137,6 +181,11 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
     public void Refresh()
     {
         CharacterData character = characterData;
+
+        if (twoHandedBlock != null)
+        {
+            twoHandedBlock.SetActive(character != null && !character.CanEquipSubWeapon());
+        }
 
         if (characterNameText != null)
             characterNameText.text = character != null ? character.Name : "";
@@ -385,7 +434,7 @@ public class CharacterEquipmentWindowUI : MonoBehaviour
 
         if (trait != null)
         {
-            TraitGrade grade = TraitGradeUtility.GetGrade(runtime.point);
+            TraitGrade grade = TraitGradeUtility.GetGrade(runtime.point, trait);
             string color = ColorUtility.ToHtmlStringRGB(GetTraitColor(trait.polarity));
             AddStatRow(
                 $"{trait.traitName} <color=#{color}>({grade})</color>",

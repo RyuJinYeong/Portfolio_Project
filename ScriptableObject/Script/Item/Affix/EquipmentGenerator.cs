@@ -4,6 +4,8 @@ using UnityEngine;
 
 public static class EquipmentGenerator
 {
+    public const int CurrentGenerationVersion = 1;
+
     public static GeneratedEquipmentData Generate(EquipmentDefinitionSO baseEquipment, EquipmentRarity rarity)
     {
         if (baseEquipment == null)
@@ -59,6 +61,7 @@ public static class EquipmentGenerator
     {
         GeneratedEquipmentData generated = new GeneratedEquipmentData
         {
+            generationVersion = CurrentGenerationVersion,
             instanceId = System.Guid.NewGuid().ToString(),
             definitionUid = baseEquipment.uid,
             tier = baseEquipment.tier,
@@ -93,7 +96,6 @@ public static class EquipmentGenerator
         int percent = EquipmentRarityUtility.GetBaseStatBonusPercent(rarity);
 
         generated.statModifiers = EquipmentStatRoller.ScaleStats(generated.statModifiers, percent);
-        generated.specialStatModifiers = EquipmentStatRoller.ScaleSpecialStats(generated.specialStatModifiers, percent);
     }
 
     private static bool ShouldRollSpecial(EquipmentRarity rarity)

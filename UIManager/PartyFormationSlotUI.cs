@@ -10,22 +10,26 @@ public class PartyFormationSlotUI : MonoBehaviour
     public TMP_Text emptyText;
     public TMP_Text rowText;
     public Button rowButton;
+    public Button equipmentButton;
     public Button removeButton;
 
     private int slotIndex;
     private Action<int> removeRequested;
     private Action<int> rowToggleRequested;
+    private Action<int> equipmentRequested;
 
     public void Bind(
         int index,
         CharacterData character,
         bool isFront,
         Action<int> onRemove,
-        Action<int> onToggleRow)
+        Action<int> onToggleRow,
+        Action<int> onOpenEquipment)
     {
         slotIndex = index;
         removeRequested = onRemove;
         rowToggleRequested = onToggleRow;
+        equipmentRequested = onOpenEquipment;
 
         bool occupied = character != null;
 
@@ -57,6 +61,9 @@ public class PartyFormationSlotUI : MonoBehaviour
         if (rowButton != null)
             rowButton.gameObject.SetActive(occupied);
 
+        if (equipmentButton != null)
+            equipmentButton.gameObject.SetActive(occupied);
+
         if (removeButton != null)
             removeButton.gameObject.SetActive(occupied);
 
@@ -75,6 +82,9 @@ public class PartyFormationSlotUI : MonoBehaviour
         if (rowButton != null)
             rowButton.onClick.AddListener(ToggleRow);
 
+        if (equipmentButton != null)
+            equipmentButton.onClick.AddListener(OpenEquipment);
+
         if (removeButton != null)
             removeButton.onClick.AddListener(Remove);
     }
@@ -83,6 +93,9 @@ public class PartyFormationSlotUI : MonoBehaviour
     {
         if (rowButton != null)
             rowButton.onClick.RemoveListener(ToggleRow);
+
+        if (equipmentButton != null)
+            equipmentButton.onClick.RemoveListener(OpenEquipment);
 
         if (removeButton != null)
             removeButton.onClick.RemoveListener(Remove);
@@ -96,5 +109,10 @@ public class PartyFormationSlotUI : MonoBehaviour
     private void Remove()
     {
         removeRequested?.Invoke(slotIndex);
+    }
+
+    private void OpenEquipment()
+    {
+        equipmentRequested?.Invoke(slotIndex);
     }
 }

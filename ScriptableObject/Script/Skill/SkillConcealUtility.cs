@@ -104,4 +104,33 @@ public static class SkillConcealUtility
 
         return RevealLevel.None;
     }
+
+    public static bool ShouldHideFromLocalPlayer(SkillQueueData queueData)
+    {
+        if (queueData == null || !queueData.isConcealed)
+            return false;
+
+        CharacterData user = queueData.user != null ? queueData.user.character : null;
+
+        if (user == null)
+            return true;
+
+        MultiplayerSession session = MultiplayerSession.Instance;
+
+        if (session == null || !session.IsSharedBattle)
+            return !user.IsMine;
+
+        MultiplayerSession.FormationSlot userSlot = session.Expedition?.party?.Find(slot =>
+            slot?.character != null && slot.character.id == user.ID);
+
+        if (userSlot == null)
+            return true;
+
+        if (!session.IsFriendlyMatch)
+            return false;
+
+        int localTeam = session.FriendlyTeam(session.LocalProfileId);
+        int userTeam = session.FriendlyTeam(userSlot.ownerId);
+        return localTeam < 0 || userTeam != localTeam;
+    }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -22,6 +23,26 @@ public class TownCharacterManagementPanel : MonoBehaviour
     public TMP_Text selectedSkillsText;
     public TMP_InputField renameInput;
     public Button renameButton;
+    public GameObject renameDialog;
+
+    [Header("Revival")]
+    public GameObject revivePanel;
+    public TMP_Text reviveGoldText;
+    public TMP_Text reviveEssenceText;
+    public TMP_Text accountGoldText;
+    public TMP_Text accountEssenceText;
+    public GameObject reviveDialog;
+    public GameObject insufficientGoldDialog;
+    public TMP_Text reviveDialogGoldText;
+    public TMP_Text reviveDialogEssenceText;
+    public TMP_Text insufficientGoldText;
+    public TMP_Text insufficientEssenceText;
+    [Min(0)] public float revivalGoldPerValue = 30f;
+    [Min(0)] public int minimumRevivalGold = 100;
+    [Min(1)] public float revivalLevelsPerEssence = 10f;
+    [Min(1)] public float revivalTraitPointsPerEssence = 32f;
+    private string pendingRevivalId;
+    private int displayedGold = int.MinValue;
 
     [Header("Roster Summary")]
     public TMP_Text skillSummaryText;
@@ -96,15 +117,27 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
     private void OnEnable()
     {
+        CancelRevive();
+        SharedInventoryUtility.InventoryChanged += RefreshRevival;
+        CancelRename();
         WireButtons(true);
         SelectStatsDetail();
     }
 
     private void OnDisable()
     {
+        CancelRevive();
+        SharedInventoryUtility.InventoryChanged -= RefreshRevival;
+        CancelRename();
         TooltipManager.Instance?.HideTooltip();
         WireButtons(false);
         Clear();
+    }
+
+    private void LateUpdate()
+    {
+        if (accountGoldText != null && PlayerManager.Instance.GetCurrentPlayerData()?.gold != displayedGold)
+            RefreshRevival();
     }
 
     public void OpenAndBuild()
@@ -116,15 +149,11 @@ public class TownCharacterManagementPanel : MonoBehaviour
             ? PlayerManager.Instance.GetCurrentPlayerData()
             : null;
 
-        int requiredCount = playerData?.characterIds?.Count ?? 0;
-        int pooledCount = CharacterPoolManager.Instance != null
-            ? CharacterPoolManager.Instance.Pool.Count
-            : 0;
-
         if (CharacterPoolManager.Instance == null)
             return;
 
-        if (pooledCount < requiredCount)
+        if (playerData?.characterIds?.Any(id => !string.IsNullOrEmpty(id) &&
+            CharacterPoolManager.Instance.Get(id) == null) == true)
         {
             CharacterPoolManager.Instance.BuildPoolFromPlayerData(RebuildFromPool);
             return;
@@ -161,13 +190,15 @@ public class TownCharacterManagementPanel : MonoBehaviour
 
         CharacterManager firstCharacter = null;
 
-        foreach (string id in playerData.characterIds)
+        foreach (string id in playerData.characterIds.Distinct().OrderBy(id =>
+            playerData.revivalRequiredCharacterIds?.Contains(id) == true ? 1 : 0))
         {
             CharacterManager characterManager = CharacterPoolManager.Instance.Get(id);
 
             if (characterManager == null ||
                 characterManager.character == null ||
-                !characterManager.character.IsAlive)
+                playerData.missingCharacterIds?.Contains(id) == true ||
+                (!characterManager.character.IsAlive && playerData.revivalRequiredCharacterIds?.Contains(id) != true))
                 continue;
 
             if (firstCharacter == null)
@@ -220,6 +251,8 @@ public class TownCharacterManagementPanel : MonoBehaviour
         CharacterData character,
         CharacterManager characterManager = null)
     {
+        CancelRevive();
+        CancelRename();
         SelectedCharacter = characterManager;
         SelectedCharacterData = character;
 
@@ -267,7 +300,11 @@ public class TownCharacterManagementPanel : MonoBehaviour
         foreach (CharacterInfoPanel panel in infoPanels)
         {
             if (panel != null)
+            {
                 panel.Refresh();
+                if (panel.nameText != null && IsRevivalRequired(GetPanelData(panel)))
+                    panel.nameText.text = GetPanelData(panel).Name + " (가사상태)";
+            }
         }
 
         RefreshSelectedCharacter();
@@ -279,6 +316,12 @@ public class TownCharacterManagementPanel : MonoBehaviour
             uiManager?.OpenCharacterEquipment(SelectedCharacter);
         else if (SelectedCharacterData != null)
             uiManager?.OpenCharacterEquipment(SelectedCharacterData);
+
+        var characters = new List<CharacterData>();
+        foreach (CharacterInfoPanel panel in infoPanels)
+            if (panel != null && panelData.TryGetValue(panel, out CharacterData character))
+                characters.Add(character);
+        inventoryUIController?.equipmentWindow?.SetNavigationCharacters(characters);
     }
 
     public void OpenSelectedSkills()
@@ -334,6 +377,8 @@ public class TownCharacterManagementPanel : MonoBehaviour
         }
 
         RewireCardButtons(panel, character, characterManager);
+        if (panel.nameText != null && IsRevivalRequired(character))
+            panel.nameText.text = character.Name + " (가사상태)";
         WireCardSelection(cardObject, character, characterManager);
 
         Image panelImage = cardObject.GetComponent<Image>();
@@ -361,10 +406,8 @@ public class TownCharacterManagementPanel : MonoBehaviour
             panel.btnEquipment.onClick.RemoveAllListeners();
             panel.btnEquipment.onClick.AddListener(() =>
             {
-                if (characterManager != null)
-                    uiManager?.OpenCharacterEquipment(characterManager);
-                else
-                    uiManager?.OpenCharacterEquipment(character);
+                SelectCharacter(character, characterManager);
+                OpenSelectedEquipment();
             });
         }
 
@@ -474,22 +517,20 @@ public class TownCharacterManagementPanel : MonoBehaviour
             selectedPortrait.enabled = character != null && character.Portrait != null;
         }
 
-        SetText(selectedNameText, character != null ? character.Name : "캐릭터를 선택하세요");
+        SetText(selectedNameText, character != null
+            ? character.Name + (IsRevivalRequired(character) ? " (가사상태)" : "")
+            : "캐릭터를 선택하세요");
+        RefreshRevival();
 
         bool canRename = character != null && character.IsMine && !showingExternalCharacters;
+        bool editingName = renameDialog != null && renameDialog.activeSelf;
 
         if (selectedNameText != null)
-            selectedNameText.gameObject.SetActive(!canRename || renameInput == null);
-
-        if (renameInput != null)
-        {
-            renameInput.gameObject.SetActive(canRename);
-            renameInput.SetTextWithoutNotify(canRename ? character.Name : string.Empty);
-        }
+            selectedNameText.gameObject.SetActive(!editingName);
 
         if (renameButton != null)
         {
-            renameButton.gameObject.SetActive(canRename);
+            renameButton.gameObject.SetActive(canRename && !editingName);
             renameButton.interactable = canRename;
         }
 
@@ -515,6 +556,117 @@ public class TownCharacterManagementPanel : MonoBehaviour
         statsDetailUI?.Refresh(stats);
         RebuildTraitCards(character);
         RebuildSkillCards(character);
+    }
+
+    private bool IsRevivalRequired(CharacterData character)
+    {
+        PlayerData player = PlayerManager.Instance.GetCurrentPlayerData();
+        return !showingExternalCharacters && !showingExpeditionParty && character != null &&
+            player?.characterIds?.Contains(character.ID) == true &&
+            player.missingCharacterIds?.Contains(character.ID) != true &&
+            player.revivalRequiredCharacterIds?.Contains(character.ID) == true;
+    }
+
+    private void GetRevivalCost(CharacterData character, out int gold, out int essence)
+    {
+        gold = Mathf.Max(minimumRevivalGold, Mathf.CeilToInt(
+            MercenaryGenerator.CalculateValue(character) * Mathf.Max(0f, revivalGoldPerValue)));
+        long points = 0;
+        if (character.Traits != null)
+            foreach (TraitRuntimeData trait in character.Traits)
+            {
+                if (trait == null) continue;
+                TraitDefinitionSO definition = GameDataRegistry.Instance?.GetTrait(trait.traitId);
+                points += definition != null && !definition.canGradeUp
+                    ? TraitGradeUtility.GetGradeValue(definition.defaultAcquireGrade)
+                    : Mathf.Clamp(trait.point, 0, TraitGradeUtility.MaxPoint);
+            }
+        essence = Mathf.Max(1, Mathf.CeilToInt(Mathf.Max(1, character.Level) / Mathf.Max(1f, revivalLevelsPerEssence)
+            + points / Mathf.Max(1f, revivalTraitPointsPerEssence)));
+    }
+
+    private int GetAvailableRevivalEssence(PlayerData player)
+    {
+        return player?.accountStorage?.Where(slot => slot != null &&
+            slot.itemUid == SharedInventoryUtility.FadedEssenceItemUid && slot.count > 0 &&
+            MultiplayerSession.Instance?.IsFriendlyStakeLocked(slot) != true).Sum(slot => slot.count) ?? 0;
+    }
+
+    private void RefreshRevival()
+    {
+        PlayerData player = PlayerManager.Instance.GetCurrentPlayerData();
+        int owned = GetAvailableRevivalEssence(player);
+        displayedGold = player?.gold ?? 0;
+        SetText(accountGoldText, $"{player?.gold ?? 0:N0}");
+        SetText(accountEssenceText, $"{owned:N0}");
+        SetText(reviveDialogGoldText, $"{player?.gold ?? 0:N0}");
+        SetText(reviveDialogEssenceText, $"{owned:N0}");
+        SetText(insufficientGoldText, $"{player?.gold ?? 0:N0}");
+        SetText(insufficientEssenceText, $"{owned:N0}");
+        bool eligible = IsRevivalRequired(SelectedCharacterData);
+        if (revivePanel != null) revivePanel.SetActive(eligible);
+        if (!eligible) return;
+        GetRevivalCost(SelectedCharacterData, out int gold, out int essence);
+        SetText(reviveGoldText, $"{gold:N0}");
+        SetText(reviveEssenceText, $"{essence:N0}");
+    }
+
+    public void RequestRevive()
+    {
+        CancelRevive();
+        RefreshRevival();
+        if (!IsRevivalRequired(SelectedCharacterData) ||
+            MultiplayerSession.Instance?.InExpedition == true || QuestManager.Instance?.active != null)
+            return;
+        PlayerData player = PlayerManager.Instance.GetCurrentPlayerData();
+        GetRevivalCost(SelectedCharacterData, out int gold, out int essence);
+        bool enough = player.gold >= gold && GetAvailableRevivalEssence(player) >= essence;
+        GameObject dialog = enough ? reviveDialog : insufficientGoldDialog;
+        if (enough) pendingRevivalId = SelectedCharacterData.ID;
+        if (dialog != null)
+        {
+            dialog.transform.SetAsLastSibling();
+            dialog.SetActive(true);
+        }
+    }
+
+    public void ConfirmRevive()
+    {
+        if (pendingRevivalId == null || pendingRevivalId != SelectedCharacterData?.ID ||
+            !IsRevivalRequired(SelectedCharacterData))
+        {
+            CancelRevive();
+            return;
+        }
+        GetRevivalCost(SelectedCharacterData, out int gold, out int essence);
+        PlayerData player = PlayerManager.Instance.GetCurrentPlayerData();
+        if (player.gold < gold || GetAvailableRevivalEssence(player) < essence)
+        {
+            RequestRevive();
+            return;
+        }
+        CharacterManager manager = SelectedCharacter;
+        CharacterData character = SelectedCharacterData;
+        pendingRevivalId = null;
+        if (!PlayerManager.Instance.TryReviveCharacter(character, gold, essence))
+        {
+            CancelRevive();
+            RefreshRevival();
+            return;
+        }
+        CancelRevive();
+        SharedInventoryUtility.NotifyInventoryChanged();
+        manager?.battlePresentationHandler?.SetDeadState(false);
+        manager?.UpdateCharacterUI();
+        RebuildFromPool();
+        SelectCharacter(character, manager);
+    }
+
+    public void CancelRevive()
+    {
+        pendingRevivalId = null;
+        if (reviveDialog != null) reviveDialog.SetActive(false);
+        if (insufficientGoldDialog != null) insufficientGoldDialog.SetActive(false);
     }
 
     private void RebuildTraitCards(CharacterData character)
@@ -583,7 +735,46 @@ public class TownCharacterManagementPanel : MonoBehaviour
         WireButton(traitSummaryButton, SelectTraitsDetail, add);
         WireButton(skillSummaryButton, SelectSkillsDetail, add);
         WireButton(closeButton, ClosePanel, add);
-        WireButton(renameButton, RenameSelectedCharacter, add);
+        WireButton(renameButton, BeginRename, add);
+        if (renameInput != null)
+        {
+            if (add)
+                renameInput.onSubmit.AddListener(SubmitRename);
+            else
+                renameInput.onSubmit.RemoveListener(SubmitRename);
+        }
+    }
+
+    private void BeginRename()
+    {
+        CharacterData character = SelectedCharacterData;
+        if (character == null || !character.IsMine || showingExternalCharacters ||
+            renameInput == null || renameDialog == null)
+            return;
+
+        renameDialog.SetActive(true);
+        selectedNameText.gameObject.SetActive(false);
+        renameButton.gameObject.SetActive(false);
+        renameInput.SetTextWithoutNotify(character.Name);
+        renameInput.Select();
+        renameInput.ActivateInputField();
+    }
+
+    private void SubmitRename(string value)
+    {
+        if (!renameInput.wasCanceled)
+            RenameSelectedCharacter();
+    }
+
+    public void CancelRename()
+    {
+        if (renameDialog != null)
+            renameDialog.SetActive(false);
+        if (selectedNameText != null)
+            selectedNameText.gameObject.SetActive(true);
+        if (renameButton != null)
+            renameButton.gameObject.SetActive(SelectedCharacterData != null &&
+                SelectedCharacterData.IsMine && !showingExternalCharacters);
     }
 
     public void RenameSelectedCharacter()
@@ -591,7 +782,7 @@ public class TownCharacterManagementPanel : MonoBehaviour
         CharacterData character = SelectedCharacterData;
 
         if (character == null || !character.IsMine || showingExternalCharacters ||
-            renameInput == null)
+            renameInput == null || renameDialog == null || !renameDialog.activeSelf)
         {
             return;
         }
@@ -601,10 +792,12 @@ public class TownCharacterManagementPanel : MonoBehaviour
         if (string.IsNullOrEmpty(newName))
         {
             renameInput.SetTextWithoutNotify(character.Name);
+            CancelRename();
             return;
         }
 
         character.Name = newName;
+        CancelRename();
         RefreshAll();
         PlayerManager.Instance?.SaveCharacter(character);
 

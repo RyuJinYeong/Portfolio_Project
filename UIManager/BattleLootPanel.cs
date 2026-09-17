@@ -24,6 +24,8 @@ public class BattleLootPanel : MonoBehaviour
     private bool preparingReturn;
     private int acquiredGold;
     private BattleLootPickupMessageUI activePickupMessage;
+    private bool sharedDecisionMode;
+    private bool settledRewardMode;
 
     public void Open(IReadOnlyList<InventorySlotData> loot, Action onCompleted)
     {
@@ -33,16 +35,19 @@ public class BattleLootPanel : MonoBehaviour
     public void Open(
         IReadOnlyList<InventorySlotData> loot,
         int gold,
-        Action onCompleted)
+        Action onCompleted,
+        bool settledRewards = false)
     {
         ClearViews();
+        sharedDecisionMode = false;
+        settledRewardMode = settledRewards;
         remainingLoot.Clear();
         finishing = false;
         showingExpeditionStorage = false;
         preparingReturn = false;
         acquiredGold = Mathf.Max(0, gold);
         QuestRouteNode currentNode = QuestManager.Instance?.GetCurrentRouteNode();
-        returnToTownAfterLoot = currentNode != null &&
+        returnToTownAfterLoot = !settledRewardMode && currentNode != null &&
             (currentNode.type == QuestRouteNodeType.Boss ||
              currentNode.nextNodeIds == null || currentNode.nextNodeIds.Count == 0);
         completed = onCompleted;
@@ -59,7 +64,13 @@ public class BattleLootPanel : MonoBehaviour
         collectAllButton?.onClick.RemoveAllListeners();
         collectAllButton?.onClick.AddListener(OnPrimaryButton);
         closeButton?.onClick.RemoveAllListeners();
-        closeButton?.onClick.AddListener(() => Finish(true));
+        closeButton?.onClick.AddListener(() =>
+        {
+            if (settledRewardMode) OnPrimaryButton();
+            else Finish(true);
+        });
+        if (collectAllButton != null) collectAllButton.interactable = true;
+        if (closeButton != null) closeButton.interactable = true;
 
         Transform blocker = transform.Find("BlockControl");
         if (blocker != null)
@@ -71,6 +82,74 @@ public class BattleLootPanel : MonoBehaviour
         gameObject.SetActive(true);
         RefreshPanel();
         transform.SetAsLastSibling();
+    }
+
+    public void OpenSharedDecision(
+        InventorySlotData item,
+        string title,
+        Action onNeed,
+        Action onPass)
+    {
+        ClearViews();
+        remainingLoot.Clear();
+        sharedDecisionMode = true;
+        finishing = false;
+        showingExpeditionStorage = false;
+        preparingReturn = false;
+        acquiredGold = 0;
+        completed = null;
+
+        if (item != null)
+            remainingLoot.Add(item);
+
+        collectAllButton?.onClick.RemoveAllListeners();
+        collectAllButton?.onClick.AddListener(() => onNeed?.Invoke());
+        closeButton?.onClick.RemoveAllListeners();
+        closeButton?.onClick.AddListener(() => onPass?.Invoke());
+        SetButtonText(collectAllButton, "입찰");
+        SetButtonText(closeButton, "양보");
+        SetTitle(title);
+
+        Transform blocker = transform.Find("BlockControl");
+        if (blocker != null)
+        {
+            blocker.gameObject.SetActive(true);
+            blocker.SetAsFirstSibling();
+        }
+
+        gameObject.SetActive(true);
+        BuildViews();
+        transform.SetAsLastSibling();
+    }
+
+    public void RefreshSharedDecision(string title, bool canChoose, string selectedOption)
+    {
+        if (!sharedDecisionMode)
+            return;
+
+        SetTitle(title);
+        if (collectAllButton != null)
+        {
+            collectAllButton.interactable = canChoose;
+            SetButtonText(collectAllButton, selectedOption == "need" ? "입찰 선택됨" : "입찰");
+        }
+        if (closeButton != null)
+        {
+            closeButton.interactable = canChoose;
+            SetButtonText(closeButton, selectedOption == "pass" ? "양보 선택됨" : "양보");
+        }
+    }
+
+    public void CloseSharedDecision()
+    {
+        if (!sharedDecisionMode)
+            return;
+
+        sharedDecisionMode = false;
+        ClearViews();
+        remainingLoot.Clear();
+        gameObject.SetActive(false);
+        Destroy(gameObject);
     }
 
     private void BuildViews()
@@ -87,10 +166,12 @@ public class BattleLootPanel : MonoBehaviour
 
             InventoryItemSlotUI view = Instantiate(itemPrefab, content);
             view.gameObject.SetActive(true);
-            Action<InventorySlotData, int> clickAction = showingExpeditionStorage
-                ? (Action<InventorySlotData, int>)OnExpeditionStorageItemClicked
-                : CollectOne;
-            view.Bind(slot, clickAction);
+            if (sharedDecisionMode)
+                view.Bind(slot);
+            else
+                view.Bind(slot, showingExpeditionStorage
+                    ? (Action<InventorySlotData, int>)OnExpeditionStorageItemClicked
+                    : CollectOne);
             itemViews.Add(view);
         }
     }
@@ -310,7 +391,7 @@ public class BattleLootPanel : MonoBehaviour
             closeButton.interactable = true;
             SetButtonText(
                 closeButton,
-                preparingReturn
+                settledRewardMode ? "확인하고 닫기" : preparingReturn
                     ? remainingLoot.Count > 0 ? "남은 전리품 포기하고 복귀" : "마을로 복귀"
                     : remainingLoot.Count > 0 ? "남은 전리품 포기" : "닫기");
         }
@@ -353,8 +434,9 @@ public class BattleLootPanel : MonoBehaviour
             legacy.text = value;
     }
 
-    private static bool Collect(InventorySlotData slot)
+    private bool Collect(InventorySlotData slot)
     {
+        if (settledRewardMode) return true;
         PlayerData playerData = PlayerManager.Instance != null
             ? PlayerManager.Instance.GetCurrentPlayerData()
             : null;
@@ -424,14 +506,14 @@ public class BattleLootPanel : MonoBehaviour
 
         foreach (InventorySlotData slot in remainingLoot)
         {
-            if (slot != null && slot.IsGeneratedEquipment())
+            if (!settledRewardMode && slot != null && slot.IsGeneratedEquipment())
                 EquipmentInstanceRepository.RemoveRuntime(slot.equipmentInstanceId);
         }
 
         remainingLoot.Clear();
         InventoryItemTooltipUI.Instance?.Hide();
         UIManager.Instance?.CloseInventoryItemActionMenu();
-        SharedInventoryUtility.SaveChanges();
+        if (!settledRewardMode) SharedInventoryUtility.SaveChanges();
 
         Action callback = completed;
         completed = null;

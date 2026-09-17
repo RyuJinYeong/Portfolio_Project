@@ -26,8 +26,15 @@ public class StatusEffectDefinitionSO : ScriptableObject
     [Header("Effect Value")]
     public int fixedDamagePerStack;
 
+    public SkillType damageType = SkillType.Physical;
+    public float damagePerStackAttackMultiplier;
+
     [Tooltip("대응 성공률 감소 공식에서 사용하는 스택당 위력")]
     public int counterPenaltyPerStack;
+
+    public int automaticResultStatusId;
+    public int immunityStatusId;
+    public int remainingRoundsOnApply;
 
     [Header("Status Apply Power")]
     [Tooltip("공격자가 이 상태이상을 부여할 때 사용하는 능력치 공식")]

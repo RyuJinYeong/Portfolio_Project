@@ -399,6 +399,17 @@ public class GameDataRegistry : MonoBehaviour
 
     public TraitDefinitionSO GetTrait(int id)
     {
+        id = id switch
+        {
+            5010 or 5015 or 5021 or 5026 => 5009,
+            5023 => 5002,
+            5004 or 5011 or 5012 or 5017 or 5022 or 5027 => 5007,
+            5001 or 5003 or 5006 or 5024 => 5014,
+            5013 or 5019 or 5020 => 5018,
+            1004 or 1005 => 1024,
+            1008 => 1021,
+            _ => id
+        };
         traitMap.TryGetValue(id, out TraitDefinitionSO trait);
 
         return trait;

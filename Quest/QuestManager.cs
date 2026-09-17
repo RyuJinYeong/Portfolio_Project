@@ -116,6 +116,7 @@ public class QuestRouteNode
     public List<int> encounterMonsterRoleIds = new();
     public bool encounterInsightRolled;
     public bool encounterInsightSucceeded;
+    public string encounterInsightCharacterName;
 }
 
 
@@ -690,6 +691,16 @@ public class QuestManager : MonoBehaviour
 
         BuildRoute(active);
 
+        foreach (string id in active.partyCharacterIds)
+        {
+            var manager = CharacterPoolManager.Instance?.Get(id);
+            if (manager != null)
+            {
+                manager.character.LastStandUsed = false;
+                PlayerManager.Instance.SaveCharacter(manager.character);
+            }
+        }
+
 
         board.Remove(entry);
 
@@ -879,13 +890,14 @@ public class QuestManager : MonoBehaviour
         current.encounterInsightRolled = true;
         int bestDetection = 0;
         int bestInsight = 0;
+        float bestContribution = -1f;
 
         if (GameManager.Instance != null)
         {
             foreach (CharacterManager manager in GameManager.Instance.GetAllCharacters())
             {
                 if (manager == null || manager.character == null ||
-                    !manager.character.IsMine || manager.character.FinalStats == null)
+                    !manager.character.IsMine || !manager.character.IsAlive || manager.character.FinalStats == null)
                 {
                     continue;
                 }
@@ -896,8 +908,15 @@ public class QuestManager : MonoBehaviour
                     continue;
                 }
 
-                bestDetection = Mathf.Max(bestDetection, manager.character.FinalStats.Detection);
-                bestInsight = Mathf.Max(bestInsight, manager.character.FinalStats.Insight);
+                float contribution = manager.character.FinalStats.Detection * encounter.insight.chancePerDetection +
+                    manager.character.FinalStats.Insight * encounter.insight.chancePerInsight;
+                if (contribution > bestContribution)
+                {
+                    bestContribution = contribution;
+                    bestDetection = manager.character.FinalStats.Detection;
+                    bestInsight = manager.character.FinalStats.Insight;
+                    current.encounterInsightCharacterName = manager.character.Name;
+                }
             }
         }
 

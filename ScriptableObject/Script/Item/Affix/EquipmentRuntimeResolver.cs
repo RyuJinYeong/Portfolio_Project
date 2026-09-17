@@ -16,6 +16,25 @@ public static class EquipmentRuntimeResolver
 
         if (generated != null)
         {
+            if (generated.generationVersion < EquipmentGenerator.CurrentGenerationVersion)
+            {
+                CharacterSpecialStats correctedSpecialStats = definition.specialStatModifiers != null
+                    ? definition.specialStatModifiers.Copy()
+                    : new CharacterSpecialStats();
+
+                if (generated.appliedAffixes != null)
+                {
+                    foreach (EquipmentAffixRollData affix in generated.appliedAffixes)
+                    {
+                        if (affix?.rolledSpecialStatModifiers != null)
+                            correctedSpecialStats += affix.rolledSpecialStatModifiers;
+                    }
+                }
+
+                generated.specialStatModifiers = correctedSpecialStats;
+                generated.generationVersion = EquipmentGenerator.CurrentGenerationVersion;
+            }
+
             return new EquipmentRuntimeData
             {
                 definition = definition,

@@ -23,6 +23,7 @@ public class CharacterUIHandler : MonoBehaviour
 
     [Header("Optional Icons")]
     public Texture2D concealedSkillIcon;
+    public Texture2D concealedSkillBadgeIcon;
 
     public TextMeshProUGUI characterName;
 
@@ -97,7 +98,8 @@ public class CharacterUIHandler : MonoBehaviour
             ApplySkillButtonData(skillIconInstance, data, i, false);
             ApplyQueueText(skillIconInstance, data, i);
 
-            if (caster.character.IsMine)
+            if (MultiplayerSession.Instance?.IsSharedBattle == true
+                    ? MultiplayerSession.Instance.OwnsBattleCharacter(caster) : caster.character.IsMine)
             {
                 Button button = skillIconInstance.GetComponent<Button>();
 
@@ -108,6 +110,7 @@ public class CharacterUIHandler : MonoBehaviour
                     button.onClick.RemoveAllListeners();
                     button.onClick.AddListener(() =>
                     {
+                        UIManager.Instance?.PlayBattleButtonClickSound();
                         TooltipManager.Instance?.HideTooltip();
 
                         CharacterTargeting targeting = UIManager.Instance != null
@@ -182,7 +185,8 @@ public class CharacterUIHandler : MonoBehaviour
                 skillButton.protectedTarget = protectedTarget;
             }
 
-            if (caster.character.IsMine)
+            if (MultiplayerSession.Instance?.IsSharedBattle == true
+                    ? MultiplayerSession.Instance.OwnsBattleCharacter(caster) : caster.character.IsMine)
             {
                 Button button = skillIconInstance.GetComponent<Button>();
 
@@ -193,6 +197,7 @@ public class CharacterUIHandler : MonoBehaviour
                     button.onClick.RemoveAllListeners();
                     button.onClick.AddListener(() =>
                     {
+                        UIManager.Instance?.PlayBattleButtonClickSound();
                         TooltipManager.Instance?.HideTooltip();
 
                         CharacterTargeting targeting = UIManager.Instance != null
@@ -327,11 +332,13 @@ public class CharacterUIHandler : MonoBehaviour
             {
                 attackButton.onClick.RemoveAllListeners();
 
-                if (attacker.character.IsMine)
+                if (MultiplayerSession.Instance?.IsSharedBattle == true
+                    ? MultiplayerSession.Instance.OwnsBattleCharacter(attacker) : attacker.character.IsMine)
                 {
                     int capturedAttackIndex = attackIndex;
                     attackButton.onClick.AddListener(() =>
                     {
+                        UIManager.Instance?.PlayBattleButtonClickSound();
                         TooltipManager.Instance?.HideTooltip();
 
                         CharacterTargeting targeting = UIManager.Instance != null
@@ -355,11 +362,13 @@ public class CharacterUIHandler : MonoBehaviour
             {
                 counterButton.onClick.RemoveAllListeners();
 
-                if (counterUser == characterManager && characterManager.character.IsMine)
+                if (counterUser == characterManager && (MultiplayerSession.Instance?.IsSharedBattle == true
+                    ? MultiplayerSession.Instance.OwnsBattleCharacter(characterManager) : characterManager.character.IsMine))
                 {
                     int capturedCounterIndex = localIndex;
                     counterButton.onClick.AddListener(() =>
                     {
+                        UIManager.Instance?.PlayBattleButtonClickSound();
                         TooltipManager.Instance?.HideTooltip();
 
                         CharacterTargeting targeting = UIManager.Instance != null
@@ -476,6 +485,7 @@ public class CharacterUIHandler : MonoBehaviour
         sb.queueData = data;
         sb.queueIndex = queueIndex;
         sb.isCounterSkill = isCounterSkill;
+        sb.SetConcealedBadge(data.isConcealed, concealedSkillBadgeIcon);
     }
 
     private void ApplyQueueText(GameObject skillIconInstance, SkillQueueData data, int queueIndex)
@@ -498,13 +508,8 @@ public class CharacterUIHandler : MonoBehaviour
 
     private bool ShouldShowConcealedIcon(SkillQueueData data)
     {
-        if (data == null)
-            return false;
-
-        if (!data.isConcealed)
-            return false;
-
-        return data.revealLevel != RevealLevel.Full;
+        return SkillConcealUtility.ShouldHideFromLocalPlayer(data) &&
+               data.revealLevel != RevealLevel.Full;
     }
 
     private string GetSkillDisplayText(SkillQueueData data)
@@ -512,7 +517,7 @@ public class CharacterUIHandler : MonoBehaviour
         if (data == null || data.skill == null)
             return string.Empty;
 
-        if (!data.isConcealed)
+        if (!SkillConcealUtility.ShouldHideFromLocalPlayer(data))
             return data.skill.skillName;
 
         switch (data.revealLevel)
@@ -686,7 +691,7 @@ public class CharacterUIHandler : MonoBehaviour
             {
                 iconImage.sprite = definition.icon;
                 iconImage.color = definition.icon != null
-                    ? Color.white
+                    ? (definition.isDebuff ? Color.white : new Color(0.65f, 1f, 0.75f))
                     : new Color(0.25f, 0.25f, 0.25f, 0.85f);
             }
 
@@ -729,7 +734,8 @@ public class CharacterUIHandler : MonoBehaviour
             };
         }
 
-        return $"<b>{definition.statusName}</b>\n{description}\n현재 중첩: {stack}";
+        string countLabel = definition is BuffDefinitionSO ? "남은 피격 횟수" : "현재 중첩";
+        return $"<b>{definition.statusName}</b>\n{description}\n{countLabel}: {stack}";
     }
 
     private void UpdateTurnIcon()

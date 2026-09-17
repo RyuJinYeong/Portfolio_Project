@@ -49,7 +49,9 @@ public class CharacterPoolManager : MonoBehaviour
 
     public void BuildPoolFromPlayerData(Action onDone = null)
     {
-        if (IsBuilt)
+        var playerIds = PlayerManager.Instance.GetCurrentPlayerData()?.characterIds;
+        if (IsBuilt && (playerIds == null || playerIds.TrueForAll(id =>
+            string.IsNullOrEmpty(id) || _pool.ContainsKey(id))))
         {
             onDone?.Invoke();
             return;
@@ -244,10 +246,9 @@ public class CharacterPoolManager : MonoBehaviour
         foreach (Collider collider in preview.GetComponentsInChildren<Collider>(true))
             collider.enabled = false;
 
+        yield return null;
+        yield return null;
         FitPreviewToAnchor(preview, anchor.gameObject);
-
-        yield return null;
-        yield return null;
         yield return new WaitForEndOfFrame();
 
         Texture2D portrait = anchor.CapturePortrait(portraitCamera, portraitRenderTexture);
@@ -267,6 +268,27 @@ public class CharacterPoolManager : MonoBehaviour
 
     private static void FitPreviewToAnchor(GameObject preview, GameObject anchor)
     {
+        Transform previewHead = null;
+        Transform anchorHead = null;
+        foreach (var model in new[] { preview, anchor })
+        {
+            Transform head = null;
+            var animator = model.GetComponentInChildren<Animator>(true);
+            if (animator != null && animator.isHuman) head = animator.GetBoneTransform(HumanBodyBones.Head);
+            if (head == null)
+                foreach (var bone in model.GetComponentsInChildren<Transform>(true))
+                    if (bone.name.Equals("head", StringComparison.OrdinalIgnoreCase) || bone.name.EndsWith(":Head", StringComparison.OrdinalIgnoreCase))
+                    { head = bone; break; }
+            if (model == preview) previewHead = head; else anchorHead = head;
+        }
+        if (previewHead != null && anchorHead != null)
+        {
+            float height = previewHead.position.y - preview.transform.position.y;
+            if (height > 0.01f)
+                preview.transform.localScale *= (anchorHead.position.y - anchor.transform.position.y) / height;
+            preview.transform.position += anchorHead.position - previewHead.position;
+            return;
+        }
         if (!TryGetRendererBounds(preview, out Bounds previewBounds) ||
             !TryGetRendererBounds(anchor, out Bounds anchorBounds) ||
             previewBounds.size.y <= 0.001f)

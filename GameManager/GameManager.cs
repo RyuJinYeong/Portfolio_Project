@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -91,6 +91,13 @@ public class GameManager : MonoBehaviour
     public void ReturnToTownAfterQuestAbandon()
     {
         StartCoroutine(CoSwitchStage("Town", false));
+    }
+
+    public void RestoreTownAfterSharedPreview()
+    {
+        StopAllCoroutines();
+        ClearSpawnedUnits();
+        ApplyStage("Town");
     }
 
     public void EnterQuestRouteNode(QuestRouteNode node)
@@ -192,6 +199,7 @@ public class GameManager : MonoBehaviour
 
     void SpawnSortie(PlayerData pd, Action onCompleted = null)
     {
+        string sharedExpeditionId = MultiplayerSession.Instance?.Expedition?.id;
         if (pd.activeCharacterIds == null || pd.activeCharacterIds.Count == 0)
         {
             Debug.LogWarning("No active characters for stage.");
@@ -225,6 +233,7 @@ public class GameManager : MonoBehaviour
 
             PlayerManager.Instance.LoadCharacter(characterId, ch =>
             {
+                if (sharedExpeditionId != null && MultiplayerSession.Instance?.Expedition?.id != sharedExpeditionId) return;
                 try
                 {
                     if (ch == null)
@@ -384,6 +393,11 @@ public class GameManager : MonoBehaviour
 
     private void HandleCurrentRouteNodeReady()
     {
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition)
+        {
+            MultiplayerSession.Instance.NotifyExpeditionNodeReady();
+            return;
+        }
         QuestRouteNode routeNode = QuestManager.Instance != null
             ? QuestManager.Instance.GetCurrentRouteNode()
             : null;
@@ -518,6 +532,11 @@ public class GameManager : MonoBehaviour
         StartEncounterBattle(monsterRoleIds);
     }
 
+    public void PrepareSharedQuestBattle()
+    {
+        StartQuestNodeBattle(QuestManager.Instance.GetCurrentRouteNode());
+    }
+
     public void StartEncounterBattle(List<int> monsterRoleIds)
     {
         if (monsterRoleIds == null || monsterRoleIds.Count == 0 ||
@@ -595,11 +614,81 @@ public class GameManager : MonoBehaviour
                     ? QuestManager.Instance.active.def.seed + i + 1
                     : 0);
 
+            if (monster != null && QuestManager.Instance?.active?.def != null)
+            {
+                int extraTraits = Mathf.Max(0, (int)QuestManager.Instance.active.def.difficulty);
+                TraitGenerationUtility.Apply(monster, new TraitGenerationData(), monster.Traits.Count + extraTraits,
+                    new System.Random(QuestManager.Instance.active.def.seed + i + 179));
+                monster.RemoveAllTraits(null);
+                monster.ApplyAllTraits(null);
+                monster.UpdateFinalStats();
+                monster.CurrentHp = monster.FinalStats.MaxHp;
+                monster.CurrentStamina = monster.FinalStats.MaxStamina;
+                monster.CurrentMentality = monster.FinalStats.MaxMentality;
+            }
+
             if (monster != null)
                 SpawnEnemy(monster, spawnPoints[i], i < frontRoleIds.Count);
         }
 
-        SignalRosterReady();
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition)
+            MultiplayerSession.Instance.CaptureExpeditionBattle();
+        else
+            SignalRosterReady();
+    }
+
+    public void SpawnSharedBattle(List<MultiplayerSession.SharedMonster> monsters)
+    {
+        if (QuestManager.Instance.GetCurrentRouteNode().type == QuestRouteNodeType.RandomEncounter)
+        {
+            StageManager.Instance.ActivateEncounterBattle();
+            var allies = allCharacters.Where(cm => cm != null && cm.character.IsMine).ToList();
+            int front = allies.Count(cm => cm.isFront);
+            var points = SpawnPointManager.Instance.GetAllySpawnPoints(front, allies.Count - front);
+            int frontIndex = 0;
+            int backIndex = front;
+            foreach (var ally in allies)
+            {
+                var point = points[ally.isFront ? frontIndex++ : backIndex++];
+                ally.transform.SetPositionAndRotation(point.position, point.rotation);
+            }
+        }
+        UIManager.Instance.questNodeMapPanel.Close();
+        UIManager.Instance.UISwitch(UIMode.Battle);
+        int frontCount = monsters.Count(monster => monster.isFront);
+        var spawns = SpawnPointManager.Instance.GetEnemySpawnPoints(frontCount, monsters.Count - frontCount);
+        int f = 0;
+        int b = frontCount;
+        foreach (var monster in monsters)
+        {
+            foreach (var item in monster.equipment) EquipmentInstanceRepository.AddRuntime(item);
+            var data = SaveMapper.FromDto(monster.character);
+            data.monsterRoleId = monster.roleId;
+            data.GrantsExperience = monster.grantsExperience;
+            SpawnEnemy(data, spawns[monster.isFront ? f++ : b++], monster.isFront);
+        }
+    }
+
+    public void SpawnFriendlyBattle(List<MultiplayerSession.FormationSlot> party)
+    {
+        ClearSpawnedUnits();
+        StageManager.Instance.ActivateFriendlyBattle();
+        var spawner = SpawnPointManager.Instance;
+        for (int team = 0; team < 2; team++)
+        {
+            var slots = party.Where(slot => MultiplayerSession.Instance.FriendlyTeam(slot.ownerId) == team).ToList();
+            int front = slots.Count(slot => slot.isFront);
+            var points = team == 0 ? spawner.GetAllySpawnPoints(front, slots.Count - front) :
+                spawner.GetEnemySpawnPoints(front, slots.Count - front);
+            int f = 0, b = front;
+            foreach (var slot in slots)
+            {
+                var data = SaveMapper.FromDto(slot.character);
+                data.IsMine = team == 0;
+                data.GrantsExperience = false;
+                SpawnCharacter(data, points[slot.isFront ? f++ : b++]);
+            }
+        }
     }
 
     private static bool ShouldSpawnMonsterInFront(
@@ -689,6 +778,8 @@ public class GameManager : MonoBehaviour
         CharacterManager characterManager = allyCharacter.GetComponent<CharacterManager>();
         if (characterManager != null)
         {
+            if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition)
+                characterManager.isFront = PlayerManager.Instance.GetCurrentPlayerData().TryGetPosition(characterData.ID, out bool frontRow) && frontRow;
             characterManager.InitializeCharacter(characterData);
             characterManager.battlePresentationHandler?.BindVisual(
                 characterManager.transform,
@@ -742,6 +833,13 @@ public class GameManager : MonoBehaviour
                 GameObject visual = Instantiate(modelPrefab, gameObject.transform);
                 visual.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
                 visual.transform.localScale = Vector3.one;
+
+                CharacterCustomization visualCustomization = visual.GetComponentInChildren<CharacterCustomization>(true);
+                if (visualCustomization != null)
+                {
+                    visualCustomization.ApplyCustomization(enemyData);
+                    visualCustomization.UpdateEquipmentAppearance(enemyData);
+                }
 
                 foreach (Collider collider in visual.GetComponentsInChildren<Collider>(true))
                     collider.enabled = false;

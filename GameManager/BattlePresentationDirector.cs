@@ -166,7 +166,12 @@ public class BattlePresentationDirector : MonoBehaviour
             ? protector.battlePresentationHandler
             : null;
 
-        attacker.combatHandler?.PrepareProtectionForPresentation(action);
+        MultiplayerSession multiplayer = MultiplayerSession.Instance;
+        if (multiplayer == null || !multiplayer.IsBattleReplica)
+        {
+            attacker.combatHandler?.PrepareProtectionForPresentation(action);
+            multiplayer?.BroadcastSkillPreparation(action, repeatsSameSkill);
+        }
 
         List<KeyValuePair<CharacterManager, SkillDefinitionSO>> successfulCounters = new();
 
@@ -328,9 +333,16 @@ public class BattlePresentationDirector : MonoBehaviour
         if (impactWait > 0f)
             yield return new WaitForSeconds(impactWait);
 
+        if (multiplayer != null && multiplayer.IsBattleReplica)
+        {
+            yield return multiplayer.WaitForReplicaImpact();
+            if (!multiplayer.IsBattleReplica) yield break;
+        }
+
         try
         {
             applyImpact?.Invoke();
+            multiplayer?.BroadcastSkillImpact(action);
         }
         catch
         {
@@ -427,6 +439,8 @@ public class BattlePresentationDirector : MonoBehaviour
     {
         if (!IsPresenting)
             return false;
+
+        MultiplayerSession.Instance?.CaptureBattlePopup(damage, null, position);
 
         pendingDamagePopups.Add(new PendingDamagePopup
         {

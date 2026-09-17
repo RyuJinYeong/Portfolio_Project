@@ -21,6 +21,11 @@ public static class SharedInventoryUtility
     public static event Action<CharacterManager> EquipmentChanged;
     public static event Action<CharacterManager> CharacterChanged;
 
+    public static void NotifyInventoryChanged()
+    {
+        InventoryChanged?.Invoke();
+    }
+
     public static List<InventorySlotData> GetStorage(
         PlayerData playerData,
         SharedInventoryType inventoryType)
@@ -331,6 +336,9 @@ public static class SharedInventoryUtility
         List<InventorySlotData> storage,
         InventorySlotData slot)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyStakeLocked(slot) == true)
+            return false;
+
         ItemDefinitionSO item = slot != null && GameDataRegistry.Instance != null
             ? GameDataRegistry.Instance.GetItem(slot.itemUid)
             : null;
@@ -356,6 +364,9 @@ public static class SharedInventoryUtility
         List<InventorySlotData> storage,
         InventorySlotData slot)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyStakeLocked(slot) == true)
+            return false;
+
         ItemDefinitionSO item = slot != null && GameDataRegistry.Instance != null
             ? GameDataRegistry.Instance.GetItem(slot.itemUid)
             : null;
@@ -460,6 +471,12 @@ public static class SharedInventoryUtility
         List<InventorySlotData> storage,
         InventorySlotData sourceSlot)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyMatch == true)
+            return false;
+
+        if (MultiplayerSession.Instance?.IsFriendlyStakeLocked(sourceSlot) == true)
+            return false;
+
         if (manager == null ||
             manager.character == null ||
             manager.character.FinalStats == null ||
@@ -568,7 +585,7 @@ public static class SharedInventoryUtility
                 traitId = essenceTrait.traitId,
                 point = Mathf.Max(1, essenceTrait.point)
             };
-            TraitGrade grade = TraitGradeUtility.GetGrade(runtime.point);
+            TraitGrade grade = TraitGradeUtility.GetGrade(runtime.point, trait);
             builder.Append($" · {grade}");
 
             if (revealLevel < MonsterEssenceAppraisalRevealLevel.Details)
@@ -690,6 +707,9 @@ public static class SharedInventoryUtility
         InventorySlotData slot,
         int count = 1)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyStakeLocked(slot) == true)
+            return false;
+
         if (!RemoveItemInternal(storage, slot, count))
             return false;
 
@@ -704,6 +724,9 @@ public static class SharedInventoryUtility
         InventorySlotData sourceSlot,
         int count = 1)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyStakeLocked(sourceSlot) == true)
+            return false;
+
         if (playerData == null || sourceType == destinationType || sourceSlot == null)
             return false;
 
@@ -753,6 +776,12 @@ public static class SharedInventoryUtility
         InventorySlotData sourceSlot,
         int slotIndex = 1)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyMatch == true)
+            return false;
+
+        if (MultiplayerSession.Instance?.IsFriendlyStakeLocked(sourceSlot) == true)
+            return false;
+
         if (manager == null || manager.character == null || storage == null || sourceSlot == null)
             return false;
 
@@ -769,22 +798,36 @@ public static class SharedInventoryUtility
             equipment.equipType,
             slotIndex);
 
+        bool replacesSubWeapon = equipment.equipType == EquipmentType.Weapon &&
+            equipment is WeaponDefinitionSO weapon &&
+            weapon.weaponTags != null && weapon.weaponTags.Contains(WeaponTag.TwoHanded);
+        InventorySlotData subWeapon = replacesSubWeapon
+            ? GetEquippedSlot(manager.character.EquipmentSlots, EquipmentType.SubWeapon)
+            : null;
+        var originalSlots = new List<InventorySlotData>(storage);
+        int[] originalCounts = originalSlots.ConvertAll(slot => slot != null ? slot.count : 0).ToArray();
         int newItemUid = sourceSlot.itemUid;
         string newInstanceId = sourceSlot.equipmentInstanceId;
 
         if (!RemoveItemInternal(storage, sourceSlot, 1))
             return false;
 
-        if (equipped != null && equipped.itemUid > 0 &&
-            !AddItemInternal(
-                storage,
-                equipped.itemUid,
-                1,
-                equipped.equipmentInstanceId))
+        foreach (InventorySlotData returned in new[] { equipped, subWeapon })
         {
-            AddItemInternal(storage, newItemUid, 1, newInstanceId);
-            return false;
+            if (returned != null && returned.itemUid > 0 &&
+                !AddItemInternal(storage, returned.itemUid, 1, returned.equipmentInstanceId))
+            {
+                storage.Clear();
+                storage.AddRange(originalSlots);
+                for (int i = 0; i < originalSlots.Count; i++)
+                    if (originalSlots[i] != null)
+                        originalSlots[i].count = originalCounts[i];
+                return false;
+            }
         }
+
+        if (replacesSubWeapon)
+            SetEquippedSlot(manager.character.EquipmentSlots, EquipmentType.SubWeapon, 1, 0, null);
 
         SetEquippedSlot(
             manager.character.EquipmentSlots,
@@ -807,6 +850,9 @@ public static class SharedInventoryUtility
         EquipmentType equipmentType,
         int slotIndex = 1)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyMatch == true)
+            return false;
+
         if (manager == null || manager.character == null || storage == null)
             return false;
 
@@ -847,6 +893,12 @@ public static class SharedInventoryUtility
         List<InventorySlotData> storage,
         InventorySlotData sourceSlot)
     {
+        if (MultiplayerSession.Instance?.IsFriendlyStakeLocked(sourceSlot) == true)
+            return false;
+
+        if (MultiplayerSession.Instance?.IsFriendlyMatch == true)
+            return false;
+
         if (manager == null || manager.character == null || storage == null || sourceSlot == null)
             return false;
 
@@ -988,7 +1040,7 @@ public static class SharedInventoryUtility
             }
 
             TraitGrade grade = TraitGradeUtility.GetGrade(
-                Mathf.Max(1, essenceTrait.point));
+                Mathf.Max(1, essenceTrait.point), trait);
             int weight = Mathf.Max(0, consumable.GetMonsterEssenceTraitWeight(grade));
 
             weight *= trait.polarity == TraitPolarity.Negative ? 1 : 2;
@@ -1041,7 +1093,7 @@ public static class SharedInventoryUtility
             {
                 UIManager.Instance?.ShowTraitAcquisition(
                     acquiredTrait,
-                    TraitGradeUtility.GetGrade(acquiredRuntime.point));
+                    TraitGradeUtility.GetGrade(acquiredRuntime.point, acquiredTrait));
             }
 
             ReturnRemovedEquipments(
@@ -1234,8 +1286,11 @@ public static class SharedInventoryUtility
 
         if (equipment is WeaponDefinitionSO weapon)
         {
+            if (character.HasTraitFlag(TraitSpecialFlag.FearOfBlades) &&
+                weapon.weaponType != WeaponType.Mace && weapon.weaponType != WeaponType.Hammer &&
+                weapon.weaponType != WeaponType.Shield && weapon.weaponType != WeaponType.Staff) return false;
             if (equipment.equipType == EquipmentType.Weapon &&
-                !character.CanEquipMainWeapon(weapon))
+                !character.CanEquipMainWeapon(weapon, replacingSubWeapon: true))
             {
                 return false;
             }

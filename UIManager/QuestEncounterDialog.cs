@@ -15,6 +15,8 @@ public class QuestEncounterDialog : MonoBehaviour
     private QuestEncounterDefinitionSO encounter;
     private bool insightSucceeded;
 
+    public Transform SharedChoiceContainer => choiceContainer;
+
     private void Awake()
     {
         if (choiceButtonTemplate != null)
@@ -55,6 +57,17 @@ public class QuestEncounterDialog : MonoBehaviour
         SetEncounterDescription();
 
         ShowChoices();
+    }
+
+    public void ShowSharedDecision(string title, string message)
+    {
+        gameObject.SetActive(true);
+        transform.SetAsLastSibling();
+        ClearButtons();
+        if (titleText != null)
+            titleText.text = title;
+        if (bodyText != null)
+            bodyText.text = message;
     }
 
     private void ShowChoices()
@@ -110,7 +123,7 @@ public class QuestEncounterDialog : MonoBehaviour
         ClearButtons();
 
         if (bodyText != null)
-            bodyText.text = $"{GetEncounterDescription()}\n\n‘{choice.text}’ 행동을 맡을 캐릭터를 선택하세요.";
+            bodyText.text = $"{GetEncounterDescription()}\n\n{choice.text.TrimEnd('.', ' ', '\n')}.\n캐릭터를 선택하세요.";
 
         List<CharacterManager> party = GetPartyCharacters(choice);
 
@@ -248,7 +261,7 @@ public class QuestEncounterDialog : MonoBehaviour
             return description;
         }
 
-        return $"{description}\n\n<color=#D8B56A>간파:</color> {encounter.insight.revealedText}";
+        return $"{description}\n\n<color=#D8B56A>간파 ({QuestManager.Instance.GetCurrentRouteNode().encounterInsightCharacterName}):</color> {encounter.insight.revealedText}";
     }
 
     private void AddButton(string text, Action onClick)

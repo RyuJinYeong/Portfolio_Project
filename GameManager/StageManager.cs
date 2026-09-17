@@ -119,6 +119,16 @@ public class StageManager : MonoBehaviour
             townStage.SetActive(stageType == "Town");
     }
 
+    public void ActivateFriendlyBattle()
+    {
+        SetActiveStage("Town");
+        Transform battleSpawnPoint = townCameraRoot.transform.Find("TownBattleCameraPos");
+        SpawnPointManager.Instance.transform.SetPositionAndRotation(
+            battleSpawnPoint.position, battleSpawnPoint.rotation);
+        SwitchCamera(UIMode.Battle);
+        UIManager.Instance.UISwitch(UIMode.Battle);
+    }
+
     public void SetActiveQuestStage(QuestDef quest)
     {
         SetActiveQuestStage(quest, quest != null ? quest.mapPrefabIndex : -1);
@@ -221,6 +231,7 @@ public class StageManager : MonoBehaviour
 
             if (listener != null)
                 listener.enabled = false;
+
         }
 
         activeEncounterCamera = null;

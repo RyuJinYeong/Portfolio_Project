@@ -16,6 +16,7 @@ public class CharacterTargeting : MonoBehaviour
     private CharacterManager selectedTarget;
 
     public SkillDefinitionSO selectedSkill;
+    private bool selectedSkillConcealed;
 
     private bool isTargeting = false;
     public bool isDefenseSkillTargeting = false;
@@ -369,6 +370,7 @@ public class CharacterTargeting : MonoBehaviour
 
     public void StartTargeting(SkillDefinitionSO skill)
     {
+        if (MultiplayerSession.Instance != null && !MultiplayerSession.Instance.CanControlBattleCharacter(selectedCharacter)) return;
         if (selectedCharacter == null ||
             selectedCharacter.character == null ||
             !selectedCharacter.character.IsAlive ||
@@ -389,6 +391,9 @@ public class CharacterTargeting : MonoBehaviour
         }
 
         selectedSkill = skill;
+        selectedSkillConcealed = !skill.isCounterSkill &&
+            UIManager.Instance != null &&
+            UIManager.Instance.IsSkillConcealEnabled;
         RefreshConfirmedTargetLines();
         SetLineRendererVisible(previewLineRenderer, true);
 
@@ -497,7 +502,7 @@ public class CharacterTargeting : MonoBehaviour
         if (selectedSkill.isCounterSkill)
             selectedCharacter.SelectCounterSkill(selectedSkill, target);
         else
-            selectedCharacter.SelectSkill(selectedSkill, target);
+            selectedCharacter.SelectSkill(selectedSkill, target, selectedSkillConcealed);
 
         RefreshConfirmedTargetLines();
 
@@ -506,6 +511,7 @@ public class CharacterTargeting : MonoBehaviour
 
     public void StartDefenseCharacterTargeting(CharacterManager defenseCharacter)
     {
+        if (MultiplayerSession.Instance != null && !MultiplayerSession.Instance.CanControlBattleCharacter(defenseCharacter)) return;
         if (defenseCharacter == null ||
             defenseCharacter.character == null ||
             !defenseCharacter.character.IsAlive)
@@ -569,6 +575,7 @@ public class CharacterTargeting : MonoBehaviour
         isDefenseSkillTargeting = false;
         isDefenseCharacterTargeting = false;
         selectedSkill = null;
+        selectedSkillConcealed = false;
         selectedTarget = null;
 
         SetLineRendererVisible(previewLineRenderer, false);
@@ -587,7 +594,7 @@ public class CharacterTargeting : MonoBehaviour
 
         if (caster != null &&
             caster.combatHandler != null &&
-            caster.combatHandler.ReplaceSkillInQueue(queueIndex, selectedSkill))
+            caster.combatHandler.ReplaceSkillInQueue(queueIndex, selectedSkill, selectedSkillConcealed))
         {
             StopTargeting();
         }

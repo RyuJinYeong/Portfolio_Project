@@ -15,6 +15,7 @@ public class InventoryItemTooltipUI : MonoBehaviour
     private Text nameText;
     private Text typeText;
     private Text qualityText;
+    private Text tagsText;
     private Text priceText;
     private Text countText;
     private Text descriptionText;
@@ -22,26 +23,40 @@ public class InventoryItemTooltipUI : MonoBehaviour
     private Image iconFrame;
     private Transform statsContainer;
     private Text statsTemplate;
+    private Text essenceDetailsText;
+    private Canvas tooltipCanvas;
     private readonly List<Text> statTexts = new List<Text>();
 
     public void Initialize()
     {
         Instance = this;
         rootRect = transform as RectTransform;
+        tooltipCanvas = GetComponent<Canvas>();
+
+        if (tooltipCanvas != null)
+        {
+            tooltipCanvas.overrideSorting = true;
+            tooltipCanvas.sortingOrder = short.MaxValue;
+        }
 
         Transform panel = FindDeepChild(transform, "Panel");
         Transform title = panel != null ? FindDirectChild(panel, "Title") : null;
         Transform iconBack = title != null ? FindDirectChild(title, "IconBack") : null;
-        Transform currency = title != null ? FindDirectChild(title, "CurrencyItem") : null;
+        Transform currency = panel != null ? FindDirectChild(panel, "CurrencyItem") : null;
 
         panelRect = panel as RectTransform;
         nameText = GetText(title, "Name_text");
         typeText = GetText(title, "Type_text");
         qualityText = GetText(title, "Quality_text");
+        tagsText = GetText(title, "Tags_text");
         priceText = GetText(currency, "Number");
         countText = GetText(iconBack, "Number");
         descriptionText = GetText(title, "Description_text");
         statsContainer = panel != null ? FindDirectChild(panel, "Stats") : null;
+        Transform essenceDetails = statsContainer != null
+            ? FindDirectChild(statsContainer, "EssenceDetails")
+            : null;
+        essenceDetailsText = essenceDetails != null ? essenceDetails.GetComponent<Text>() : null;
 
         Transform icon = iconBack != null ? FindDirectChild(iconBack, "Icon") : null;
         Transform frame = iconBack != null ? FindDirectChild(iconBack, "frame") : null;
@@ -58,7 +73,7 @@ public class InventoryItemTooltipUI : MonoBehaviour
             {
                 Text statText = statsContainer.GetChild(i).GetComponent<Text>();
 
-                if (statText == null)
+                if (statText == null || statText == essenceDetailsText)
                     continue;
 
                 statsTemplate ??= statText;
@@ -110,19 +125,41 @@ public class InventoryItemTooltipUI : MonoBehaviour
         }
 
         if (typeText != null)
-            typeText.text = GetItemTypeText(item);
+            typeText.text = GetItemTypeText(slot, item);
+
+        if (tagsText != null)
+        {
+            tagsText.text = item is WeaponDefinitionSO ? BuildEquipmentDetails(item) : "";
+            tagsText.gameObject.SetActive(!string.IsNullOrWhiteSpace(tagsText.text));
+        }
 
         if (qualityText != null)
         {
             qualityText.text = equipment != null
-                ? $"티어 {equipment.tier} / {GetRarityText(equipment.rarity)}"
+                ? $"티어 {equipment.tier} · {GetRarityText(equipment.rarity)}"
                 : slot.count > 1
                     ? $"보유 수량 {slot.count}"
                     : "";
+
+            RectTransform precedingRow = tagsText != null && tagsText.gameObject.activeSelf
+                ? tagsText.rectTransform
+                : typeText != null ? typeText.rectTransform : null;
+            if (precedingRow != null)
+                qualityText.rectTransform.anchoredPosition = new Vector2(
+                    qualityText.rectTransform.anchoredPosition.x,
+                    precedingRow.anchoredPosition.y - precedingRow.rect.height - 2f);
         }
 
         if (priceText != null)
+        {
             priceText.text = SharedInventoryUtility.GetSalePrice(slot).ToString("N0");
+            float priceWidth = Mathf.Ceil(priceText.preferredWidth);
+            priceText.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, priceWidth);
+            if (priceText.transform.parent is RectTransform currencyRect)
+                currencyRect.anchoredPosition = new Vector2(
+                    -16f - priceWidth - priceText.rectTransform.anchoredPosition.x,
+                    currencyRect.anchoredPosition.y);
+        }
 
         if (countText != null)
         {
@@ -145,17 +182,43 @@ public class InventoryItemTooltipUI : MonoBehaviour
 
         if (descriptionText != null)
         {
-            descriptionText.text = equipment != null
-                ? BuildEquipmentDetails(item)
-                : GetItemDescription(slot, item);
+            bool showEssenceDetailsBelow = slot.IsMonsterEssence() && essenceDetailsText != null;
+            descriptionText.text = showEssenceDetailsBelow
+                ? ""
+                : equipment != null
+                    ? item.description?.Trim()
+                    : GetItemDescription(slot, item);
         }
 
         PopulateStats(
+            slot,
+            item,
             equipment,
             comparisonCharacter != null ? comparisonCharacter.character : null);
 
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
+
+        if (tooltipCanvas != null)
+        {
+            tooltipCanvas.overrideSorting = true;
+            tooltipCanvas.sortingOrder = short.MaxValue;
+        }
+
+        if (panelRect != null && descriptionText != null && statsContainer is RectTransform statsRect)
+        {
+            RectTransform descriptionRect = descriptionText.rectTransform;
+            float descriptionHeight = Mathf.Max(24f, descriptionText.preferredHeight);
+            descriptionRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, descriptionHeight);
+            float dividerY = descriptionRect.anchoredPosition.y - descriptionHeight - 12f;
+            RectTransform divider = FindDirectChild(descriptionRect.parent, "line3") as RectTransform;
+            if (divider != null)
+                divider.anchoredPosition = new Vector2(divider.anchoredPosition.x, dividerY);
+            statsRect.anchoredPosition = new Vector2(statsRect.anchoredPosition.x, dividerY - 14f);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(statsRect);
+            float statsHeight = statsContainer.gameObject.activeSelf ? LayoutUtility.GetPreferredHeight(statsRect) : 0f;
+            statsRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, statsHeight);
+        }
 
         InventoryUIController controller = InventoryUIController.Instance;
         bool fixedToEquipment = equipment != null &&
@@ -249,7 +312,8 @@ public class InventoryItemTooltipUI : MonoBehaviour
 
         AppendSection(builder, equipped != null ? "장착 장비와 비교" : "능력치");
         AppendStats(builder, equipment.statModifiers, currentStats, equipped != null);
-        AppendSpecialStats(builder, equipment.specialStatModifiers, currentSpecial, equipped != null);
+        StringBuilder special = new StringBuilder();
+        AppendSpecialStats(special, equipment.specialStatModifiers, currentSpecial, equipped != null);
 
         if (equipment.grantedTraitIds != null)
         {
@@ -258,14 +322,22 @@ public class InventoryItemTooltipUI : MonoBehaviour
                 TraitDefinitionSO trait = GameDataRegistry.Instance.GetTrait(traitId);
 
                 if (trait != null)
-                    AppendTextLine(builder, $"특성: {trait.traitName}");
+                    AppendTextLine(special, $"특성: {trait.traitName}");
             }
+        }
+
+        if (special.Length > 0)
+        {
+            AppendSection(builder, "특수 효과");
+            builder.Append(special);
         }
 
         return builder.ToString();
     }
 
     private void PopulateStats(
+        InventorySlotData slot,
+        ItemDefinitionSO item,
         EquipmentRuntimeData equipment,
         CharacterData comparisonCharacter)
     {
@@ -276,6 +348,17 @@ public class InventoryItemTooltipUI : MonoBehaviour
         {
             if (statText != null)
                 statText.gameObject.SetActive(false);
+        }
+
+        if (essenceDetailsText != null)
+            essenceDetailsText.gameObject.SetActive(false);
+
+        if (equipment == null && slot != null && slot.IsMonsterEssence() && essenceDetailsText != null)
+        {
+            statsContainer.gameObject.SetActive(true);
+            essenceDetailsText.text = GetItemDescription(slot, item);
+            essenceDetailsText.gameObject.SetActive(true);
+            return;
         }
 
         statsContainer.gameObject.SetActive(equipment != null);
@@ -313,25 +396,13 @@ public class InventoryItemTooltipUI : MonoBehaviour
     {
         if (item is WeaponDefinitionSO weapon)
         {
-            string attributes = JoinWeaponAttributes(weapon.attributes);
-            string firstLine = $"{GetWeaponCategoryText(weapon.weaponCategory)} - " +
-                               GetWeaponTypeText(weapon.weaponType);
-
-            if (!string.IsNullOrEmpty(attributes))
-                firstLine += $" ({attributes})";
-
             string tags = JoinWeaponTags(weapon.weaponTags);
-            return string.IsNullOrEmpty(tags)
-                ? firstLine
-                : $"{firstLine}\n{tags}";
+            string attributes = JoinWeaponAttributes(weapon.attributes);
+            string details = $"{tags}[{GetWeaponCategoryText(weapon.weaponCategory)}]";
+            return string.IsNullOrEmpty(attributes) ? details : $"{details} · {attributes}";
         }
 
-        if (item is ArmorDefinitionSO armor)
-            return GetArmorCategoryText(armor.armorCategory);
-
-        return !string.IsNullOrWhiteSpace(item.description)
-            ? item.description.Trim()
-            : "장비 설명 없음";
+        return "";
     }
 
     private static string JoinWeaponAttributes(List<SkillAttribute> attributes)
@@ -347,7 +418,7 @@ public class InventoryItemTooltipUI : MonoBehaviour
                 values.Add(GetAttributeText(attribute));
         }
 
-        return string.Join(", ", values);
+        return string.Join(" / ", values);
     }
 
     private static string JoinWeaponTags(List<WeaponTag> tags)
@@ -361,18 +432,18 @@ public class InventoryItemTooltipUI : MonoBehaviour
         {
             values.Add(tag switch
             {
-                WeaponTag.TwoHanded => "양손무기",
-                WeaponTag.MagicWeapon => "마법무기",
+                WeaponTag.TwoHanded => "[양손]",
+                WeaponTag.MagicWeapon => "[마법]",
                 _ => tag.ToString()
             });
         }
 
-        return string.Join(", ", values);
+        return string.Join("", values);
     }
 
     private static string GetWeaponCategoryText(WeaponCategory category)
     {
-        return category == WeaponCategory.HeavyWeapon ? "중량무기" : "경량무기";
+        return category == WeaponCategory.HeavyWeapon ? "중량" : "경량";
     }
 
     private static string GetArmorCategoryText(ArmorCategory category)
@@ -392,7 +463,7 @@ public class InventoryItemTooltipUI : MonoBehaviour
         {
             WeaponType.Two_HandedSword => "양손검",
             WeaponType.Greatsword => "대검",
-            WeaponType.LongSword => "한손검",
+            WeaponType.LongSword => "장검",
             WeaponType.Dagger => "단검",
             WeaponType.Bow => "활",
             WeaponType.Mace => "철퇴",
@@ -470,27 +541,29 @@ public class InventoryItemTooltipUI : MonoBehaviour
         AppendValue(builder, "인내", candidate.Endurance, current.Endurance, compare);
         AppendValue(builder, "눈썰미", candidate.Detection, current.Detection, compare);
         AppendValue(builder, "통찰력", candidate.Insight, current.Insight, compare);
-        AppendValue(builder, "최대 체력", candidate.MaxHp, current.MaxHp, compare);
+        AppendValue(builder, "최대 HP", candidate.MaxHp, current.MaxHp, compare);
         AppendValue(builder, "최대 지구력", candidate.MaxStamina, current.MaxStamina, compare);
         AppendValue(builder, "최대 정신력", candidate.MaxMentality, current.MaxMentality, compare);
+        AppendValue(builder, "지구력 회복", candidate.StaminaRecovery, current.StaminaRecovery, compare);
+        AppendValue(builder, "정신력 회복", candidate.MentalityRecovery, current.MentalityRecovery, compare);
         AppendValue(builder, "물리 공격력", candidate.PhysicalAttack, current.PhysicalAttack, compare);
         AppendValue(builder, "마법 공격력", candidate.MagicalAttack, current.MagicalAttack, compare);
         AppendValue(builder, "물리 방어력", candidate.PhysicalDefense, current.PhysicalDefense, compare);
         AppendValue(builder, "마법 방어력", candidate.MagicalDefense, current.MagicalDefense, compare);
         AppendValue(builder, "공격 속도", candidate.AttackSpeed, current.AttackSpeed, compare);
         AppendValue(builder, "시전 속도", candidate.CastSpeed, current.CastSpeed, compare);
-        AppendValue(builder, "화염 저항", candidate.FireResistance, current.FireResistance, compare);
-        AppendValue(builder, "얼음 저항", candidate.IceResistance, current.IceResistance, compare);
-        AppendValue(builder, "번개 저항", candidate.LightningResistance, current.LightningResistance, compare);
-        AppendValue(builder, "관통 저항", candidate.PierceResistance, current.PierceResistance, compare);
-        AppendValue(builder, "참격 저항", candidate.SlashResistance, current.SlashResistance, compare);
-        AppendValue(builder, "타격 저항", candidate.SmashResistance, current.SmashResistance, compare);
-        AppendValue(builder, "화염 특화", candidate.FireAffinity, current.FireAffinity, compare);
-        AppendValue(builder, "얼음 특화", candidate.IceAffinity, current.IceAffinity, compare);
-        AppendValue(builder, "번개 특화", candidate.LightningAffinity, current.LightningAffinity, compare);
-        AppendValue(builder, "관통 특화", candidate.PierceAffinity, current.PierceAffinity, compare);
-        AppendValue(builder, "참격 특화", candidate.SlashAffinity, current.SlashAffinity, compare);
-        AppendValue(builder, "타격 특화", candidate.SmashAffinity, current.SmashAffinity, compare);
+        AppendValue(builder, "화염 저항", candidate.FireResistance, current.FireResistance, compare, "%");
+        AppendValue(builder, "얼음 저항", candidate.IceResistance, current.IceResistance, compare, "%");
+        AppendValue(builder, "번개 저항", candidate.LightningResistance, current.LightningResistance, compare, "%");
+        AppendValue(builder, "관통 저항", candidate.PierceResistance, current.PierceResistance, compare, "%");
+        AppendValue(builder, "참격 저항", candidate.SlashResistance, current.SlashResistance, compare, "%");
+        AppendValue(builder, "타격 저항", candidate.SmashResistance, current.SmashResistance, compare, "%");
+        AppendValue(builder, "화염 특화", candidate.FireAffinity, current.FireAffinity, compare, "%");
+        AppendValue(builder, "얼음 특화", candidate.IceAffinity, current.IceAffinity, compare, "%");
+        AppendValue(builder, "번개 특화", candidate.LightningAffinity, current.LightningAffinity, compare, "%");
+        AppendValue(builder, "관통 특화", candidate.PierceAffinity, current.PierceAffinity, compare, "%");
+        AppendValue(builder, "참격 특화", candidate.SlashAffinity, current.SlashAffinity, compare, "%");
+        AppendValue(builder, "타격 특화", candidate.SmashAffinity, current.SmashAffinity, compare, "%");
     }
 
     private static void AppendSpecialStats(
@@ -502,19 +575,33 @@ public class InventoryItemTooltipUI : MonoBehaviour
         candidate ??= new CharacterSpecialStats();
         current ??= new CharacterSpecialStats();
 
-        AppendValue(builder, "치명타 확률", candidate.CriticalChance, current.CriticalChance, compare);
-        AppendValue(builder, "치명타 피해", candidate.CriticalDamageBonus, current.CriticalDamageBonus, compare);
+        AppendValue(builder, "대성공 확률", candidate.CriticalChance, current.CriticalChance, compare, "%");
+        AppendValue(builder, "대성공 피해", candidate.CriticalDamageBonus, current.CriticalDamageBonus, compare, "%");
         AppendValue(
             builder,
-            "방어 스킬 성공률",
+            "대응 성공률",
             candidate.DefenseSkillSuccessRateBonus,
             current.DefenseSkillSuccessRateBonus,
-            compare);
-        AppendValue(builder, "상태이상 저항", candidate.StatusResistance, current.StatusResistance, compare);
+            compare, "%");
+        AppendValue(builder, "상태이상 저항", candidate.StatusResistance, current.StatusResistance, compare, "%");
+        AppendValue(builder, "기본기 스킬 특화", candidate.BasicSpecialization, current.BasicSpecialization, compare, "%");
+        AppendValue(builder, "무기술 스킬 특화", candidate.WeaponArtSpecialization, current.WeaponArtSpecialization, compare, "%");
+        AppendValue(builder, "검술 스킬 특화", candidate.SwordsmanshipSpecialization, current.SwordsmanshipSpecialization, compare, "%");
+        AppendValue(builder, "궁술 스킬 특화", candidate.ArcherySpecialization, current.ArcherySpecialization, compare, "%");
+        AppendValue(builder, "방패술 스킬 특화", candidate.ShieldArtSpecialization, current.ShieldArtSpecialization, compare, "%");
+        AppendValue(builder, "체술 스킬 특화", candidate.MartialArtSpecialization, current.MartialArtSpecialization, compare, "%");
+        AppendValue(builder, "단검술 스킬 특화", candidate.DaggerArtSpecialization, current.DaggerArtSpecialization, compare, "%");
+        AppendValue(builder, "마법 스킬 특화", candidate.MagicSpecialization, current.MagicSpecialization, compare, "%");
+        AppendValue(builder, "몬스터 스킬 특화", candidate.MonsterSpecialization, current.MonsterSpecialization, compare, "%");
         AppendValue(builder, "지도 탐지 범위", candidate.MapDetectionRange, current.MapDetectionRange, compare);
         AppendValue(builder, "처치 시 체력 회복", candidate.KillHpRecovery, current.KillHpRecovery, compare);
         AppendValue(builder, "처치 시 지구력 회복", candidate.KillStaminaRecovery, current.KillStaminaRecovery, compare);
         AppendValue(builder, "처치 시 정신력 회복", candidate.KillMentalityRecovery, current.KillMentalityRecovery, compare);
+        AppendValue(builder, "스킬 시전 속도", candidate.SkillActivationSpeedBonus, current.SkillActivationSpeedBonus, compare, "%");
+        AppendValue(builder, "개인 휴식 HP 회복", candidate.PersonalRestHpRecoveryBonus, current.PersonalRestHpRecoveryBonus, compare, "%p");
+        AppendValue(builder, "개인 휴식 사기 회복", candidate.PersonalRestMoraleRecoveryBonus, current.PersonalRestMoraleRecoveryBonus, compare, "%p");
+        AppendValue(builder, "원정대 휴식 HP 회복", candidate.PartyRestHpRecoveryBonus, current.PartyRestHpRecoveryBonus, compare, "%p");
+        AppendValue(builder, "원정대 휴식 사기 회복", candidate.PartyRestMoraleRecoveryBonus, current.PartyRestMoraleRecoveryBonus, compare, "%p");
         AppendValue(builder, "최소 레벨업 상승치", candidate.MinLevelUpStatGainBonus, current.MinLevelUpStatGainBonus, compare);
         AppendValue(builder, "최대 레벨업 상승치", candidate.MaxLevelUpStatGainBonus, current.MaxLevelUpStatGainBonus, compare);
     }
@@ -524,7 +611,8 @@ public class InventoryItemTooltipUI : MonoBehaviour
         string label,
         float candidate,
         float current,
-        bool compare)
+        bool compare,
+        string suffix = "")
     {
         if (Mathf.Approximately(candidate, 0f) &&
             (!compare || Mathf.Approximately(current, 0f)))
@@ -542,10 +630,10 @@ public class InventoryItemTooltipUI : MonoBehaviour
         if (compare && !Mathf.Approximately(difference, 0f))
         {
             string color = difference > 0f ? PositiveColor : NegativeColor;
-            comparison = $" <color={color}>({difference:+0.0;-0.0;0.0})</color>";
+            comparison = $" <color={color}>({difference:+0.##;-0.##;0}{suffix})</color>";
         }
 
-        AppendTextLine(builder, $"{label} {value}{comparison}");
+        AppendTextLine(builder, $"{label} {value}{suffix}{comparison}");
     }
 
     private static void AppendSection(StringBuilder builder, string title)
@@ -628,10 +716,22 @@ public class InventoryItemTooltipUI : MonoBehaviour
         panelRect.anchoredPosition = localPoint + new Vector2(placeLeft ? -12f : 12f, 0f);
     }
 
-    private static string GetItemTypeText(ItemDefinitionSO item)
+    private static string GetItemTypeText(InventorySlotData slot, ItemDefinitionSO item)
     {
+        if (slot != null && slot.IsMonsterEssence())
+        {
+            string baseType = item is ConsumableDefinitionSO ? "소모품" : "기타 아이템";
+            return $"{baseType} - 몬스터의 정수";
+        }
+
+        if (item is WeaponDefinitionSO weapon)
+            return $"{GetEquipmentTypeText(weapon.equipType)} · {GetWeaponTypeText(weapon.weaponType)}";
+
+        if (item is ArmorDefinitionSO armor)
+            return $"{GetEquipmentTypeText(armor.equipType)} · {GetArmorCategoryText(armor.armorCategory)}";
+
         if (item is EquipmentDefinitionSO equipment)
-            return $"장비 / {GetEquipmentTypeText(equipment.equipType)}";
+            return GetEquipmentTypeText(equipment.equipType);
 
         if (item is ConsumableDefinitionSO)
             return "소모품";

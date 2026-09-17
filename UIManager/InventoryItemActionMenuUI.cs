@@ -56,6 +56,16 @@ public class InventoryItemActionMenuUI : MonoBehaviour
         Action onDiscard)
     {
         ClearTargets();
+
+        if (slot != null && slot.IsMonsterEssence() && !slot.essenceAppraised)
+            directTargetSelection = false;
+
+        if (MultiplayerSession.Instance?.IsFriendlyMatch == true ||
+            MultiplayerSession.Instance?.IsFriendlyStakeLocked(slot) == true)
+        {
+            Close();
+            return;
+        }
         useOrEquipRequested = onUseOrEquip;
         appraiseRequested = onAppraise;
         activeTargetAction = null;

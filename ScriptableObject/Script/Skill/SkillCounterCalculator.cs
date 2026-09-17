@@ -83,7 +83,8 @@ public static class SkillCounterCalculator
 
         if (counterSkill.counterActionType != CounterActionType.Guard &&
             counterSkill.counterActionType != CounterActionType.Parry &&
-            counterSkill.counterActionType != CounterActionType.Evade)
+            counterSkill.counterActionType != CounterActionType.Evade &&
+            counterSkill.counterActionType != CounterActionType.Break)
         {
             return currentChance;
         }
@@ -92,7 +93,11 @@ public static class SkillCounterCalculator
             ? counterUser.FinalSpecialStats.DefenseSkillSuccessRateBonus
             : 0;
 
-        if (isProtectingOther && counterUser.HasTrait(ProtectionTraitId))
+        if (counterSkill.counterActionType == CounterActionType.Break)
+            bonusPercent = Mathf.Min(0, bonusPercent);
+
+        if (counterSkill.counterActionType != CounterActionType.Break &&
+            isProtectingOther && counterUser.HasTrait(ProtectionTraitId))
             bonusPercent += ProtectionSuccessBonusPercent;
 
         return currentChance + Mathf.RoundToInt(currentChance * bonusPercent / 100f);

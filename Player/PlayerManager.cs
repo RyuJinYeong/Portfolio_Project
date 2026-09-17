@@ -1,9 +1,8 @@
 using Newtonsoft.Json;
-using PlayFab;
-using PlayFab.ClientModels;
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using UnityEngine;
 
 public class PlayerManager : MonoBehaviour
@@ -14,6 +13,11 @@ public class PlayerManager : MonoBehaviour
     // 현재 로그인한 플레이어 정보
     private PlayerData currentPlayerData;
     private readonly HashSet<string> livingCharacterIds = new();
+    private LocalPlayerSaveDTO localSave;
+    private bool localSaveLoaded;
+    private bool recoveredFromBackup;
+
+    public string LocalSavePath => Path.Combine(Application.persistentDataPath, "Saves", "local-player.json");
 
     public bool HasLivingCharacter => livingCharacterIds.Count > 0;
 
@@ -24,6 +28,12 @@ public class PlayerManager : MonoBehaviour
 
     private void Awake()
     {
+        if (_instance != null && _instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         _instance = this;
         DontDestroyOnLoad(gameObject);
     }
@@ -58,102 +68,141 @@ public class PlayerManager : MonoBehaviour
 
     public void LoadPlayerDataFromPlayFab(Action onDataLoaded)
     {
-        PlayFabClientAPI.GetUserData(
-            new GetUserDataRequest(),
-            result =>
-            {
-                OnDataReceived(result);
-                onDataLoaded?.Invoke();
-            },
-            OnDataError);
+        LoadLocalPlayerData(onDataLoaded);
     }
 
-    private void OnDataReceived(GetUserDataResult result)
+    public void LoadLocalPlayerData(Action onDataLoaded, Action<string> onError = null)
     {
         try
         {
-            var data = result.Data;
-
-            if (data != null && data.TryGetValue("PlayerData", out var rec) && !string.IsNullOrEmpty(rec.Value))
+            if (!localSaveLoaded || suppressRemotePersistence)
             {
-                var dto = JsonConvert.DeserializeObject<PlayerSaveDTO>(rec.Value);
+                localSaveLoaded = false;
+                recoveredFromBackup = false;
+                string path = LocalSavePath;
+                bool hasSave = File.Exists(path) || File.Exists(path + ".bak");
+                if (hasSave)
+                {
+                    try
+                    {
+                        localSave = ReadLocalSave(path);
+                    }
+                    catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is JsonException)
+                    {
+                        if (!File.Exists(path + ".bak"))
+                            throw;
 
-                _instance.currentPlayerData = SaveMapper.FromDto(dto);
-                RefreshLivingCharacterIds(data);
-                Debug.Log("Player data loaded.");
-            }
-            else
-            {
-                _instance.currentPlayerData = new PlayerData();
+                        localSave = ReadLocalSave(path + ".bak");
+                        recoveredFromBackup = true;
+                        Debug.LogWarning($"Local save recovered from backup: {e.Message}");
+                    }
+
+                    currentPlayerData = SaveMapper.FromDto(localSave.player);
+                    if (string.IsNullOrEmpty(localSave.player.profileId))
+                    {
+                        localSave.player.profileId = currentPlayerData.profileId;
+                        WriteLocalSave();
+                    }
+                }
+                else
+                {
+                    localSave = new LocalPlayerSaveDTO();
+                    currentPlayerData = new PlayerData { playerName = "나의 용병단" };
+                    SaveMapper.FromDto((QuestStateDTO)null);
+                    localSave.player = SaveMapper.ToDto(currentPlayerData);
+                    WriteLocalSave();
+                }
+
                 livingCharacterIds.Clear();
-                Debug.LogWarning("No player data found, initializing new player data.");
+                foreach (string id in currentPlayerData.characterIds)
+                {
+                    if (localSave.characters.TryGetValue(id, out CharacterSaveDTO character) && character.isAlive)
+                        livingCharacterIds.Add(id);
+                }
 
-                SaveMapper.FromDto((QuestStateDTO)null);
+                suppressRemotePersistence = false;
+                localSaveLoaded = true;
+                Debug.Log($"Local player data loaded: {path}");
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"OnDataReceived parse error: {e}");
-            _instance.currentPlayerData = new PlayerData();
-            livingCharacterIds.Clear();
-            SaveMapper.FromDto((QuestStateDTO)null);
-        }
-    }
-
-    private void RefreshLivingCharacterIds(Dictionary<string, UserDataRecord> accountData)
-    {
-        livingCharacterIds.Clear();
-
-        if (currentPlayerData?.characterIds == null || accountData == null)
+            Debug.LogError($"Local player data load failed. Existing save was not replaced: {e}");
+            onError?.Invoke(e.Message);
             return;
+        }
 
-        foreach (string characterId in currentPlayerData.characterIds)
+        onDataLoaded?.Invoke();
+    }
+
+    private LocalPlayerSaveDTO ReadLocalSave(string path)
+    {
+        LocalPlayerSaveDTO save = JsonConvert.DeserializeObject<LocalPlayerSaveDTO>(File.ReadAllText(path));
+        if (save == null || save.v != 1 || save.player == null || save.characters == null)
+            throw new JsonSerializationException("Invalid or unsupported local save.");
+
+        foreach (var entry in save.characters)
         {
-            if (string.IsNullOrEmpty(characterId) ||
-                !accountData.TryGetValue(characterId, out UserDataRecord record) ||
-                string.IsNullOrEmpty(record.Value))
-            {
-                continue;
-            }
+            if (entry.Value == null || entry.Value.id != entry.Key)
+                throw new JsonSerializationException($"Invalid character record: {entry.Key}");
+        }
 
-            try
+        if (save.player.characterIds != null)
+        {
+            foreach (string id in save.player.characterIds)
             {
-                CharacterSaveDTO character = JsonConvert.DeserializeObject<CharacterSaveDTO>(record.Value);
-
-                if (character != null && character.isAlive)
-                    livingCharacterIds.Add(characterId);
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Character alive-state parse error ({characterId}): {e}");
+                if (string.IsNullOrEmpty(id) || !save.characters.ContainsKey(id))
+                    throw new JsonSerializationException($"Missing character record: {id}");
             }
         }
+
+        return save;
     }
 
-    private void OnDataError(PlayFabError error)
+    private void WriteLocalSave()
     {
-        Debug.LogError("Error loading player data: " + error.GenerateErrorReport());
-        // 클라이언트에 네트워크 에러 UI 출력 구현 예정
+        string path = LocalSavePath;
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        string temporaryPath = path + ".tmp";
+        string json = JsonConvert.SerializeObject(localSave);
+        using (var stream = new FileStream(temporaryPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            using (var writer = new StreamWriter(stream, System.Text.Encoding.UTF8, 1024, true))
+            {
+                writer.Write(json);
+                writer.Flush();
+            }
+            stream.Flush(true);
+        }
+
+        if (File.Exists(path))
+            File.Replace(temporaryPath, path, recoveredFromBackup ? null : path + ".bak");
+        else
+            File.Move(temporaryPath, path);
+
+        recoveredFromBackup = false;
     }
 
-    // 플레이어 데이터를 PlayFab에 저장하는 메서드
     public void SavePlayerDataToPlayFab()
     {
         if (suppressRemotePersistence)
             return;
 
-        var dto = SaveMapper.ToDto(_instance.currentPlayerData);
-        string jsonData = JsonConvert.SerializeObject(dto);
-
-        var request = new UpdateUserDataRequest
+        if (!localSaveLoaded)
         {
-            Data = new Dictionary<string, string> { { "PlayerData", jsonData } }
-        };
+            Debug.LogError("Local player data must be loaded before saving.");
+            return;
+        }
 
-        PlayFabClientAPI.UpdateUserData(request,
-            result => Debug.Log("Player data (V2) saved."),
-            error => Debug.LogError("Error saving player data: " + error.GenerateErrorReport())
-        );
+        try
+        {
+            localSave.player = SaveMapper.ToDto(currentPlayerData);
+            WriteLocalSave();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Local player data save failed: {e}");
+        }
     }
 
     public void SetCurrentPlayerData(PlayerData playerData)
@@ -175,7 +224,7 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
-    //캐릭터 생성 (고유 ID 발급 후 플레이팹에 저장)
+    //캐릭터 생성 (고유 ID 발급 후 저장)
     public void CreateCharacter(CharacterData character)
     {
         // 고유 ID 생성
@@ -183,9 +232,10 @@ public class PlayerManager : MonoBehaviour
         SaveCharacter(character);
     }
 
-    // 캐릭터 데이터를 ID를 키로 플레이팹에 저장
+    // 캐릭터 데이터를 ID를 키로 저장
     public void SaveCharacter(CharacterData characterData)
     {
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition) return;
         if (characterData != null && !string.IsNullOrEmpty(characterData.ID))
         {
             if (characterData.IsAlive)
@@ -197,51 +247,183 @@ public class PlayerManager : MonoBehaviour
         if (suppressRemotePersistence)
             return;
 
-        var dto = SaveMapper.ToDto(characterData);
-        string json = JsonConvert.SerializeObject(dto);
-
-        var request = new UpdateUserDataRequest
+        if (!localSaveLoaded)
         {
-            Data = new Dictionary<string, string> { { characterData.ID, json } }
-        };
+            Debug.LogError("Local player data must be loaded before saving characters.");
+            return;
+        }
 
-        PlayFabClientAPI.UpdateUserData(request,
-            result => Debug.Log("Character DTO saved."),
-            error => Debug.LogError("Error saving character DTO: " + error.GenerateErrorReport())
-        );
+        try
+        {
+            localSave.characters[characterData.ID] = SaveMapper.ToDto(characterData);
+            WriteLocalSave();
+            MultiplayerSession.Instance?.RefreshSavedCharacter(characterData);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Local character save failed: {e}");
+        }
+    }
+
+    public bool TryReviveCharacter(CharacterData character, int goldCost, int essenceCost)
+    {
+        PlayerData player = currentPlayerData;
+        if (!localSaveLoaded || suppressRemotePersistence || character == null || goldCost < 0 || essenceCost < 1 ||
+            MultiplayerSession.Instance?.InExpedition == true || QuestManager.Instance?.active != null ||
+            player?.characterIds?.Contains(character.ID) != true ||
+            player.revivalRequiredCharacterIds?.Contains(character.ID) != true ||
+            player.missingCharacterIds?.Contains(character.ID) == true || player.gold < goldCost)
+            return false;
+
+        var materials = new List<InventorySlotData>();
+        long available = 0;
+        if (player.accountStorage != null)
+            foreach (InventorySlotData slot in player.accountStorage)
+                if (slot != null && slot.itemUid == SharedInventoryUtility.FadedEssenceItemUid && slot.count > 0 &&
+                    MultiplayerSession.Instance?.IsFriendlyStakeLocked(slot) != true)
+                {
+                    materials.Add(slot);
+                    available += slot.count;
+                }
+        if (available < essenceCost) return false;
+
+        LocalPlayerSaveDTO previousSave = localSave;
+        var previousStorage = new List<InventorySlotData>(player.accountStorage);
+        var previousCounts = new Dictionary<InventorySlotData, int>();
+        foreach (InventorySlotData slot in materials) previousCounts[slot] = slot.count;
+        var previousRevivalIds = new List<string>(player.revivalRequiredCharacterIds);
+        int previousGold = player.gold;
+        bool previousAlive = character.IsAlive;
+        int previousHp = character.CurrentHp;
+        int previousStamina = character.CurrentStamina;
+        int previousMentality = character.CurrentMentality;
+        try
+        {
+            character.UpdateFinalStats();
+            int remaining = essenceCost;
+            foreach (InventorySlotData slot in materials)
+            {
+                int amount = Mathf.Min(remaining, slot.count);
+                slot.count -= amount;
+                remaining -= amount;
+                if (slot.count == 0) player.accountStorage.Remove(slot);
+                if (remaining == 0) break;
+            }
+            player.gold -= goldCost;
+            player.revivalRequiredCharacterIds.RemoveAll(id => id == character.ID);
+            character.IsAlive = true;
+            character.CurrentHp = Mathf.Max(1, character.FinalStats.MaxHp);
+            character.CurrentStamina = character.FinalStats.MaxStamina;
+            character.CurrentMentality = character.FinalStats.MaxMentality;
+            localSave = JsonConvert.DeserializeObject<LocalPlayerSaveDTO>(JsonConvert.SerializeObject(previousSave));
+            localSave.player = SaveMapper.ToDto(player);
+            localSave.characters[character.ID] = SaveMapper.ToDto(character);
+            WriteLocalSave();
+        }
+        catch (Exception e)
+        {
+            localSave = previousSave;
+            player.gold = previousGold;
+            player.accountStorage.Clear();
+            player.accountStorage.AddRange(previousStorage);
+            foreach (var entry in previousCounts) entry.Key.count = entry.Value;
+            player.revivalRequiredCharacterIds.Clear();
+            player.revivalRequiredCharacterIds.AddRange(previousRevivalIds);
+            character.IsAlive = previousAlive;
+            character.CurrentHp = previousHp;
+            character.CurrentStamina = previousStamina;
+            character.CurrentMentality = previousMentality;
+            Debug.LogError($"부활 저장 실패. 자원과 캐릭터 상태를 복원했습니다: {e}");
+            return false;
+        }
+        livingCharacterIds.Add(character.ID);
+        MultiplayerSession.Instance?.RefreshSavedCharacter(character);
+        return true;
     }
 
     // 캐릭터 데이터를 로드하는 메서드
     public void LoadCharacter(string characterId, Action<CharacterData> onCharacterLoaded)
     {
-        PlayFabClientAPI.GetUserData(new GetUserDataRequest(), result =>
+        StartCoroutine(LoadLocalCharacter(characterId, onCharacterLoaded));
+    }
+
+    public MultiplayerSession.ExpeditionState SharedCheckpoint => localSave?.sharedCheckpoint;
+
+    public bool HasSharedReceipt(string id) => localSave?.sharedReceipts?.Contains(id) == true;
+
+    public bool SaveSharedCheckpoint(MultiplayerSession.ExpeditionState state)
+    {
+        if (!localSaveLoaded) return false;
+        var previous = localSave.sharedCheckpoint;
+        try
         {
-            var key = characterId;
-            if (result.Data != null && result.Data.ContainsKey(key))
+            localSave.sharedCheckpoint = state == null ? null : JsonConvert.DeserializeObject<MultiplayerSession.ExpeditionState>(JsonConvert.SerializeObject(state));
+            WriteLocalSave();
+            return true;
+        }
+        catch (Exception e)
+        {
+            localSave.sharedCheckpoint = previous;
+            Debug.LogError($"공동 원정 체크포인트 저장 실패: {e}");
+            return false;
+        }
+    }
+
+    public bool CommitSharedResult(string id, PlayerSaveDTO player, List<CharacterSaveDTO> characters)
+    {
+        if (!localSaveLoaded) return false;
+        if (HasSharedReceipt(id)) return true;
+        var previous = localSave;
+        try
+        {
+            localSave = JsonConvert.DeserializeObject<LocalPlayerSaveDTO>(JsonConvert.SerializeObject(previous));
+            localSave.player = player;
+            foreach (var character in characters)
             {
-                try
-                {
-                    string json = result.Data[key].Value;
-                    var dto = JsonConvert.DeserializeObject<CharacterSaveDTO>(json);
-                    var ch = SaveMapper.FromDto(dto);
-
-                    onCharacterLoaded?.Invoke(ch);
-                    return;
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError("Character DTO parse error: " + e);
-                }
+                if (!player.characterIds.Contains(character.id)) throw new InvalidOperationException("다른 참가자의 캐릭터는 저장할 수 없습니다.");
+                localSave.characters[character.id] = character;
             }
-
-            Debug.LogError("Character data not found for ID: " + characterId);
-            onCharacterLoaded?.Invoke(null);
-
-        }, error =>
+            localSave.sharedReceipts ??= new List<string>();
+            localSave.sharedReceipts.Add(id);
+            localSave.sharedCheckpoint = null;
+            WriteLocalSave();
+            return true;
+        }
+        catch (Exception e)
         {
-            Debug.LogError("Error loading character data: " + error.GenerateErrorReport());
+            localSave = previous;
+            Debug.LogError($"공동 원정 결과 저장 실패: {e}");
+            return false;
+        }
+    }
+
+    private IEnumerator LoadLocalCharacter(string characterId, Action<CharacterData> onCharacterLoaded)
+    {
+        string sharedExpeditionId = MultiplayerSession.Instance?.Expedition?.id;
+        yield return null;
+        if (sharedExpeditionId != null && MultiplayerSession.Instance?.Expedition?.id != sharedExpeditionId)
+        {
             onCharacterLoaded?.Invoke(null);
-        });
+            yield break;
+        }
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition)
+        {
+            onCharacterLoaded?.Invoke(MultiplayerSession.Instance.LoadExpeditionCharacter(characterId));
+            yield break;
+        }
+        CharacterData character = null;
+        try
+        {
+            if (localSaveLoaded && localSave.characters.TryGetValue(characterId, out CharacterSaveDTO dto))
+                character = SaveMapper.FromDto(dto);
+            else
+                Debug.LogError("Local character data not found for ID: " + characterId);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Local character load failed ({characterId}): {e}");
+        }
+        onCharacterLoaded?.Invoke(character);
     }
 
     public void SaveCharacterPosition(string characterID, bool isFrontRow)

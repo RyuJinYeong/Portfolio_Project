@@ -278,6 +278,7 @@ public class SkillDefinitionSO : ScriptableObject
     {
         if (character == null)
             return false;
+        if (isCounterSkill && character.HasTraitFlag(TraitSpecialFlag.CannotCounter)) return false;
 
         bool hasExplicitEquipmentRequirement =
             equipmentRequirement != null &&

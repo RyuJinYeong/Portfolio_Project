@@ -4,6 +4,8 @@ using System.Collections.Generic;
 [Serializable]
 public class GeneratedEquipmentData
 {
+    public int generationVersion;
+
     public string instanceId;
 
     // 원본 EquipmentDefinitionSO uid

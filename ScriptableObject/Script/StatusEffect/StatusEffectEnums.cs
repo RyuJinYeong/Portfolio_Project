@@ -23,5 +23,10 @@ public enum StatusEffectType
     PhysicalCounterPenalty,
     MagicalCounterPenalty,
 
-    CancelNextCounter
+    CancelNextCounter,
+    CancelNextPhysicalCounter,
+    CancelNextMagicalCounter,
+    CounterImmunity,
+    PhysicalCounterImmunity,
+    MagicalCounterImmunity
 }

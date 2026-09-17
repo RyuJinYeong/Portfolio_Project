@@ -19,6 +19,7 @@ public class UIManager : MonoBehaviour
     public Button characterManagementButton;
     public Button questButton;
     public Button recruitButton;
+    public Button friendlyMatchButton;
 
     [Header("Town Windows")]
     public TownCharacterManagementPanel characterManagementPanel;
@@ -28,10 +29,15 @@ public class UIManager : MonoBehaviour
     public GameObject recruitPanel;
     public PartyFormationPanel partyFormationPanel;
     public QuestNodeMapPanel questNodeMapPanel;
+    public GameObject friendlyWagerWindow;
 
     [Header("Global Windows")]
     public LevelGrowthPanel levelGrowthPanel;
-    [SerializeField] private GameObject battleDefeatDialogPrefab;
+    [SerializeField] private GameObject battleDefeatDialog;
+    [SerializeField] private Button battleDefeatContinueButton;
+    [SerializeField] private GameObject questAbandonDialog;
+    [SerializeField] private Button questAbandonCancelButton;
+    [SerializeField] private Button questAbandonConfirmButton;
     [SerializeField] private BattleLootPanel battleLootPanelPrefab;
     [SerializeField] private InventoryItemActionMenuUI inventoryItemActionMenu;
 
@@ -41,11 +47,8 @@ public class UIManager : MonoBehaviour
     public GameObject expeditionPartyManagementButton;
     public GameObject expeditionMapButton;
 
-    private GameObject activeBattleDefeatDialog;
-    private GameObject activeQuestAbandonDialog;
+    private System.Action battleDefeatContinue;
     private float questAbandonPreviousTimeScale = 1f;
-    private float questDialogOriginalButtonY;
-    private bool questAbandonWarningOpen;
 
     [Header("Camera Focus")]
     public string storageFocusKey = "Storage";
@@ -78,6 +81,8 @@ public class UIManager : MonoBehaviour
 
     public RawImage characterPortrait;
     public Image characterHpImage;
+    public Image characterStaminaImage;
+    public Image characterMentalityImage;
     public TextMeshProUGUI characterName;
 
     public TextMeshProUGUI currentHP;
@@ -100,6 +105,13 @@ public class UIManager : MonoBehaviour
     public GameObject[] hotbarButtons = new GameObject[12]; // 12개의 핫바 버튼을 위한 GameObject 배열
 
     public CharacterTargeting characterTargeting;
+    public Button skillConcealButton;
+    public RawImage skillConcealButtonImage;
+    public Texture2D concealEnabledIcon;
+    public Texture2D concealDisabledIcon;
+
+    public bool IsSkillConcealEnabled { get; private set; }
+
     private CharacterManager displayedCharacter;
 
     private void Awake()
@@ -163,8 +175,16 @@ public class UIManager : MonoBehaviour
         if (questButton != null)
             questButton.onClick.AddListener(OpenQuest);
 
+        if (friendlyMatchButton != null)
+            friendlyMatchButton.onClick.AddListener(OpenFriendlyMatch);
+
         if (recruitButton != null)
             recruitButton.onClick.AddListener(OpenRecruit);
+
+        if (skillConcealButton != null)
+            skillConcealButton.onClick.AddListener(ToggleSkillConceal);
+
+        UpdateSkillConcealButton();
     }
 
     private void OnDisable()
@@ -178,16 +198,29 @@ public class UIManager : MonoBehaviour
         if (questButton != null)
             questButton.onClick.RemoveListener(OpenQuest);
 
+        if (friendlyMatchButton != null)
+            friendlyMatchButton.onClick.RemoveListener(OpenFriendlyMatch);
+
         if (recruitButton != null)
             recruitButton.onClick.RemoveListener(OpenRecruit);
 
-        if (activeQuestAbandonDialog != null)
-        {
+        if (skillConcealButton != null)
+            skillConcealButton.onClick.RemoveListener(ToggleSkillConceal);
+
+        battleDefeatDialog?.SetActive(false);
+        battleDefeatContinue = null;
+        if (questAbandonDialog != null && questAbandonDialog.activeSelf)
             Time.timeScale = questAbandonPreviousTimeScale;
-            Destroy(activeQuestAbandonDialog);
-            activeQuestAbandonDialog = null;
-            questAbandonWarningOpen = false;
-        }
+        questAbandonDialog?.SetActive(false);
+    }
+
+    public void OpenFriendlyMatch()
+    {
+        MultiplayerRoomPanel roomPanel = GetComponent<MultiplayerRoomPanel>();
+        if (roomPanel != null)
+            roomPanel.OpenFriendly();
+        else
+            MultiplayerSession.Instance.OpenFriendlyRoom();
     }
 
     private void WireQuestPanel()
@@ -214,15 +247,42 @@ public class UIManager : MonoBehaviour
         {
             TooltipManager.Instance?.HideTooltip();
 
+            if (friendlyWagerWindow != null && friendlyWagerWindow.activeInHierarchy)
+            {
+                friendlyWagerWindow.SetActive(false);
+                return;
+            }
+
+            MultiplayerRoomPanel roomPanel = GetComponent<MultiplayerRoomPanel>();
+            if (roomPanel != null && roomPanel.panel.activeInHierarchy)
+            {
+                roomPanel.Close();
+                return;
+            }
+
+            if (characterManagementPanel != null &&
+                characterManagementPanel.renameDialog != null &&
+                characterManagementPanel.renameDialog.activeInHierarchy)
+            {
+                characterManagementPanel.CancelRename();
+                return;
+            }
+
             if (characterTargeting != null && characterTargeting.CancelTargeting())
                 return;
 
-            if (activeQuestAbandonDialog != null)
+            if (questAbandonDialog != null && questAbandonDialog.activeInHierarchy)
             {
-                if (questAbandonWarningOpen)
-                    ConfigureQuestPauseMenu();
+                CancelQuestAbandon();
+                return;
+            }
+
+            if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition)
+            {
+                if (HasOpenExpeditionDetailWindow())
+                    CloseTopWindow();
                 else
-                    CloseQuestPauseMenu();
+                    OpenQuestPauseMenu();
                 return;
             }
 
@@ -454,6 +514,8 @@ public class UIManager : MonoBehaviour
         if (partyFormationPanel != null &&
             partyFormationPanel.gameObject.activeInHierarchy)
         {
+            MultiplayerSession session = MultiplayerSession.Instance;
+            if (session != null && !session.Editable) session.LeaveRoom();
             partyFormationPanel.Close();
             return;
         }
@@ -470,7 +532,9 @@ public class UIManager : MonoBehaviour
 
     public void CloseManagedWindows()
     {
+        if (friendlyWagerWindow != null) friendlyWagerWindow.SetActive(false);
         TooltipManager.Instance?.HideTooltip();
+        GetComponent<MultiplayerRoomPanel>()?.Close();
 
         inventoryItemActionMenu?.Close();
 
@@ -634,59 +698,11 @@ public class UIManager : MonoBehaviour
 
     public bool OpenBattleDefeat(System.Action onContinue)
     {
-        if (battleDefeatDialogPrefab == null)
+        if (battleDefeatDialog == null || battleDefeatContinueButton == null)
         {
-            Debug.LogError("[UIManager] Battle defeat dialog prefab is not assigned.");
+            Debug.LogError("[UIManager] Battle defeat dialog is not assigned.");
             return false;
         }
-
-        if (activeBattleDefeatDialog != null)
-            Destroy(activeBattleDefeatDialog);
-
-        activeBattleDefeatDialog = Instantiate(battleDefeatDialogPrefab, transform);
-        activeBattleDefeatDialog.name = "BattleDefeatDialog";
-        activeBattleDefeatDialog.transform.SetAsLastSibling();
-
-        Animator animator = activeBattleDefeatDialog.GetComponent<Animator>();
-
-        if (animator != null)
-            animator.enabled = false;
-
-        if (activeBattleDefeatDialog.transform is RectTransform rootRect)
-        {
-            rootRect.anchorMin = Vector2.zero;
-            rootRect.anchorMax = Vector2.one;
-            rootRect.offsetMin = Vector2.zero;
-            rootRect.offsetMax = Vector2.zero;
-            rootRect.localScale = Vector3.one;
-        }
-
-        Transform panel = activeBattleDefeatDialog.transform.Find("ConfirmPanel");
-        TextMeshProUGUI titleText = panel != null
-            ? panel.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>()
-            : null;
-        TextMeshProUGUI messageText = panel != null
-            ? panel.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>()
-            : null;
-        Button continueButton = panel != null
-            ? panel.Find("ButtonYes")?.GetComponent<Button>()
-            : null;
-
-        if (panel == null || titleText == null || messageText == null || continueButton == null)
-        {
-            Debug.LogError("[UIManager] Battle defeat dialog hierarchy is invalid.");
-            Destroy(activeBattleDefeatDialog);
-            activeBattleDefeatDialog = null;
-            return false;
-        }
-
-        panel.localScale = Vector3.one;
-        titleText.text = "패배";
-        messageText.text = "원정대가 전멸했습니다.";
-
-        TextMeshProUGUI buttonText = continueButton.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (buttonText != null)
-            buttonText.text = "계속하기";
 
         if (turnEndButton != null)
             turnEndButton.gameObject.SetActive(false);
@@ -696,192 +712,75 @@ public class UIManager : MonoBehaviour
         characterTargeting?.StopTargetingAndClearConfirmedLines();
         ClearHotbarButtons();
 
-        continueButton.onClick.RemoveAllListeners();
-        continueButton.onClick.AddListener(() =>
-        {
-            continueButton.interactable = false;
-            Destroy(activeBattleDefeatDialog);
-            activeBattleDefeatDialog = null;
-            onContinue?.Invoke();
-        });
+        battleDefeatContinue = onContinue;
+        battleDefeatContinueButton.interactable = true;
+        Transform alertRoot = battleDefeatDialog.transform.parent;
+        alertRoot.SetAsLastSibling();
+        Canvas alertCanvas = alertRoot.GetComponent<Canvas>();
+        alertCanvas.overrideSorting = true;
+        alertCanvas.sortingOrder = 90;
+        battleDefeatDialog.SetActive(true);
+        battleDefeatDialog.transform.SetAsLastSibling();
 
         return true;
+    }
+
+    public void ContinueAfterBattleDefeat()
+    {
+        if (battleDefeatDialog == null || !battleDefeatDialog.activeSelf)
+            return;
+
+        battleDefeatContinueButton.interactable = false;
+        battleDefeatDialog.SetActive(false);
+        System.Action callback = battleDefeatContinue;
+        battleDefeatContinue = null;
+        callback?.Invoke();
     }
 
     private bool OpenQuestPauseMenu()
     {
-        if (battleDefeatDialogPrefab == null)
+        if (questAbandonDialog == null || questAbandonCancelButton == null ||
+            questAbandonConfirmButton == null)
         {
-            Debug.LogError("[UIManager] Quest abandon dialog prefab is not assigned.");
+            Debug.LogError("[UIManager] Quest abandon dialog is not assigned.");
             return false;
         }
 
-        if (activeQuestAbandonDialog != null)
+        if (questAbandonDialog.activeSelf)
             return true;
-
-        activeQuestAbandonDialog = Instantiate(battleDefeatDialogPrefab, transform);
-        activeQuestAbandonDialog.name = "QuestPauseMenu";
-        activeQuestAbandonDialog.transform.SetAsLastSibling();
-
-        Animator animator = activeQuestAbandonDialog.GetComponent<Animator>();
-        if (animator != null)
-            animator.enabled = false;
-
-        if (activeQuestAbandonDialog.transform is RectTransform rootRect)
-        {
-            rootRect.anchorMin = Vector2.zero;
-            rootRect.anchorMax = Vector2.one;
-            rootRect.offsetMin = Vector2.zero;
-            rootRect.offsetMax = Vector2.zero;
-            rootRect.localScale = Vector3.one;
-        }
-
-        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
-        TextMeshProUGUI titleText = panel != null
-            ? panel.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>()
-            : null;
-        TextMeshProUGUI messageText = panel != null
-            ? panel.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>()
-            : null;
-        Button continueButton = panel != null
-            ? panel.Find("ButtonYes")?.GetComponent<Button>()
-            : null;
-
-        if (panel == null || titleText == null || messageText == null || continueButton == null)
-        {
-            Debug.LogError("[UIManager] Quest abandon dialog hierarchy is invalid.");
-            Destroy(activeQuestAbandonDialog);
-            activeQuestAbandonDialog = null;
-            return false;
-        }
-
-        panel.localScale = Vector3.one;
-
-        GameObject abandonButtonObject = Instantiate(continueButton.gameObject, panel);
-        abandonButtonObject.name = "ButtonAbandon";
-
-        foreach (TextMeshProUGUI dialogText in
-                 activeQuestAbandonDialog.GetComponentsInChildren<TextMeshProUGUI>(true))
-        {
-            dialogText.fontSize *= 0.5f;
-        }
-
-        RectTransform continueRect = continueButton.transform as RectTransform;
-        questDialogOriginalButtonY = continueRect != null
-            ? continueRect.anchoredPosition.y
-            : 0f;
 
         questAbandonPreviousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
-        ConfigureQuestPauseMenu();
+        questAbandonCancelButton.interactable = true;
+        questAbandonConfirmButton.interactable = true;
+        Transform alertRoot = questAbandonDialog.transform.parent;
+        alertRoot.SetAsLastSibling();
+        Canvas alertCanvas = alertRoot.GetComponent<Canvas>();
+        alertCanvas.overrideSorting = true;
+        alertCanvas.sortingOrder = 90;
+        questAbandonDialog.SetActive(true);
+        questAbandonDialog.transform.SetAsLastSibling();
         return true;
     }
 
-    private void ConfigureQuestPauseMenu()
+    public void CancelQuestAbandon()
     {
-        if (activeQuestAbandonDialog == null)
-            return;
-
-        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
-        TextMeshProUGUI titleText = panel?.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>();
-        TextMeshProUGUI messageText = panel?.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>();
-        Button continueButton = panel?.Find("ButtonYes")?.GetComponent<Button>();
-        Button abandonButton = panel?.Find("ButtonAbandon")?.GetComponent<Button>();
-
-        if (panel == null || titleText == null || messageText == null ||
-            continueButton == null || abandonButton == null)
-        {
-            return;
-        }
-
-        Image panelImage = panel.GetComponent<Image>();
-        if (panelImage != null)
-            panelImage.enabled = false;
-
-        titleText.gameObject.SetActive(false);
-        messageText.gameObject.SetActive(false);
-        continueButton.interactable = true;
-        abandonButton.interactable = true;
-
-        if (continueButton.transform is RectTransform continueRect)
-            continueRect.anchoredPosition = new Vector2(0f, 60f);
-        if (abandonButton.transform is RectTransform abandonRect)
-            abandonRect.anchoredPosition = new Vector2(0f, -60f);
-
-        TextMeshProUGUI continueText = continueButton.GetComponentInChildren<TextMeshProUGUI>(true);
-        TextMeshProUGUI abandonText = abandonButton.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (continueText != null)
-            continueText.text = "계속하기";
-        if (abandonText != null)
-            abandonText.text = "의뢰 포기";
-
-        continueButton.onClick = new Button.ButtonClickedEvent();
-        abandonButton.onClick = new Button.ButtonClickedEvent();
-        continueButton.onClick.AddListener(CloseQuestPauseMenu);
-        abandonButton.onClick.AddListener(ConfigureQuestAbandonWarning);
-        questAbandonWarningOpen = false;
-    }
-
-    private void ConfigureQuestAbandonWarning()
-    {
-        if (activeQuestAbandonDialog == null)
-            return;
-
-        Transform panel = activeQuestAbandonDialog.transform.Find("ConfirmPanel");
-        TextMeshProUGUI titleText = panel?.Find("Text (TMP)")?.GetComponent<TextMeshProUGUI>();
-        TextMeshProUGUI messageText = panel?.Find("Text (TMP)2")?.GetComponent<TextMeshProUGUI>();
-        Button cancelButton = panel?.Find("ButtonYes")?.GetComponent<Button>();
-        Button abandonButton = panel?.Find("ButtonAbandon")?.GetComponent<Button>();
-
-        if (panel == null || titleText == null || messageText == null ||
-            cancelButton == null || abandonButton == null)
-        {
-            return;
-        }
-
-        Image panelImage = panel.GetComponent<Image>();
-        if (panelImage != null)
-            panelImage.enabled = true;
-
-        titleText.gameObject.SetActive(true);
-        messageText.gameObject.SetActive(true);
-        titleText.text = "의뢰 포기";
-        messageText.text = "중도 포기할 경우 원정대가 실종 처리됩니다. 포기하시겠습니까?";
-
-        if (cancelButton.transform is RectTransform cancelRect)
-            cancelRect.anchoredPosition = new Vector2(-130f, questDialogOriginalButtonY);
-        if (abandonButton.transform is RectTransform abandonRect)
-            abandonRect.anchoredPosition = new Vector2(130f, questDialogOriginalButtonY);
-
-        TextMeshProUGUI cancelText = cancelButton.GetComponentInChildren<TextMeshProUGUI>(true);
-        TextMeshProUGUI abandonText = abandonButton.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (cancelText != null)
-            cancelText.text = "취소";
-        if (abandonText != null)
-            abandonText.text = "의뢰 포기";
-
-        cancelButton.onClick = new Button.ButtonClickedEvent();
-        abandonButton.onClick = new Button.ButtonClickedEvent();
-        cancelButton.onClick.AddListener(ConfigureQuestPauseMenu);
-        abandonButton.onClick.AddListener(() =>
-        {
-            cancelButton.interactable = false;
-            abandonButton.interactable = false;
-            CloseQuestPauseMenu();
-            TurnManager.Instance.AbandonExpedition();
-        });
-        questAbandonWarningOpen = true;
-    }
-
-    private void CloseQuestPauseMenu()
-    {
-        if (activeQuestAbandonDialog == null)
+        if (questAbandonDialog == null || !questAbandonDialog.activeSelf)
             return;
 
         Time.timeScale = questAbandonPreviousTimeScale;
-        Destroy(activeQuestAbandonDialog);
-        activeQuestAbandonDialog = null;
-        questAbandonWarningOpen = false;
+        questAbandonDialog.SetActive(false);
+    }
+
+    public void ConfirmQuestAbandon()
+    {
+        if (questAbandonDialog == null || !questAbandonDialog.activeSelf)
+            return;
+
+        questAbandonCancelButton.interactable = false;
+        questAbandonConfirmButton.interactable = false;
+        CancelQuestAbandon();
+        TurnManager.Instance.AbandonExpedition();
     }
 
     public bool OpenBattleLoot(
@@ -894,7 +793,8 @@ public class UIManager : MonoBehaviour
     public bool OpenBattleLoot(
         IReadOnlyList<InventorySlotData> loot,
         int gold,
-        System.Action onCompleted)
+        System.Action onCompleted,
+        bool settledRewards = false)
     {
         bool hasItems = loot != null &&
             loot.Any(slot => slot != null && slot.itemUid > 0 && slot.count > 0);
@@ -914,8 +814,25 @@ public class UIManager : MonoBehaviour
         if (panel.transform is RectTransform rectTransform)
             rectTransform.localScale = Vector3.one;
 
-        panel.Open(loot, gold, onCompleted);
+        panel.Open(loot, gold, onCompleted, settledRewards);
         return true;
+    }
+
+    public BattleLootPanel OpenSharedBattleLoot(
+        InventorySlotData item,
+        string title,
+        System.Action onNeed,
+        System.Action onPass)
+    {
+        if (battleLootPanelPrefab == null || item == null)
+            return null;
+
+        BattleLootPanel panel = Instantiate(battleLootPanelPrefab, transform);
+        panel.name = "SharedBattleLoot";
+        if (panel.transform is RectTransform rectTransform)
+            rectTransform.localScale = Vector3.one;
+        panel.OpenSharedDecision(item, title, onNeed, onPass);
+        return panel;
     }
 
     public bool OpenInventoryItemActionMenu(
@@ -950,7 +867,10 @@ public class UIManager : MonoBehaviour
     private List<CharacterManager> GetInventoryActionTargets()
     {
         bool isInTown = IsInTown();
-        IEnumerable<CharacterManager> candidates = !isInTown && GameManager.Instance != null
+        bool isBattleInProgress = !isInTown &&
+                                  TurnManager.Instance != null &&
+                                  TurnManager.Instance.IsBattleInProgress;
+        IEnumerable<CharacterManager> candidates = isBattleInProgress && GameManager.Instance != null
             ? GameManager.Instance.GetAllCharacters()
             : CharacterPoolManager.Instance != null
                 ? CharacterPoolManager.Instance.All()
@@ -1117,6 +1037,12 @@ public class UIManager : MonoBehaviour
             return true;
         }
 
+        if (partyManagementPanel != null &&
+            partyManagementPanel.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
         return inventoryUIController != null &&
                (IsOpen(inventoryUIController.companyStorageWindow) ||
                 IsOpen(inventoryUIController.expeditionInventoryWindow) ||
@@ -1163,6 +1089,7 @@ public class UIManager : MonoBehaviour
 
     public void ShowCombatResult(string resultText, Vector3 worldPosition)
     {
+        MultiplayerSession.Instance?.CaptureBattlePopup(0, resultText, worldPosition);
         Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition + Vector3.up * 2.5f);
         GameObject resultTextInstance = Instantiate(damageTextPrefab, transform);
         resultTextInstance.transform.position = screenPosition;
@@ -1288,9 +1215,18 @@ public class UIManager : MonoBehaviour
 
             SkillDefinitionSO linkedSkill = skillButton.skill;
 
+            int staminaCost = linkedSkill.staminaCost;
+            int mentalCost = linkedSkill.mentalCost;
+
+            if (IsSkillConcealEnabled && !linkedSkill.isCounterSkill)
+            {
+                staminaCost += SkillConcealUtility.GetAdditionalStaminaCost(linkedSkill);
+                mentalCost += SkillConcealUtility.GetAdditionalMentalCost(linkedSkill);
+            }
+
             bool canUseSkill =
-                characterManager.character.CurrentStamina >= linkedSkill.staminaCost &&
-                characterManager.character.CurrentMentality >= linkedSkill.mentalCost;
+                characterManager.character.CurrentStamina >= staminaCost &&
+                characterManager.character.CurrentMentality >= mentalCost;
 
             bool inactive = !characterManager.isPlayerTurn || !canUseSkill;
 
@@ -1304,6 +1240,9 @@ public class UIManager : MonoBehaviour
                 inactive = !canUseSkill || evadeCannotProtectOther;
             }
 
+            if (MultiplayerSession.Instance != null && !MultiplayerSession.Instance.CanControlBattleCharacter(characterManager))
+                inactive = true;
+
             CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
             if (canvasGroup == null)
                 canvasGroup = button.AddComponent<CanvasGroup>();
@@ -1314,6 +1253,8 @@ public class UIManager : MonoBehaviour
             if (uiButton != null)
                 uiButton.interactable = !inactive;
         }
+
+        UpdateSkillConcealButton();
     }
 
 
@@ -1364,7 +1305,8 @@ public class UIManager : MonoBehaviour
         infoPanel.SetActive(true);
         RefreshDisplayedCharacterInfo();
 
-        skillBar.SetActive(characterManager.character.IsMine); // 캐릭터가 자신의 것일 경우 스킬바 활성화
+        skillBar.SetActive(MultiplayerSession.Instance != null && MultiplayerSession.Instance.IsSharedBattle
+            ? MultiplayerSession.Instance.OwnsBattleCharacter(characterManager) : characterManager.character.IsMine);
 
         // 핫바 스킬 업데이트
         UpdateHotbarSkills(characterManager);
@@ -1402,16 +1344,70 @@ public class UIManager : MonoBehaviour
         currentStamina.text = $"{characterData.CurrentStamina}";
         characterStamina.text = $"{characterData.FinalStats.MaxStamina}";
 
+        if (characterStaminaImage != null)
+        {
+            characterStaminaImage.fillAmount = characterData.FinalStats.MaxStamina > 0
+                ? Mathf.Clamp01((float)characterData.CurrentStamina / characterData.FinalStats.MaxStamina)
+                : 0f;
+        }
+
         currentMental.text = $"{characterData.CurrentMentality}";
         characterMental.text = $"{characterData.FinalStats.MaxMentality}";
+
+        if (characterMentalityImage != null)
+        {
+            characterMentalityImage.fillAmount = characterData.FinalStats.MaxMentality > 0
+                ? Mathf.Clamp01((float)characterData.CurrentMentality / characterData.FinalStats.MaxMentality)
+                : 0f;
+        }
 
         characterPhysicalAttack.text = $"{characterData.FinalStats.PhysicalAttack}";
         characterMagicAttack.text = $"{characterData.FinalStats.MagicalAttack}";
         characterPhysicalDefense.text = $"{characterData.FinalStats.PhysicalDefense}";
         characterMagicDefense.text = $"{characterData.FinalStats.MagicalDefense}";
+
+        UpdateSkillConcealButton();
+    }
+
+    private void ToggleSkillConceal()
+    {
+        IsSkillConcealEnabled = !IsSkillConcealEnabled;
+        PlayBattleButtonClickSound();
+        UpdateSkillConcealButton();
+
+        if (displayedCharacter != null)
+            UpdateSkillTransparency(displayedCharacter);
+    }
+
+    private void UpdateSkillConcealButton()
+    {
+        if (skillConcealButtonImage != null)
+            skillConcealButtonImage.texture = IsSkillConcealEnabled
+                ? concealEnabledIcon
+                : concealDisabledIcon;
+
+        if (skillConcealButton != null)
+        {
+            skillConcealButton.interactable = displayedCharacter != null &&
+                displayedCharacter.character != null &&
+                displayedCharacter.character.IsAlive &&
+                displayedCharacter.isPlayerTurn &&
+                (MultiplayerSession.Instance == null ||
+                 MultiplayerSession.Instance.CanControlBattleCharacter(displayedCharacter));
+        }
     }
 
     // 핫바 스킬 업데이트 메서드
+    public void PlayBattleButtonClickSound()
+    {
+        SoftKitty.SoundManager.Play2D("bt_down", 0.3f);
+    }
+
+    public void PlayBattleTargetConfirmSound(bool enemyTargeting)
+    {
+        SoftKitty.SoundManager.Play2D(enemyTargeting ? "msg" : "bt_up", enemyTargeting ? 0.45f : 0.35f);
+    }
+
     public void UpdateHotbarSkills(CharacterManager characterManager)
     {
         if (characterManager == null || characterManager.character == null)
@@ -1539,6 +1535,7 @@ public class UIManager : MonoBehaviour
             button.interactable = true;
             button.onClick.AddListener(() =>
             {
+                PlayBattleButtonClickSound();
                 characterTargeting.StartTargeting(skill);
             });
         }
@@ -1724,6 +1721,7 @@ public class UIManager : MonoBehaviour
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() =>
             {
+                PlayBattleButtonClickSound();
                 CharacterTargeting tgt = UIManager.Instance.characterTargeting;
                 int idx0Local = counterQueueIndex;
 
@@ -1757,7 +1755,8 @@ public class UIManager : MonoBehaviour
         RawImage rawImage = iconObj.GetComponent<RawImage>();
         if (rawImage != null)
         {
-            if (data.isConcealed && data.revealLevel != RevealLevel.Full)
+            if (SkillConcealUtility.ShouldHideFromLocalPlayer(data) &&
+                data.revealLevel != RevealLevel.Full)
                 rawImage.texture = null;
             else
                 rawImage.texture = data.skill.icon;

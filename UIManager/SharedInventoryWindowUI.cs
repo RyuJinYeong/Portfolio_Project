@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -33,6 +34,7 @@ public class SharedInventoryWindowUI : MonoBehaviour
     private int occupiedSlotCount;
     private int displayedCapacity;
     private ScrollRect listScrollRect;
+    private Coroutine scrollResetRoutine;
 
     private void OnEnable()
     {
@@ -49,11 +51,17 @@ public class SharedInventoryWindowUI : MonoBehaviour
             closeButton.onClick.AddListener(Close);
 
         Refresh();
-        ResetScrollToTop();
+        scrollResetRoutine = StartCoroutine(ResetScrollToTop());
     }
 
     private void OnDisable()
     {
+        if (scrollResetRoutine != null)
+        {
+            StopCoroutine(scrollResetRoutine);
+            scrollResetRoutine = null;
+        }
+
         SharedInventoryUtility.InventoryChanged -= Refresh;
         SharedInventoryUtility.CharacterChanged -= OnCharacterChanged;
 
@@ -67,9 +75,16 @@ public class SharedInventoryWindowUI : MonoBehaviour
     public void Open(CharacterManager character = null)
     {
         selectedCharacter = character;
-        gameObject.SetActive(true);
+        if (!gameObject.activeSelf)
+        {
+            gameObject.SetActive(true);
+            return;
+        }
+
         Refresh();
-        ResetScrollToTop();
+        if (scrollResetRoutine != null)
+            StopCoroutine(scrollResetRoutine);
+        scrollResetRoutine = StartCoroutine(ResetScrollToTop());
     }
 
     public void SetCharacter(CharacterManager character)
@@ -433,26 +448,46 @@ public class SharedInventoryWindowUI : MonoBehaviour
         foreach (InventoryItemSlotUI view in itemViews)
         {
             if (view != null)
+            {
+                view.gameObject.SetActive(false);
                 Destroy(view.gameObject);
+            }
         }
 
         itemViews.Clear();
     }
 
-    private void ResetScrollToTop()
+    private IEnumerator ResetScrollToTop()
     {
+        yield return null;
+
+        Animation openingAnimation = GetComponent<Animation>();
+        if (openingAnimation != null && openingAnimation.isPlaying && openingAnimation.clip != null)
+        {
+            AnimationState state = openingAnimation[openingAnimation.clip.name];
+            float remaining = state.length - state.time;
+            if (remaining > 0f && state.speed > 0f && Time.timeScale > 0f)
+                yield return new WaitForSecondsRealtime(remaining / (state.speed * Time.timeScale));
+        }
+
         if (listScrollRect == null && content != null)
             listScrollRect = content.GetComponentInParent<ScrollRect>();
 
         if (listScrollRect == null)
-            return;
+        {
+            scrollResetRoutine = null;
+            yield break;
+        }
 
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)listScrollRect.transform);
         if (content != null)
             LayoutRebuilder.ForceRebuildLayoutImmediate(content);
 
         Canvas.ForceUpdateCanvases();
         listScrollRect.StopMovement();
         listScrollRect.verticalNormalizedPosition = 1f;
+        scrollResetRoutine = null;
     }
 
     private static int GetPreferredRingSlot(EquipmentSlotData slots)

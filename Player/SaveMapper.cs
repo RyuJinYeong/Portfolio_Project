@@ -11,6 +11,7 @@ public static class SaveMapper
 
         PlayerSaveDTO dto = new PlayerSaveDTO
         {
+            profileId = src.profileId,
             playerName = src.playerName,
             level = src.level,
             gold = src.gold,
@@ -61,6 +62,7 @@ public static class SaveMapper
 
         PlayerData pd = new PlayerData
         {
+            profileId = string.IsNullOrEmpty(dto.profileId) ? System.Guid.NewGuid().ToString("N") : dto.profileId,
             playerName = dto.playerName,
             level = dto.level,
             gold = dto.gold,
@@ -392,7 +394,8 @@ public static class SaveMapper
                     ? new List<int>(node.encounterMonsterRoleIds)
                     : new List<int>(),
                 encounterInsightRolled = node.encounterInsightRolled,
-                encounterInsightSucceeded = node.encounterInsightSucceeded
+                encounterInsightSucceeded = node.encounterInsightSucceeded,
+                encounterInsightCharacterName = node.encounterInsightCharacterName
             });
         }
 
@@ -460,6 +463,7 @@ public static class SaveMapper
             level = c.Level,
             exp = c.Exp,
             pendingLevelUps = c.PendingLevelUps,
+            lastStandUsed = c.LastStandUsed,
             currentHp = c.CurrentHp,
             currentStamina = c.CurrentStamina,
             currentMentality = c.CurrentMentality,
@@ -578,6 +582,7 @@ public static class SaveMapper
             Level = dto.level,
             Exp = dto.exp,
             PendingLevelUps = dto.pendingLevelUps,
+            LastStandUsed = dto.lastStandUsed,
             CurrentHp = dto.currentHp,
             CurrentStamina = dto.currentStamina,
             CurrentMentality = dto.currentMentality
@@ -627,10 +632,19 @@ public static class SaveMapper
                 if (def == null)
                     continue;
 
+                int traitPoint = def.canGradeUp
+                    ? Mathf.Clamp(t.point, 1, TraitGradeUtility.MaxPoint)
+                    : TraitGradeUtility.GetGradeValue(def.defaultAcquireGrade);
+                var existing = c.Traits.Find(trait => trait.traitId == def.id);
+                if (existing != null)
+                {
+                    existing.point = def.canGradeUp ? Mathf.Max(existing.point, traitPoint) : traitPoint;
+                    continue;
+                }
                 c.Traits.Add(new TraitRuntimeData
                 {
-                    traitId = t.id,
-                    point = Mathf.Clamp(t.point <= 0 ? 1 : t.point, 1, TraitGradeUtility.MaxPoint)
+                    traitId = def.id,
+                    point = traitPoint
                 });
             }
         }

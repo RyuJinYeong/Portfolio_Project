@@ -207,5 +207,17 @@ public class CharacterManager : MonoBehaviour
         UpdateCharacterUI();  // 리소스 회복 후 UI 업데이트
     }
 
+    public void RecoverOnKill(CharacterData defeated, bool wasAlive)
+    {
+        if (!wasAlive || defeated == null || defeated.IsAlive || defeated.IsMine == character.IsMine ||
+            !character.IsAlive || character.CurrentHp <= 0) return;
+
+        CharacterSpecialStats bonus = character.FinalSpecialStats;
+        character.CurrentHp = Mathf.Clamp(character.CurrentHp + bonus.KillHpRecovery, 0, character.FinalStats.MaxHp);
+        character.CurrentStamina = Mathf.Clamp(character.CurrentStamina + bonus.KillStaminaRecovery, 0, character.FinalStats.MaxStamina);
+        character.CurrentMentality = Mathf.Clamp(character.CurrentMentality + bonus.KillMentalityRecovery, 0, character.FinalStats.MaxMentality);
+        UpdateCharacterUI();
+    }
+
     #endregion
 }

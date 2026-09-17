@@ -2,9 +2,20 @@ using System;
 using System.Collections.Generic;
 
 [Serializable]
+public class LocalPlayerSaveDTO
+{
+    public int v = 1;
+    public PlayerSaveDTO player;
+    public Dictionary<string, CharacterSaveDTO> characters = new();
+    public List<string> sharedReceipts = new();
+    public MultiplayerSession.ExpeditionState sharedCheckpoint;
+}
+
+[Serializable]
 public class PlayerSaveDTO
 {
-    public int v = 7;
+    public int v = 8;
+    public string profileId;
 
     public string playerName;
     public int level;
@@ -62,6 +73,7 @@ public class CharacterSaveDTO
     public int level;
     public int exp;
     public int pendingLevelUps;
+    public bool lastStandUsed;
     public int currentHp;
     public int currentStamina;
     public int currentMentality;

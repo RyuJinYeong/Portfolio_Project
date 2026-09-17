@@ -96,7 +96,10 @@ public static class TraitManager
 
         WeaponDefinitionSO subWeapon = character.GetSubWeapon();
 
-        if (subWeapon != null && !character.CanEquipSubWeapon())
+        if (subWeapon != null && (!character.CanEquipSubWeapon() ||
+            (character.HasTraitFlag(TraitSpecialFlag.FearOfBlades) &&
+             subWeapon.weaponType != WeaponType.Mace && subWeapon.weaponType != WeaponType.Hammer &&
+             subWeapon.weaponType != WeaponType.Shield && subWeapon.weaponType != WeaponType.Staff)))
             EquipmentManager.Unequip(manager, EquipmentType.SubWeapon, 1);
     }
 }

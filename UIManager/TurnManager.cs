@@ -100,6 +100,9 @@ public class TurnManager : MonoBehaviour
 
     public void InitializeTurnOrder()
     {
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition &&
+            (!MultiplayerSession.Instance.IsSharedBattle || !MultiplayerSession.Instance.IsHost)) return;
+        _stageStarted = true;
         allCharacters = gameManager.GetAllCharacters(); // 모든 캐릭터들을 가져와서 리스트에 저장
         battleEnded = false;
         currentCharacter = null;
@@ -143,19 +146,25 @@ public class TurnManager : MonoBehaviour
 
         UpdateTurnQueue();
         Debug.Log("turn queue : "+turnQueue.Count);
-        StartCoroutine(PrepareBattleWeapons());
+        StartCoroutine(PrepareBattleWeapons(true));
     }
 
-    private IEnumerator PrepareBattleWeapons()
+    public IEnumerator PrepareBattleWeapons(bool startTurn)
     {
+        List<CharacterManager> battleCharacters = allCharacters ?? gameManager?.GetAllCharacters();
+        if (battleCharacters == null)
+            yield break;
+
         List<Coroutine> drawRoutines = new();
-        foreach (CharacterManager character in allCharacters)
+        foreach (CharacterManager character in battleCharacters)
         {
             if (character == null || character.character == null ||
-                !character.character.IsMine || !character.character.IsAlive)
+                !character.character.IsAlive)
                 continue;
 
-            CharacterCustomization customization = character.GetComponent<CharacterCustomization>();
+            CharacterCustomization customization = character.battlePresentationHandler?.Animator != null
+                ? character.battlePresentationHandler.Animator.GetComponentInParent<CharacterCustomization>()
+                : character.GetComponentInChildren<CharacterCustomization>(true);
             if (customization != null)
                 drawRoutines.Add(StartCoroutine(customization.DrawWeapons(
                     character.character, character.battlePresentationHandler)));
@@ -167,7 +176,8 @@ public class TurnManager : MonoBehaviour
         if (battleEnded)
             yield break;
 
-        StartNextTurn();
+        if (startTurn)
+            StartNextTurn();
     }
 
     public void StartNextTurn()
@@ -175,7 +185,7 @@ public class TurnManager : MonoBehaviour
         DisableDefenseButtons(allCharacters);
 
         // 추가 턴은 같은 라운드 안에서 이어지므로 라운드 종료 회복보다 먼저 처리한다.
-        if (currentCharacter != null && currentCharacter.hasExtraTurn)
+        if (currentCharacter != null && currentCharacter.character.IsAlive && currentCharacter.hasExtraTurn)
         {
             currentCharacter.hasExtraTurn = false;
             Debug.Log($"{currentCharacter.character.Name}이 추가 턴을 획득했습니다.");
@@ -247,6 +257,7 @@ public class TurnManager : MonoBehaviour
             {
                 UIManager.Instance.turnEndButton.gameObject.SetActive(false);
             }
+            MultiplayerSession.Instance?.PublishBattleState(MultiplayerSession.SharedBattlePhase.Attack);
         }
         else
         {
@@ -256,6 +267,8 @@ public class TurnManager : MonoBehaviour
 
     public void StartCounterTurn()
     {
+        var multiplayer = MultiplayerSession.Instance;
+        if (multiplayer != null && multiplayer.IsBattleReplica) return;
         if (currentCharacter.combatHandler.turnTimerCoroutine != null)
         {
             currentCharacter.combatHandler.StopCoroutine(
@@ -266,23 +279,26 @@ public class TurnManager : MonoBehaviour
         if (currentCharacter.GetSkillQueue().Count > 0)
         {
             ClearCounterSkillQueues();
+            currentCharacter.combatHandler.ResolveConcealForSkillQueue();
             currentCharacter.combatHandler.AutoAssignDefaultCounterSkills();
             Debug.Log("CounterTurn Start");
-            if (enableTurnTimeLimit)
+            if (enableTurnTimeLimit && !(multiplayer != null && multiplayer.IsSharedBattle))
             {
                 currentCharacter.combatHandler.turnTimerCoroutine =
                     currentCharacter.combatHandler.StartCoroutine(
                         currentCharacter.combatHandler.TurnTimer(30f, EndTurn));
             }
 
-            if (!currentCharacter.character.IsMine)
+            if (!currentCharacter.character.IsMine || (multiplayer != null && multiplayer.IsFriendlyMatch))
             {
                 SetCounterTurnButtonAction(); // 대응 턴 버튼 설정
 
                 EnableDefenseCharacterButtons();
+                multiplayer?.PublishBattleState(MultiplayerSession.SharedBattlePhase.Counter);
             }
             else
             {
+                TryAssignMonsterDefense();
                 UIManager.Instance.turnEndButton.gameObject.SetActive(false);
                 UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
 
@@ -311,6 +327,115 @@ public class TurnManager : MonoBehaviour
         }
     }
 
+    private void TryAssignMonsterDefense()
+    {
+        if (currentCharacter == null || currentCharacter.character == null ||
+            !currentCharacter.character.IsMine || allCharacters == null)
+        {
+            return;
+        }
+
+        List<SkillQueueData> incomingAttacks = currentCharacter.GetSkillQueue()
+            .Where(entry => entry != null && entry.skill != null &&
+                            entry.target != null && entry.target.character != null &&
+                            entry.target.character.IsAlive && !entry.target.character.IsMine)
+            .ToList();
+
+        if (incomingAttacks.Count == 0)
+            return;
+
+        List<CharacterManager> monsters = allCharacters
+            .Where(monster => monster != null && monster.character != null &&
+                              monster.character.IsAlive && !monster.character.IsMine)
+            .ToList();
+
+        if (monsters.Count < 2)
+            return;
+
+        CharacterManager selectedProtector = null;
+        CharacterManager selectedTarget = null;
+        int selectedScore = int.MinValue;
+
+        foreach (SkillQueueData incomingAttack in incomingAttacks
+                     .OrderBy(entry => GetHealthRatio(entry.target)))
+        {
+            CharacterManager target = incomingAttack.target;
+
+            foreach (CharacterManager protector in monsters)
+            {
+                if (protector == target || !ShouldMonsterProtectAlly(protector, target))
+                    continue;
+
+                SkillDefinitionSO counterSkill = protector.combatHandler
+                    .GetAutomaticCounterSkillForProtection(incomingAttack.skill, target);
+
+                if (counterSkill == null)
+                    continue;
+
+                int score = protector.combatHandler.GetCounterSuccessChancePreview(
+                    incomingAttack.skill,
+                    currentCharacter,
+                    target,
+                    counterSkill,
+                    incomingAttack.revealLevel);
+
+                if (target.character.Type == CharacterType.Boss)
+                    score += 20;
+                else if (target.character.Type == CharacterType.Elite)
+                    score += 10;
+
+                score += Mathf.RoundToInt((GetHealthRatio(protector) - GetHealthRatio(target)) * 30f);
+
+                if (score <= selectedScore)
+                    continue;
+
+                selectedScore = score;
+                selectedProtector = protector;
+                selectedTarget = target;
+            }
+        }
+
+        if (selectedProtector == null || selectedTarget == null)
+            return;
+
+        defenseCharacter = selectedProtector;
+        selectedProtector.combatHandler.isDefenseCharacter = true;
+        selectedProtector.combatHandler.SetDefenseTarget(selectedTarget);
+        Debug.Log($"{selectedProtector.character.Name}가 {selectedTarget.character.Name} 보호를 선택했습니다.");
+    }
+
+    private static bool ShouldMonsterProtectAlly(
+        CharacterManager protector,
+        CharacterManager target)
+    {
+        if (target.character.Type == CharacterType.Boss ||
+            target.character.Type == CharacterType.Elite)
+        {
+            return true;
+        }
+
+        float targetHealthRatio = GetHealthRatio(target);
+
+        return protector.character.personality switch
+        {
+            Personality.Cautious => targetHealthRatio <= 0.9f,
+            Personality.Cunning => targetHealthRatio <= 0.7f,
+            Personality.Simple => targetHealthRatio <= 0.5f,
+            Personality.Aggressive => targetHealthRatio <= 0.35f,
+            _ => false
+        };
+    }
+
+    private static float GetHealthRatio(CharacterManager character)
+    {
+        if (character == null || character.character == null)
+            return 1f;
+
+        return character.character.FinalStats.MaxHp > 0
+            ? (float)character.character.CurrentHp / character.character.FinalStats.MaxHp
+            : 1f;
+    }
+
     public void RefreshTurnOrderUI()
     {
         UIManager.Instance?.UpdateTurnOrder(turnOrderList, currentCharacter);
@@ -318,6 +443,11 @@ public class TurnManager : MonoBehaviour
 
     private void EnableDefenseCharacterButtons()
     {
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.IsSharedBattle)
+        {
+            DisableDefenseButtons(allCharacters);
+            return;
+        }
         if (currentCharacter == null || allCharacters == null)
             return;
 
@@ -347,6 +477,7 @@ public class TurnManager : MonoBehaviour
             counterButton.onClick.RemoveAllListeners();
             counterButton.onClick.AddListener(() =>
             {
+                UIManager.Instance?.PlayBattleButtonClickSound();
                 defenseCharacter = defender;
                 defender.combatHandler.SetDefenseCharacter(defender);
                 DisableDefenseButtons(defenders);
@@ -359,6 +490,8 @@ public class TurnManager : MonoBehaviour
 
     public void CancelDefenseCharacterSelection()
     {
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.RouteBattleCommand(
+            "cancelDefender", defenseCharacter)) return;
         if (defenseTarget != null)
             return;
 
@@ -406,6 +539,8 @@ public class TurnManager : MonoBehaviour
             currentCharacter.UpdateCharacterUI();
         }
 
+        MultiplayerSession.Instance?.PublishBattleState(MultiplayerSession.SharedBattlePhase.Resolving);
+
         if (combatHandler != null)
         {
             combatHandler.ExecuteSkillQueue(FinishTurn);
@@ -438,7 +573,40 @@ public class TurnManager : MonoBehaviour
         }
 
         if (BattlePresentationDirector.Instance != null)
+        {
+            MultiplayerSession.Instance?.BroadcastBattleHome();
             yield return BattlePresentationDirector.Instance.ReturnCharactersHome(allCharacters);
+            if (MultiplayerSession.Instance != null)
+                yield return MultiplayerSession.Instance.WaitForBattlePresentation();
+        }
+
+        if (battleEnded)
+            yield break;
+
+        if (currentCharacter != null && currentCharacter.character.IsAlive)
+        {
+            int previousHp = currentCharacter.character.CurrentHp;
+            StatusEffectProcessor.ApplyTurnEffects(currentCharacter);
+            int damage = previousHp - currentCharacter.character.CurrentHp;
+            foreach (var effect in currentCharacter.character.StatusEffects?.ToList() ?? new List<StatusEffectRuntimeData>())
+            {
+                if (effect != null && GameDataRegistry.Instance.GetStatusEffect(effect.statusEffectId)?.effectType == StatusEffectType.TurnDamage)
+                    StatusEffectProcessor.ConsumeStatusStack(currentCharacter.character, effect.statusEffectId, 1, false);
+            }
+            currentCharacter.UpdateCharacterUI();
+            if (damage > 0)
+            {
+                UIManager.Instance?.ShowDamage(damage, currentCharacter.transform.position);
+                if (currentCharacter.character.IsAlive)
+                    currentCharacter.battlePresentationHandler?.PlayHit();
+                else
+                    currentCharacter.battlePresentationHandler?.PlayDeath();
+                MultiplayerSession.Instance?.BroadcastStatusDamage(currentCharacter, damage);
+                yield return new WaitForSeconds(currentCharacter.character.IsAlive ? 0.6f : 1.5f);
+                if (MultiplayerSession.Instance != null)
+                    yield return MultiplayerSession.Instance.WaitForBattlePresentation();
+            }
+        }
 
         if (battleEnded)
             yield break;
@@ -455,14 +623,13 @@ public class TurnManager : MonoBehaviour
             if (characterManager == null || characterManager.character == null)
                 continue;
 
-            StatusEffectProcessor.ApplyTurnEffects(characterManager);
             StatusEffectProcessor.ReduceDurations(characterManager.character);
 
             characterManager.UpdateCharacterUI();
         }
     }
 
-    private bool CheckBattleEnd()
+    public bool CheckBattleEnd()
     {
         if (battleEnded || allCharacters == null)
             return battleEnded;
@@ -498,6 +665,11 @@ public class TurnManager : MonoBehaviour
         battleEnded = true;
         _stageStarted = false;
         StopBattleActions();
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.IsSharedBattle)
+        {
+            MultiplayerSession.Instance.FinishSharedBattle(true);
+            return;
+        }
         int grantedExperience = ProgressionRules.SettleVictoryExperience(allCharacters);
         int droppedGold = ProgressionRules.SettleVictoryGold(allCharacters);
         List<InventorySlotData> droppedLoot = ProgressionRules.RollVictoryLoot(allCharacters);
@@ -595,6 +767,11 @@ public class TurnManager : MonoBehaviour
         battleEnded = true;
         _stageStarted = false;
         StopBattleActions();
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.IsSharedBattle)
+        {
+            MultiplayerSession.Instance.FinishSharedBattle(false);
+            return;
+        }
         RegisterExpeditionDefeat();
         Debug.Log("패배!");
 
@@ -607,6 +784,11 @@ public class TurnManager : MonoBehaviour
 
     public void AbandonExpedition()
     {
+        if (MultiplayerSession.Instance != null && MultiplayerSession.Instance.InExpedition)
+        {
+            MultiplayerSession.Instance.LeaveExpedition();
+            return;
+        }
         if (QuestManager.Instance == null || QuestManager.Instance.active?.def == null)
             return;
 
@@ -614,6 +796,7 @@ public class TurnManager : MonoBehaviour
         _stageStarted = false;
         StopBattleActions();
         RegisterExpeditionDefeat();
+        QuestManager.Instance.AbandonActive();
         GameManager.Instance?.ReturnToTownAfterQuestAbandon();
     }
 
@@ -766,6 +949,7 @@ public class TurnManager : MonoBehaviour
 
     private void StopBattleActions()
     {
+        TooltipManager.Instance?.HideTooltip();
         turnQueue.Clear();
         DisableDefenseButtons(allCharacters);
         ClearDefenseSelection();
@@ -781,6 +965,9 @@ public class TurnManager : MonoBehaviour
 
             character.isPlayerTurn = false;
             character.combatHandler?.StopAllCoroutines();
+            character.character?.StatusEffects?.RemoveAll(effect => effect != null &&
+                GameDataRegistry.Instance?.GetStatusEffect(effect.statusEffectId) is BuffDefinitionSO buff &&
+                StatusEffectProcessor.IsCounterImmunity(buff.effectType));
             character.UpdateCharacterUI();
         }
     }
@@ -849,6 +1036,34 @@ public class TurnManager : MonoBehaviour
         StartCounterTurn();
     }
 
+    public void FinishSharedCounterTurn() => EndTurn();
+
+    public List<string> GetSharedTurnOrder() => turnOrderList.Where(cm => cm != null).Select(cm => cm.character.ID).ToList();
+
+    public void ApplySharedTurnState(MultiplayerSession.SharedBattleState state)
+    {
+        var session = MultiplayerSession.Instance;
+        allCharacters = GameManager.Instance.GetAllCharacters();
+        currentCharacter = session.FindBattleCharacter(state.attacker);
+        defenseCharacter = session.FindBattleCharacter(state.defender);
+        defenseTarget = session.FindBattleCharacter(state.protectedTarget);
+        turnOrderList = state.turnOrder.Select(session.FindBattleCharacter).Where(cm => cm != null).ToList();
+        battleEnded = state.phase == MultiplayerSession.SharedBattlePhase.Finished;
+        if (battleEnded) TooltipManager.Instance?.HideTooltip();
+        _stageStarted = !battleEnded;
+        RefreshTurnOrderUI();
+    }
+
+    public void StopSharedBattle()
+    {
+        battleEnded = true;
+        _stageStarted = false;
+        StopAllCoroutines();
+        StopBattleActions();
+        currentCharacter = null;
+        turnOrderList.Clear();
+    }
+
     // 턴 종료 버튼 설정
     private void SetEndTurnButtonAction()
     {        
@@ -856,10 +1071,12 @@ public class TurnManager : MonoBehaviour
         {
             UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
             UIManager.Instance.turnEndButton.gameObject.SetActive(true);
+            UIManager.Instance.turnEndButton.interactable = true;
             // 버튼에 새로운 리스너 추가
             UIManager.Instance.turnEndButton.onClick.RemoveAllListeners();
             UIManager.Instance.turnEndButton.onClick.AddListener(() =>
             {
+                UIManager.Instance.PlayBattleButtonClickSound();
                 if (currentCharacter != null)
                 {
                     if (currentCharacter != null)
@@ -877,11 +1094,13 @@ public class TurnManager : MonoBehaviour
         if (UIManager.Instance != null && UIManager.Instance.counterTurnEndButton != null)
         {
             UIManager.Instance.counterTurnEndButton.gameObject.SetActive(true);
+            UIManager.Instance.counterTurnEndButton.interactable = true;
             UIManager.Instance.turnEndButton.gameObject.SetActive(false);
             // 버튼에 새로운 리스너 추가
             UIManager.Instance.counterTurnEndButton.onClick.RemoveAllListeners();
             UIManager.Instance.counterTurnEndButton.onClick.AddListener(() =>
             {
+                UIManager.Instance.PlayBattleButtonClickSound();
                 UIManager.Instance.counterTurnEndButton.gameObject.SetActive(false);
                 if (currentCharacter != null)
                 {

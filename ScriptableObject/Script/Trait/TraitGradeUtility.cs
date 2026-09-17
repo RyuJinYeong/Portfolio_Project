@@ -21,8 +21,11 @@ public static class TraitGradeUtility
         };
     }
 
-    public static TraitGrade GetGrade(int point)
+    public static TraitGrade GetGrade(int point, TraitDefinitionSO definition = null)
     {
+        if (definition != null && !definition.canGradeUp)
+            return definition.defaultAcquireGrade;
+
         if (point >= 64) return TraitGrade.S;
         if (point >= 32) return TraitGrade.A;
         if (point >= 16) return TraitGrade.B;
@@ -63,7 +66,7 @@ public static class TraitGradeUtility
     public static int GetGradeMultiplier(TraitRuntimeData runtime, TraitDefinitionSO def)
     {
         int shift = GetGradeShift(runtime, def);
-        return 1 << shift;
+        return shift + 1;
     }
 
     public static bool AddTrait(List<TraitRuntimeData> traits, TraitDefinitionSO def, TraitGrade acquiredGrade)
@@ -71,7 +74,7 @@ public static class TraitGradeUtility
         if (traits == null || def == null)
             return false;
 
-        int addPoint = GetGradeValue(acquiredGrade);
+        int addPoint = GetGradeValue(def.canGradeUp ? acquiredGrade : def.defaultAcquireGrade);
 
         TraitRuntimeData owned = traits.Find(t => t.traitId == def.id);
 

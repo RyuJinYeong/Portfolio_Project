@@ -48,7 +48,15 @@ public class BattlePresentationHandler : MonoBehaviour
     public bool IsMoving { get; private set; }
     public Vector3 HomePosition => homePosition;
     public Animator Animator => animator;
-    public float SkillAnimationSpeed => battleAnimationSpeed;
+    public float SkillAnimationSpeed
+    {
+        get
+        {
+            CharacterManager manager = GetComponentInParent<CharacterManager>();
+            int bonus = manager?.character?.FinalSpecialStats?.SkillActivationSpeedBonus ?? 0;
+            return battleAnimationSpeed * Mathf.Max(0.01f, 1f + bonus / 100f);
+        }
+    }
     public bool IsPlayingSkill => isPlayingSkillSequence || IsActiveComposer(activeSkillComposer);
     public bool CurrentSkillUsesOffHand { get; private set; }
     public SkillDefinitionSO CurrentSkill { get; private set; }
@@ -675,7 +683,7 @@ public class BattlePresentationHandler : MonoBehaviour
 
     public void PlayAttack(int attackIndex = 1)
     {
-        SetAnimatorPlaybackSpeed(battleAnimationSpeed);
+        SetAnimatorPlaybackSpeed(SkillAnimationSpeed);
         SetTrigger(Animator.StringToHash($"Attack{Mathf.Clamp(attackIndex, 1, 10)}"));
     }
 
@@ -888,7 +896,7 @@ public class BattlePresentationHandler : MonoBehaviour
         if (clip == null)
             return 0f;
 
-        float playbackRate = composer.PlayRate * battleAnimationSpeed;
+        float playbackRate = composer.PlayRate * SkillAnimationSpeed;
 
         if (skill == null ||
             skill.isCounterSkill ||
@@ -903,7 +911,7 @@ public class BattlePresentationHandler : MonoBehaviour
             return playbackRate / durationScale;
 
         float targetDuration = standardSingleHitClipDuration /
-                               Mathf.Max(0.01f, battleAnimationSpeed) *
+                               Mathf.Max(0.01f, SkillAnimationSpeed) *
                                durationScale;
 
         return clip.length / Mathf.Max(0.01f, targetDuration) * composer.PlayRate;

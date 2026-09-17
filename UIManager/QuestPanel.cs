@@ -209,29 +209,15 @@ public class QuestPanel : MonoBehaviour
 
     void OnClickAbandon()
     {
-        if (QuestManager.Instance == null ||
-            !QuestManager.Instance.AbandonActive())
-        {
-            return;
-        }
-
-        PlayerData playerData = PlayerManager.Instance != null
-            ? PlayerManager.Instance.GetCurrentPlayerData()
-            : null;
-
-        if (playerData != null)
-            playerData.currentStage = "Town";
-
-        PlayerManager.Instance?.SavePlayerDataToPlayFab();
+        MultiplayerSession.Instance.Open();
     }
 
     void UpdateAbandonButton()
     {
         if (abandonButton != null)
         {
-            abandonButton.gameObject.SetActive(
-                QuestManager.Instance != null &&
-                QuestManager.Instance.active != null);
+            abandonButton.gameObject.SetActive(true);
+            abandonButton.interactable = QuestManager.Instance != null && QuestManager.Instance.active == null;
         }
     }
 

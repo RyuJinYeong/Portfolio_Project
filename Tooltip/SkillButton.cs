@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class SkillButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
@@ -13,11 +14,20 @@ public class SkillButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
     public CharacterManager counterUser;
     public CharacterManager protectedTarget;
     public System.Action onRightClick;
+    public bool isConcealToggle;
+    public RawImage concealBadge;
 
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (TooltipManager.Instance == null)
             return;
+
+        TooltipManager.Instance.hoveredBattleIcon = gameObject;
+        if (isConcealToggle)
+        {
+            TooltipManager.Instance.ShowSkillConcealTooltip(Input.mousePosition);
+            return;
+        }
 
         bool hasCounterChanceContext =
             isCounterSkill &&
@@ -43,13 +53,29 @@ public class SkillButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHand
         if (TooltipManager.Instance == null)
             return;
 
-        TooltipManager.Instance.HideTooltip();
+        if (TooltipManager.Instance.hoveredBattleIcon == gameObject)
+            TooltipManager.Instance.HideTooltip();
+    }
+
+    private void OnDisable()
+    {
+        if (TooltipManager.Instance?.hoveredBattleIcon == gameObject)
+            TooltipManager.Instance.HideTooltip();
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
         if (eventData.button == PointerEventData.InputButton.Right)
             onRightClick?.Invoke();
+    }
+
+    public void SetConcealedBadge(bool concealed, Texture2D icon)
+    {
+        if (concealBadge == null)
+            return;
+
+        concealBadge.texture = icon;
+        concealBadge.gameObject.SetActive(concealed && icon != null);
     }
 
     private void ShowCounterSuccessChance()
